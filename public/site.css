@@ -3,8 +3,7 @@ html {
 }
 
 body {
-    background: #000;
-    cursor: url(data:image/png;base64,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),default
+    background: #000
 }
 
 body.skin-apioutput {
@@ -18,12 +17,12 @@ body * {
 }
 
 a {
-    color: #80c2ff;
+    color: #d4ad7a;
     transition: none
 }
 
 a:hover,a:focus {
-    color: #a5d4ff;
+    color: #f4cf9e;
     text-decoration: none
 }
 
@@ -35,22 +34,13 @@ a:focus {
     color: #d19d9d
 }
 
-@media (min-width: 768px) {
-    #wiki-outer-body {
-        background:url(https://huiji-public.huijistatic.com/starrail/uploads/2/24/Sitebackground2.jpg);
-        background-attachment: fixed;
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat
-    }
-}
-
 .huiji-css-hook .wiki-body {
     min-height: 100vh;
-    background-color: #030d1ae6;
+    background-color: #ffffff0d;
     position: relative;
     border-radius: 0.3rem;
-    margin-top: 2rem
+    margin-top: 2rem;
+    border: 1px solid #ffffff1a
 }
 
 .huiji-css-hook .bottom.footer {
@@ -60,19 +50,6 @@ a:focus {
     font-size: 14px;
     padding-bottom: 20px;
     overflow: auto
-}
-
-.huiji-css-hook .wiki-body::after {
-    content: "";
-    display: block;
-    top: 0.3rem;
-    left: 0.3rem;
-    right: 0.3rem;
-    bottom: 0.3rem;
-    border: 1px solid #ffffff1a;
-    border-radius: 0.3rem;
-    position: absolute;
-    pointer-events: none
 }
 
 #content h1 {
@@ -108,11 +85,13 @@ h4 .mw-headline,h5 .mw-headline,h6 .mw-headline {
 }
 
 table.wikitable > tr > th,table.wikitable > * > tr > th,.mw-jsonconfig th {
-    background-color: #39393e
+    background-color: rgba(0,0,0,0.5);
+    color: #e3cc99
 }
 
 .huiji-css-hook .wikitable,.huiji-css-hook .mw-datatable,.huiji-css-hook .mw_metadata,.huiji-css-hook .mw-json,.huiji-css-hook .property-page-results,.mw-jsonconfig td,.mw-jsonconfig .mw-jsonconfig-value {
-    background-color: #2c2c32
+    background-color: rgba(0,0,0,0.15);
+    box-shadow: 0 0 2px #000
 }
 
 .huiji-css-hook .wikitable tr,.huiji-css-hook .mw-datatable tr,.huiji-css-hook .mw_metadata tr,.huiji-css-hook .mw-json tr,.huiji-css-hook .property-page-results tr,.huiji-css-hook .wikitable td,.huiji-css-hook .mw-datatable td,.huiji-css-hook .mw_metadata td,.huiji-css-hook .mw-json td,.huiji-css-hook .property-page-results td,.huiji-css-hook .wikitable th,.huiji-css-hook .mw-datatable th,.huiji-css-hook .mw_metadata th,.huiji-css-hook .mw-json th,.huiji-css-hook .property-page-results th,.mw-jsonconfig th,.mw-jsonconfig td {
@@ -120,7 +99,7 @@ table.wikitable > tr > th,table.wikitable > * > tr > th,.mw-jsonconfig th {
 }
 
 table.wikitable > tr > th,table.wikitable > tr > td,table.wikitable > * > tr > th,table.wikitable > * > tr > td {
-    padding: 0.2em 0.4em 0
+    padding: 0.25em 0.5em
 }
 
 .hsrtable {
@@ -142,7 +121,7 @@ table.wikitable > tr > th,table.wikitable > tr > td,table.wikitable > * > tr > t
 }
 
 .hsrtable tr th,.hsrtable tr td {
-    padding: 0.2em 0.4em 0
+    padding: 0.1em 0.4em
 }
 
 .hsrtable tr th {
@@ -159,14 +138,15 @@ table.wikitable > tr > th,table.wikitable > tr > td,table.wikitable > * > tr > t
 }
 
 @media screen and (max-width: 767px) {
-	.hsrtable .hide-m {
-	    display: none;
-	}
+    .hsrtable .hide-m {
+        display:none
+    }
 }
+
 @media screen and (max-width: 768px) {
-	.hsrtable .hide-pc {
-	    display: none;
-	}
+    .hsrtable .hide-pc {
+        display:none
+    }
 }
 
 header#firstHeading+section.alert.alert-warning {
@@ -194,10 +174,10 @@ header#firstHeading+section.alert.alert-warning {
 }
 
 #toc>div>ul {
-    background: rgb(5 25 52);
+    background: rgba(60,0,0,0.2);
     padding: 0 10px;
     border: 1px solid #404040b3;
-    color: #dfdfdf
+    color: #eee
 }
 
 .toc-sidebar .nav>li>a {
@@ -244,16 +224,17 @@ header#firstHeading+section.alert.alert-warning {
 
 #wiki-outer-body .toc-sidebar li a:hover .tocnumber,#wiki-outer-body .toc-sidebar li.active >a>.tocnumber {
     border-color: transparent;
-    background: #00488b;
-    color: #fff
+    background: #261b15;
+    border: 1px solid #d4ad7a;
+    color: #d4ad7a
 }
 
 .huiji-css-hook .toc-sidebar li.active > a {
-    color: #4c9be5
+    color: #d4ad7a
 }
 
 .huiji-css-hook .toc-sidebar li a:hover {
-    color: #91c6f7
+    color: #f4cf9e
 }
 
 #wiki-body li {

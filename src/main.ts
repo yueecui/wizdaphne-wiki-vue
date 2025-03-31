@@ -1,5 +1,4 @@
 import './styles/common.less';
-import './styles/tailwind.css';
 
 import { createApp } from 'vue';
 import Package from '../package.json';
