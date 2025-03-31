@@ -1,0 +1,365 @@
+html {
+    font-size: 16px
+}
+
+body {
+    background: #000;
+    cursor: url(data:image/png;base64,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),default
+}
+
+body.skin-apioutput {
+    background-color: white!important
+}
+
+body * {
+    border-style: solid;
+    border-width: 0;
+    border-color: currentColor
+}
+
+a {
+    color: #80c2ff;
+    transition: none
+}
+
+a:hover,a:focus {
+    color: #a5d4ff;
+    text-decoration: none
+}
+
+a:focus {
+    outline: none
+}
+
+.huiji-css-hook .new:hover {
+    color: #d19d9d
+}
+
+@media (min-width: 768px) {
+    #wiki-outer-body {
+        background:url(https://huiji-public.huijistatic.com/starrail/uploads/2/24/Sitebackground2.jpg);
+        background-attachment: fixed;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat
+    }
+}
+
+.huiji-css-hook .wiki-body {
+    min-height: 100vh;
+    background-color: #030d1ae6;
+    position: relative;
+    border-radius: 0.3rem;
+    margin-top: 2rem
+}
+
+.huiji-css-hook .bottom.footer {
+    padding: 30px 0;
+    background: #000000b3;
+    color: #999;
+    font-size: 14px;
+    padding-bottom: 20px;
+    overflow: auto
+}
+
+.huiji-css-hook .wiki-body::after {
+    content: "";
+    display: block;
+    top: 0.3rem;
+    left: 0.3rem;
+    right: 0.3rem;
+    bottom: 0.3rem;
+    border: 1px solid #ffffff1a;
+    border-radius: 0.3rem;
+    position: absolute;
+    pointer-events: none
+}
+
+#content h1 {
+    color: #debe79
+}
+
+h2,.h2 {
+    color: #debe79
+}
+
+h3 .mw-headline {
+    position: relative;
+    padding-left: 1rem
+}
+
+h3 .mw-headline::before {
+    content: "";
+    display: block;
+    position: absolute;
+    width: 0.5rem;
+    height: 100%;
+    background: #dfdfdf;
+    top: 0;
+    left: 0
+}
+
+h4,.h4,h5,.h5,h6,.h6 {
+    margin-top: 25px
+}
+
+h4 .mw-headline,h5 .mw-headline,h6 .mw-headline {
+    font-weight: bold
+}
+
+table.wikitable > tr > th,table.wikitable > * > tr > th,.mw-jsonconfig th {
+    background-color: #39393e
+}
+
+.huiji-css-hook .wikitable,.huiji-css-hook .mw-datatable,.huiji-css-hook .mw_metadata,.huiji-css-hook .mw-json,.huiji-css-hook .property-page-results,.mw-jsonconfig td,.mw-jsonconfig .mw-jsonconfig-value {
+    background-color: #2c2c32
+}
+
+.huiji-css-hook .wikitable tr,.huiji-css-hook .mw-datatable tr,.huiji-css-hook .mw_metadata tr,.huiji-css-hook .mw-json tr,.huiji-css-hook .property-page-results tr,.huiji-css-hook .wikitable td,.huiji-css-hook .mw-datatable td,.huiji-css-hook .mw_metadata td,.huiji-css-hook .mw-json td,.huiji-css-hook .property-page-results td,.huiji-css-hook .wikitable th,.huiji-css-hook .mw-datatable th,.huiji-css-hook .mw_metadata th,.huiji-css-hook .mw-json th,.huiji-css-hook .property-page-results th,.mw-jsonconfig th,.mw-jsonconfig td {
+    border: 1px #3f3f44 solid
+}
+
+table.wikitable > tr > th,table.wikitable > tr > td,table.wikitable > * > tr > th,table.wikitable > * > tr > td {
+    padding: 0.2em 0.4em 0
+}
+
+.hsrtable {
+    background-color: #2c2c32;
+    color: #dfdfdf;
+    margin: 1em 0;
+    border: 1px solid #a2a9b1;
+    border-collapse: collapse
+}
+
+.hsrtable tr {
+    border: 1px #3f3f44 solid;
+    transition: background-color 0.1s var(--n-bezier)
+}
+
+.hsrtable tr.highlight {
+    color: #ef9b38;
+    font-weight: bold
+}
+
+.hsrtable tr th,.hsrtable tr td {
+    padding: 0.2em 0.4em 0
+}
+
+.hsrtable tr th {
+    background-color: #39393e;
+    text-align: center
+}
+
+.hsrtable:not(.single-line) tr th,.hsrtable:not(.single-line) tr td {
+    border: 1px #3f3f44 solid
+}
+
+.hsrtable.line-hover tr:nth-child(n + 2):hover {
+    background-color: #39393e
+}
+
+@media screen and (max-width: 767px) {
+	.hsrtable .hide-m {
+	    display: none;
+	}
+}
+@media screen and (max-width: 768px) {
+	.hsrtable .hide-pc {
+	    display: none;
+	}
+}
+
+header#firstHeading+section.alert.alert-warning {
+    display: none
+}
+
+#recommend {
+    display: none !important
+}
+
+.globalfooter >div:first-child ul:first-of-type > li:nth-child(-n+3) {
+    color: rgb(255 255 255 / 5%)
+}
+
+.globalfooter >div:first-child ul:first-of-type > li:nth-child(-n+3):hover {
+    color: inherit
+}
+
+#catlinks ul > li.last {
+    display: none
+}
+
+.mw-normal-catlinks {
+    border-top: 1px solid #393939
+}
+
+#toc>div>ul {
+    background: rgb(5 25 52);
+    padding: 0 10px;
+    border: 1px solid #404040b3;
+    color: #dfdfdf
+}
+
+.toc-sidebar .nav>li>a {
+    padding: 0
+}
+
+.toc-sidebar .nav .nav>li>a {
+    padding-left: 10px
+}
+
+.toc-sidebar .nav .nav {
+    padding: 0
+}
+
+.toc-ul-wrap {
+    width: auto
+}
+
+#toc.toc-sidebar li {
+    padding: 0 5px
+}
+
+#wiki-outer-body .toc-sidebar li a:hover {
+    border-color: transparent
+}
+
+#toc>div>ul .tocnumber {
+    font-size: 9px;
+    width: 20px;
+    line-height: 20px;
+    height: 20px;
+    margin-right: 5px;
+    border-bottom: none;
+    border: 1px solid #8a8a8a;
+    background-color: transparent;
+    display: inline-block;
+    color: #8a8a8a;
+    text-align: center;
+    text-decoration: none;
+    -moz-border-radius: 5px;
+    -webkit-border-radius: 5px;
+    border-radius: 5px
+}
+
+#wiki-outer-body .toc-sidebar li a:hover .tocnumber,#wiki-outer-body .toc-sidebar li.active >a>.tocnumber {
+    border-color: transparent;
+    background: #00488b;
+    color: #fff
+}
+
+.huiji-css-hook .toc-sidebar li.active > a {
+    color: #4c9be5
+}
+
+.huiji-css-hook .toc-sidebar li a:hover {
+    color: #91c6f7
+}
+
+#wiki-body li {
+    margin-top: 0;
+    margin-bottom: 0
+}
+
+#toc.toc-sidebar .toc-ul-wrap>ul>li {
+    border-bottom: 1px solid #404040b3;
+    padding: 10px 5px
+}
+
+#toc.toc-sidebar .toc-ul-wrap>ul>li:last-child {
+    border-bottom: none
+}
+
+.huiji-css-hook pre {
+    white-space: pre-wrap
+}
+
+.huiji-css-hook code {
+    background-color: #000;
+    color: #c1de3e;
+    font-weight: normal
+}
+
+.huiji-css-hook .prettyprint {
+    background-color: #1E1E1E;
+    border: none
+}
+
+.huiji-css-hook .prettyprint .com {
+    color: #5cb85c
+}
+
+.huiji-css-hook .prettyprint .lit {
+    color: #2e92da
+}
+
+.huiji-css-hook .prettyprint .pun,.huiji-css-hook .prettyprint .opn,.huiji-css-hook .prettyprint .clo {
+    color: #6A9955
+}
+
+.huiji-css-hook .prettyprint .fun {
+    color: #dc322f
+}
+
+.huiji-css-hook .prettyprint .str,.huiji-css-hook .prettyprint .atv {
+    color: #CE9178
+}
+
+.huiji-css-hook .prettyprint .kwd,.huiji-css-hook .prettyprint .linenums .tag {
+    color: #569CD6
+}
+
+.huiji-css-hook .prettyprint .typ,.huiji-css-hook .prettyprint .atn,.huiji-css-hook .prettyprint .dec,.huiji-css-hook .prettyprint .var {
+    color: teal
+}
+
+.huiji-css-hook .prettyprint .pln {
+    color: #D4D4D4
+}
+
+.huiji-css-hook .prettyprint.linenums {
+    -webkit-box-shadow: inset 40px 0 0 #000000,inset 41px 0 0 #222222;
+    -moz-box-shadow: inset 40px 0 0 #000000,inset 41px 0 0 #222222;
+    box-shadow: inset 40px 0 0 #000000,inset 41px 0 0 #222222
+}
+
+.huiji-css-hook .prettyprint ol.linenums {
+}
+
+.huiji-css-hook .prettyprint ol.linenums li {
+    padding-left: 12px;
+    color: #bebec5;
+    line-height: 18px;
+    text-shadow: none
+}
+
+.hide-wiki-body #wiki-body {
+    display: none
+}
+
+#skin-root {
+    z-index: 999 !important
+}
+
+.skin-subnav {
+    z-index: 998 !important
+}
+
+@media screen and (max-width: 767px) {
+    .table-responsive {
+        border:none
+    }
+}
+
+.img-max-width img {
+    max-width: 100%;
+    height: auto
+}
+
+.editor-mode-only-block {
+    display: none
+}
+
+.editor-mode .editor-mode-only-block {
+    display: block
+}

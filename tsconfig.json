@@ -1,0 +1,29 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "strict": true,
+        "forceConsistentCasingInFileNames": true,
+        "allowSyntheticDefaultImports": true,
+        "strictFunctionTypes": false,
+        "jsx": "preserve",
+        "baseUrl": ".",
+        "allowJs": true,
+        "sourceMap": false,
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "experimentalDecorators": true,
+        "lib": ["dom", "esnext"],
+        "types": ["vite/client"],
+        "typeRoots": ["./node_modules/@types/"],
+        "noImplicitAny": false,
+        "skipLibCheck": true,
+        "strictNullChecks": true,
+        "paths": {
+            "@/*": ["src/*"]
+        }
+    },
+    "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "vite.config.ts"],
+    "exclude": ["node_modules", "dist", "**/*.js"]
+}
