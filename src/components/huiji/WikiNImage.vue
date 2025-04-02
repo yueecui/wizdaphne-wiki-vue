@@ -5,9 +5,10 @@
 </template>
 
 <script setup lang="ts">
-import { getImageUrl } from '@/module/getImageUrl';
 import { NImage } from 'naive-ui';
+
 import { computed } from 'vue';
+import { getImageUrl } from '../../util/getImageUrl';
 
 const props = withDefaults(
     defineProps<{

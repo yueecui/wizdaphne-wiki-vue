@@ -1,6 +1,6 @@
 {
-    "name": "wizdephne-wiki-vue",
-    "displayName": "WizDephene Wiki Vue Frontend",
+    "name": "wizdaphne-wiki-vue",
+    "displayName": "WizDaphne Wiki Vue Frontend",
     "version": "1.0.0",
     "author": "Yuee",
     "description": "巫术达芙妮维基前端",
@@ -23,9 +23,9 @@
         "@vue-leaflet/vue-leaflet": "^0.10.1",
         "dexie": "^4.0.11",
         "dotenv": "^16.4.7",
-        "leaflet": "^1.9.4",
         "lodash-es": "^4.17.21",
         "pinia": "^3.0.1",
+        "tailwindcss": "^4.1.0",
         "vue": "^3.5.13",
         "vue3-lazyload": "^0.3.8"
     },
