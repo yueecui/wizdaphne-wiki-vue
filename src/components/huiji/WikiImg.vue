@@ -16,7 +16,7 @@ const props = withDefaults(
         isLazy?: boolean;
     }>(),
     {
-        isLazy: true,
+        isLazy: false,
     },
 );
 

@@ -9,6 +9,10 @@
                             <th colspan="2" class="w-1/2">信息</th>
                         </tr>
                         <tr>
+                            <th>风格</th>
+                            <td>{{ character.data.style ? character.data.style : '基本' }}</td>
+                        </tr>
+                        <tr>
                             <th>种族</th>
                             <td>{{ character.data.race }}</td>
                         </tr>
