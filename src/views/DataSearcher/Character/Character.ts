@@ -1,3 +1,4 @@
+import { COMMON_CLASS } from '../data/enum';
 import type { ICharacter } from '../data/SearcherExposeData.types';
 import type { ICharacterFilter } from './types';
 
@@ -43,12 +44,35 @@ export class Character {
             return false;
         }
         if (filter.onlyPrimary) {
-            if (filter.class[0] && this.data.class[0] !== filter.class[0]) {
+            if (filter.class[0] === '特殊') {
+                let found = false;
+                for (let i = 0; i < this.data.class.length; i++) {
+                    if (!COMMON_CLASS.includes(this.data.class[i])) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    return false;
+                }
+            } else if (filter.class[0] && this.data.class[0] !== filter.class[0]) {
                 return false;
             }
         } else {
             let matchCount = 0;
             for (let i = 0; i < filter.class.length; i++) {
+                if (filter.class[i] === '特殊') {
+                    let found = false;
+                    for (let j = 0; j < this.data.class.length; j++) {
+                        if (!COMMON_CLASS.includes(this.data.class[j])) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found) {
+                        matchCount++;
+                    }
+                }
                 if (this.data.class.includes(filter.class[i])) {
                     matchCount++;
                 }

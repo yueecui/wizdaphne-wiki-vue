@@ -41,3 +41,5 @@ export enum FATE_TYPE {
     '敏捷' = '敏捷',
     '待补充' = '待补充',
 }
+
+export const COMMON_CLASS = ['战士', '盗贼', '僧侣', '法师', '骑士', '忍者'];

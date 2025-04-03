@@ -45,7 +45,7 @@
 import { NButton, NPagination } from 'naive-ui';
 import SkillFilter from './SkillFilter.vue';
 
-import { computed, onMounted, ref, shallowRef } from 'vue';
+import { computed, onMounted, ref, shallowRef, watch } from 'vue';
 import { MwConfig } from '../../../huiji/MwConfig';
 import { Character } from '../Character/Character';
 import { SearcherExposeData } from '../data/SearcherExposeData';
@@ -57,6 +57,14 @@ const filter = ref<ISkillFilter>({
     searchText: '',
     skillType: [],
 });
+
+watch(
+    () => filter.value,
+    (newFilter) => {
+        pageIndex.value = 1;
+    },
+    { deep: true },
+);
 
 const skillList = shallowRef<Skill[]>([]);
 

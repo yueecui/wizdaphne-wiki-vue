@@ -105,7 +105,15 @@ import { NCheckbox, NInput, NSelect, SelectOption } from 'naive-ui';
 import ElementIcon from '../../../components/ElementIcon.vue';
 
 import { computed } from 'vue';
-import { ELEMENT_TYPE, FATE_TYPE, GENDER_TYPE, PERSONALITY_TYPE, RACE_TYPE, RARITY_TYPE } from '../data/enum';
+import {
+    COMMON_CLASS,
+    ELEMENT_TYPE,
+    FATE_TYPE,
+    GENDER_TYPE,
+    PERSONALITY_TYPE,
+    RACE_TYPE,
+    RARITY_TYPE,
+} from '../data/enum';
 import { ICharacterFilter } from './types';
 
 const filter = defineModel<ICharacterFilter>('filter', {
@@ -191,9 +199,9 @@ const fateOptions = [
 ];
 
 // class
-const USEABLE_CLASS = ['战士', '盗贼', '僧侣', '法师', '骑士', '忍者'];
+
 const classOptions = computed<SelectOption[]>(() => [
-    ...Object.values(USEABLE_CLASS).map((r) => ({
+    ...Object.values(COMMON_CLASS).map((r) => ({
         label: r,
         value: r,
         disabled: filter.value.class.length === 2 && filter.value.class.indexOf(r) === -1,
@@ -217,7 +225,7 @@ const onlyPrimaryClassOptions = [
         label: '全部',
         value: '',
     },
-    ...Object.values(USEABLE_CLASS).map((r) => ({
+    ...Object.values(COMMON_CLASS).map((r) => ({
         label: r,
         value: r,
     })),
