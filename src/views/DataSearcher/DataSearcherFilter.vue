@@ -1,5 +1,5 @@
 <template>
-    <div class="flex flex-row flex-wrap gap-6">
+    <div class="flex flex-row flex-wrap gap-2 md:gap-6">
         <div class="flex flex-col w-60">
             <div class="flex justify-between items-center h-6">
                 <label class="text-sm">搜索词</label>
@@ -59,7 +59,7 @@
                 <NSelect :options="genderOptions" v-model:value="filter.gender" class="w-24!"></NSelect>
             </div>
         </div>
-        <div class="flex flex-col">
+        <div class="flex flex-col order-2 md:order-1">
             <div class="flex justify-between items-center h-6">
                 <label class="text-sm">属性</label>
             </div>
@@ -81,7 +81,7 @@
                 </template>
             </div>
         </div>
-        <div class="flex flex-col">
+        <div class="flex flex-col order-1 md:order-2">
             <div class="flex justify-between items-center h-6">
                 <label class="text-sm">缘的才能类型</label>
             </div>

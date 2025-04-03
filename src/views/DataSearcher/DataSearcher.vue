@@ -1,6 +1,6 @@
 <template>
     <ThemeConfigProvider>
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-4 mt-4 md:mt-auto">
             <div class="flex flex-col gap-2">
                 <DataSearcherFilter v-model:filter="filter" />
                 <div><NButton size="small" type="error" @click="onFilterReset">重置</NButton></div>
@@ -21,7 +21,9 @@
             </div>
             <NModal v-model:show="isShowDetail">
                 <template v-if="showDetailCharacter">
-                    <CharacterCard :character="showDetailCharacter" />
+                    <div class="w-[90%] md:h-auto md:w-[600px] m-auto huiji-css-hook bg-transparent!">
+                        <CharacterCard :character="showDetailCharacter" :onClose="closeDetail" />
+                    </div>
                 </template>
             </NModal>
         </div>
@@ -61,13 +63,10 @@ const characterList = shallowRef<Character[]>([]);
 const filteredCharacterList = computed(() => characterList.value.filter((char) => char.isMatch(filter.value)));
 
 onMounted(() => {
+    characterList.value = SearcherExposeData.getInstance().getCharacterList();
     if (IS_DEV) {
-        const test = SearcherExposeData.getInstance().getCharacterList();
-        characterList.value = [...test, ...test, ...test, ...test, ...test, ...test, ...test];
         showDetailCharacter.value = characterList.value[0];
         isShowDetail.value = true;
-    } else {
-        characterList.value = SearcherExposeData.getInstance().getCharacterList();
     }
 });
 
@@ -78,7 +77,6 @@ const showDetail = (character: Character) => {
 };
 const isShowDetail = ref(false);
 const closeDetail = () => {
-    showDetailCharacter.value = null;
     isShowDetail.value = false;
 };
 

@@ -1,8 +1,12 @@
 <template>
-    <div class="w-11/12 md:w-[600px] p-4 bg-[#312721] border! border-[#463d38]! rounded huiji-css-hook">
-        <div class="flex gap-4">
-            <div class="w-[200px] flex flex-col gap-4">
+    <div class="p-4 bg-[#312721]! border! border-[#463d38]! rounded">
+        <div
+            class="grid md:grid-flow-col grid-rows-[127px_auto] grid-cols-[128px_auto] md:grid-cols-[200px_auto] gap-4"
+        >
+            <div class="col-span-2 md:col-auto flex justify-center items-center">
                 <CharacterItem :character="character"></CharacterItem>
+            </div>
+            <div>
                 <table class="wikitable my-0! w-full text-center">
                     <tbody>
                         <tr>
@@ -59,7 +63,7 @@
                     </tbody>
                 </table>
             </div>
-            <div class="flex-1">
+            <div class="row-span-2 md:col-auto">
                 <table class="wikitable my-0! w-full">
                     <tbody>
                         <tr>
@@ -120,18 +124,23 @@
                 </table>
             </div>
         </div>
+        <div class="flex justify-center mt-4" v-if="onClose">
+            <NButton size="small" type="primary" @click="onClose">关闭</NButton>
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
 import CharacterItem from './CharacterItem.vue';
 
+import { NButton } from 'naive-ui';
 import { computed } from 'vue';
 import { Character } from './Character';
 import { SearcherExposeData } from './data/SearcherExposeData';
 
 const props = defineProps<{
     character: Character;
+    onClose?: () => void;
 }>();
 
 const getSkillDescription = (skillName: string) => {
