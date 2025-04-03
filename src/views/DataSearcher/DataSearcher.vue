@@ -1,95 +1,55 @@
 <template>
     <ThemeConfigProvider>
-        <div class="flex flex-col gap-4 mt-4 md:mt-auto">
-            <div class="flex flex-col gap-2">
-                <DataSearcherFilter v-model:filter="filter" />
-                <div><NButton size="small" type="error" @click="onFilterReset">重置</NButton></div>
+        <div class="mt-8 px-4 flex flex-col gap-4">
+            <div class="flex flex-row gap-2">
+                <NButton
+                    :type="activeKey === 'Character' ? 'primary' : 'default'"
+                    @click="() => (activeKey = 'Character')"
+                >
+                    角色
+                </NButton>
+                <NButton :type="activeKey === 'Skill' ? 'primary' : 'default'" @click="() => (activeKey = 'Skill')">
+                    技能
+                </NButton>
             </div>
-            <div>共有 {{ filteredCharacterList.length }} 个符合条件的角色</div>
-            <div class="flex flex-wrap -m-2">
-                <template v-for="char in filteredCharacterList" :key="char.data.key">
-                    <div
-                        class="cursor-pointer relative p-2 group w-1/2 md:w-1/3 lg:w-1/4 xl:w-1/5 3xl:w-1/6"
-                        @click="() => showDetail(char)"
-                    >
-                        <div
-                            class="hidden group-hover:block! absolute border! border-solid border-light! bg-light/10 rounded top-0 left-0 bottom-0 right-0"
-                        ></div>
-                        <CharacterItem :character="char"></CharacterItem>
-                    </div>
-                </template>
-            </div>
-            <NModal v-model:show="isShowDetail">
-                <template v-if="showDetailCharacter">
-                    <div class="w-[90%] md:h-auto md:w-[600px] m-auto huiji-css-hook bg-transparent!">
-                        <CharacterCard :character="showDetailCharacter" :onClose="closeDetail" />
-                    </div>
-                </template>
-            </NModal>
+            <CharacterSearcher v-if="activeKey == 'Character'" />
+            <SkillSearcher v-if="activeKey == 'Skill'" />
         </div>
     </ThemeConfigProvider>
 </template>
 
 <script setup lang="ts">
-import { NButton, NModal } from 'naive-ui';
+import { NButton } from 'naive-ui';
+import { onMounted, ref } from 'vue';
 import ThemeConfigProvider from '../../layout/ThemeConfigProvider.vue';
-import CharacterCard from './CharacterCard.vue';
-import CharacterItem from './CharacterItem.vue';
-import DataSearcherFilter from './DataSearcherFilter.vue';
-
-import { computed, onMounted, ref, shallowRef } from 'vue';
-import { IS_DEV } from '../../util';
-import { Character } from './Character';
-import { SearcherExposeData } from './data/SearcherExposeData';
-import { IDataSearcherFilter } from './dataSearcher.type';
+import CharacterSearcher from './Character/CharacterSearcher.vue';
+import SkillSearcher from './Skill/SkillSearcher.vue';
 
 defineOptions({
     name: '数据搜索器',
 });
 
-const filter = ref<IDataSearcherFilter>({
-    searchText: '',
-    element: '',
-    race: '',
-    gender: '',
-    rarity: '',
-    fate: '',
-    class: [''],
-    onlyPrimary: true,
-});
-
-const characterList = shallowRef<Character[]>([]);
-
-const filteredCharacterList = computed(() => characterList.value.filter((char) => char.isMatch(filter.value)));
-
 onMounted(() => {
-    characterList.value = SearcherExposeData.getInstance().getCharacterList();
-    if (IS_DEV) {
-        showDetailCharacter.value = characterList.value[0];
-        isShowDetail.value = true;
+    // 隐藏#firstHeading
+    const firstHeading = document.getElementById('firstHeading');
+    if (firstHeading) {
+        firstHeading.style.display = 'none';
     }
 });
 
-const showDetailCharacter = ref<Character | null>(null);
-const showDetail = (character: Character) => {
-    showDetailCharacter.value = character;
-    isShowDetail.value = true;
-};
-const isShowDetail = ref(false);
-const closeDetail = () => {
-    isShowDetail.value = false;
-};
-
-const onFilterReset = () => {
-    filter.value = {
-        searchText: '',
-        element: '',
-        race: '',
-        gender: '',
-        rarity: '',
-        fate: '',
-        class: [''],
-        onlyPrimary: true,
-    };
-};
+const activeKey = ref('Character');
+const menuOptions = [
+    {
+        label: '角色',
+        key: 'character',
+    },
+    {
+        label: '武器',
+        key: 'weapon',
+    },
+    {
+        label: '圣遗物',
+        key: 'artifact',
+    },
+];
 </script>

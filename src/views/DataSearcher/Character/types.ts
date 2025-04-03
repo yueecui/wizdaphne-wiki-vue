@@ -1,6 +1,6 @@
-import type { ELEMENT_TYPE, FATE_TYPE, GENDER_TYPE, RACE_TYPE, RARITY_TYPE } from './data/enum';
+import type { ELEMENT_TYPE, FATE_TYPE, GENDER_TYPE, RACE_TYPE, RARITY_TYPE } from '../data/enum';
 
-export interface IDataSearcherFilter {
+export interface ICharacterFilter {
     searchText: string;
     element: ELEMENT_TYPE | '';
     race: RACE_TYPE | '';

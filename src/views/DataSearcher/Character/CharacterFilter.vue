@@ -5,7 +5,7 @@
                 <label class="text-sm">搜索词</label>
             </div>
             <div class="flex items-center h-12">
-                <NInput v-model:value="filter.searchText" placeholder="只支持名字"></NInput>
+                <NInput v-model:value="filter.searchText" placeholder="支持三语名字"></NInput>
             </div>
         </div>
         <div class="flex flex-col">
@@ -94,13 +94,13 @@
 
 <script setup lang="ts">
 import { NCheckbox, NInput, NSelect, SelectOption } from 'naive-ui';
-import ElementIcon from '../../components/ElementIcon.vue';
+import ElementIcon from '../../../components/ElementIcon.vue';
 
 import { computed } from 'vue';
-import { ELEMENT_TYPE, FATE_TYPE, GENDER_TYPE, PERSONALITY_TYPE, RACE_TYPE, RARITY_TYPE } from './data/enum';
-import { IDataSearcherFilter } from './dataSearcher.type';
+import { ELEMENT_TYPE, FATE_TYPE, GENDER_TYPE, PERSONALITY_TYPE, RACE_TYPE, RARITY_TYPE } from '../data/enum';
+import { ICharacterFilter } from './types';
 
-const filter = defineModel<IDataSearcherFilter>('filter', {
+const filter = defineModel<ICharacterFilter>('filter', {
     type: Object,
     required: true,
 });
@@ -197,7 +197,7 @@ const classOptions = computed<SelectOption[]>(() => [
     },
 ]);
 
-const updateClass = (value: IDataSearcherFilter['class']) => {
+const updateClass = (value: ICharacterFilter['class']) => {
     if (value.length > 2) {
         value = value.slice(0, 2);
     }

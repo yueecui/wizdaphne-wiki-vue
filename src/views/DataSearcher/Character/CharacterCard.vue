@@ -189,9 +189,9 @@ import CharacterItem from './CharacterItem.vue';
 
 import { NButton } from 'naive-ui';
 import { computed, ref } from 'vue';
-import { MwConfig } from '../../huiji/MwConfig';
+import { MwConfig } from '../../../huiji/MwConfig';
+import { SearcherExposeData } from '../data/SearcherExposeData';
 import { Character } from './Character';
-import { SearcherExposeData } from './data/SearcherExposeData';
 
 const props = defineProps<{
     character: Character;

@@ -39,7 +39,7 @@ export interface ICharacter {
     class: string[];
     passive_skill: string;
     unique_skill: string[];
-    inherit_skill: string; 
+    inherit_skill: string;
     discipline_skill: string;
     release_date: string;
 }

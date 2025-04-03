@@ -21,12 +21,12 @@
 </template>
 
 <script setup lang="ts">
-import WikiImg from '../../components/huiji/WikiImg.vue';
+import WikiImg from '../../../components/huiji/WikiImg.vue';
 
 import { computed } from 'vue';
-import ElementIcon from '../../components/ElementIcon.vue';
+import ElementIcon from '../../../components/ElementIcon.vue';
+import { RARITY_TYPE } from '../data/enum';
 import { Character } from './Character';
-import { RARITY_TYPE } from './data/enum';
 
 const props = defineProps<{
     character: Character;

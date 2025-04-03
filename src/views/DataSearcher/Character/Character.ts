@@ -1,11 +1,11 @@
-import type { ICharacter } from './data/SearcherExposeData.types';
-import type { IDataSearcherFilter } from './dataSearcher.type';
+import type { ICharacter } from '../data/SearcherExposeData.types';
+import type { ICharacterFilter } from './types';
 
 export class Character {
     constructor(public data: ICharacter) {}
 
     // 是否满足过滤器
-    isMatch(filter: IDataSearcherFilter): boolean {
+    isMatch(filter: ICharacterFilter): boolean {
         if (filter.searchText) {
             let found = false;
             if (this.data.name.includes(filter.searchText)) {

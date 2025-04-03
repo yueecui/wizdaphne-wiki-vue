@@ -1,6 +1,7 @@
 import { sum } from 'lodash-es';
 import { getData } from '../../../util/getData';
-import { Character } from '../Character';
+import { Character } from '../Character/Character';
+import { Skill } from '../Skill/Skill';
 import type { ICharacter, ICharacterStats, ISearcherExposeData } from './SearcherExposeData.types';
 
 // 写在页面里的数据
@@ -59,6 +60,10 @@ export class SearcherExposeData {
 
     public getCharacterList() {
         return this.data.character.map((character) => new Character(character));
+    }
+
+    public getSkillList() {
+        return this.data.skill.map((skill) => new Skill(skill));
     }
 
     public getSkillData(skillName: string) {
