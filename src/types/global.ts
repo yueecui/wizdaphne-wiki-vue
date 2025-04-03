@@ -12,7 +12,7 @@ declare global {
         mw: {
             config: {
                 get: <T = any>(key: string) => T;
-                values: MwConfig;
+                values: IMwConfig;
             };
         };
         Data: Record<string, any>;
@@ -25,7 +25,7 @@ export interface MwPageActionEntry {
     id: string;
 }
 
-export interface MwConfig {
+export interface IMwConfig {
     // view,edit等
     wgAction: string;
     // 文章id，可用于生成链接
