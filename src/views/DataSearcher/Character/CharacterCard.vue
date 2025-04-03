@@ -87,7 +87,7 @@
                                             </NButton>
                                         </div>
                                     </div>
-                                    <div>{{ getSkillDescription(character.data.passive_skill) }}</div>
+                                    <div v-html="getSkillDescription(character.data.passive_skill)"></div>
                                 </div>
                             </td>
                         </tr>
@@ -113,7 +113,7 @@
                                                 </NButton>
                                             </div>
                                         </div>
-                                        <div>{{ getSkillDescription(skill) }}</div>
+                                        <div v-html="getSkillDescription(skill)"></div>
                                     </div>
                                 </td>
                             </tr>
@@ -139,7 +139,7 @@
                                             </NButton>
                                         </div>
                                     </div>
-                                    <div>{{ getSkillDescription(character.data.inherit_skill) }}</div>
+                                    <div v-html="getSkillDescription(character.data.inherit_skill)"></div>
                                 </div>
                             </td>
                         </tr>
@@ -191,6 +191,7 @@ import { NButton } from 'naive-ui';
 import { computed, ref } from 'vue';
 import { MwConfig } from '../../../huiji/MwConfig';
 import { SearcherExposeData } from '../data/SearcherExposeData';
+import { convertDescription } from '../util/convertDescription';
 import { Character } from './Character';
 
 const props = defineProps<{
@@ -203,7 +204,7 @@ const mwConfig = MwConfig.getInstance();
 const getSkillDescription = (skillName: string) => {
     const data = SearcherExposeData.getInstance().getSkillData(skillName);
     if (data) {
-        return data.description;
+        return convertDescription(data.description);
     } else {
         return '技能描述未找到';
     }

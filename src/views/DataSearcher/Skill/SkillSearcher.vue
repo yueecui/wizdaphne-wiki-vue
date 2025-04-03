@@ -32,7 +32,7 @@
                             </div>
                         </td>
                         <td class="text-center">{{ skill.data.category }}</td>
-                        <td>{{ skill.data.description }}</td>
+                        <td v-html="convertDescription(skill.data.description)"></td>
                     </tr>
                 </tbody>
             </table>
@@ -49,6 +49,7 @@ import { computed, onMounted, ref, shallowRef } from 'vue';
 import { MwConfig } from '../../../huiji/MwConfig';
 import { Character } from '../Character/Character';
 import { SearcherExposeData } from '../data/SearcherExposeData';
+import { convertDescription } from '../util/convertDescription';
 import { Skill } from './Skill';
 import { ISkillFilter } from './types';
 
