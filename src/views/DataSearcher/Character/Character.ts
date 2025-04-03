@@ -8,6 +8,9 @@ export class Character {
     isMatch(filter: ICharacterFilter): boolean {
         if (filter.searchText) {
             let found = false;
+            if (this.data.key.includes(filter.searchText)) {
+                found = true;
+            }
             if (this.data.name.includes(filter.searchText)) {
                 found = true;
             }
@@ -28,6 +31,9 @@ export class Character {
             return false;
         }
         if (filter.gender && this.data.gender !== filter.gender) {
+            return false;
+        }
+        if (filter.personality && this.data.personality !== filter.personality) {
             return false;
         }
         if (filter.race && this.data.race !== filter.race) {
@@ -52,5 +58,26 @@ export class Character {
             }
         }
         return true;
+    }
+
+    // 发布时间
+    get releaseDate() {
+        // 格式为 YYYY-MM-DD，需要转为时间戳
+        const date = this.data.release_date.split('-');
+        const year = parseInt(date[0]);
+        const month = parseInt(date[1]) - 1; // 月份从0开始
+        const day = parseInt(date[2]);
+        const releaseDate = new Date(year, month, day);
+        return releaseDate;
+    }
+
+    get rarityNumber() {
+        if (this.data.rarity === '传说') {
+            return 3;
+        } else if (this.data.rarity === '一般') {
+            return 2;
+        } else {
+            return 1;
+        }
     }
 }

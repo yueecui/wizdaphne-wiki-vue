@@ -42,10 +42,10 @@ export class SearcherExposeData {
             luck: 10,
         };
 
-        const classStats = this.data.characterConfig.CLASS_STAT_CONFIG[data.class[0]];
-        const elementStats = this.data.characterConfig.ELEMNET_STAT_CONFIG[data.element];
-        const genderStats = this.data.characterConfig.GENDER_STAT_CONFIG[data.gender];
-        const raceStats = this.data.characterConfig.RACE_STAT_CONFIG[data.race];
+        const classStats = this.data.characterConfig.CLASS_STAT_CONFIG[data.class[0]] ?? {};
+        const elementStats = this.data.characterConfig.ELEMNET_STAT_CONFIG[data.element] ?? {};
+        const genderStats = this.data.characterConfig.GENDER_STAT_CONFIG[data.gender] ?? {};
+        const raceStats = this.data.characterConfig.RACE_STAT_CONFIG[data.race] ?? {};
 
         // 计算属性
         const result = [classStats, elementStats, genderStats, raceStats].reduce((acc, stat) => {

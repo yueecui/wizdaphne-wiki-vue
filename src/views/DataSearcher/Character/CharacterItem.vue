@@ -12,7 +12,9 @@
                 <ElementIcon :element="character.data.element"></ElementIcon>
             </div>
         </div>
-        <div class="bg-black/50 py-1 text-center text-light">{{ character.data.name }}</div>
+        <div class="bg-black/50 py-1 text-center text-light">
+            {{ character.data.name }}
+        </div>
         <div class="bg-black/30 text-center text-sm flex">
             <div class="flex-1">{{ character.data.race }} / {{ character.data.personality }}</div>
             <div class="flex-1">{{ classText }}</div>

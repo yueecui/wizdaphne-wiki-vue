@@ -5,33 +5,39 @@
             <div><NButton size="small" type="error" @click="onFilterReset">重置</NButton></div>
         </div>
         <div>共有 {{ filteredSkillList.length }} 个符合条件的技能</div>
-        <NPagination v-model:page="pageIndex" :pageCount="pageCount"></NPagination>
-        <table class="wikitable text-sm">
-            <thead>
-                <tr>
-                    <th class="w-[16em]">名称</th>
-                    <th class="w-[6em]">类型</th>
-                    <th>描述</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr v-for="skill in currentPageSkillList" :key="skill.data.name" class="hover:bg-black/30">
-                    <td>
-                        <div class="flex justify-between items-center">
-                            <div>{{ skill.data.name }}</div>
-                            <div v-if="MwConfig.getInstance().isStaff">
-                                <NButton size="tiny" type="warning" @click="() => gotoEditSkillData(skill.data.name)">
-                                    编辑
-                                </NButton>
+        <template v-if="filteredSkillList.length > 0">
+            <NPagination v-model:page="pageIndex" :pageCount="pageCount"></NPagination>
+            <table class="wikitable text-sm">
+                <thead>
+                    <tr>
+                        <th class="w-[16em]">名称</th>
+                        <th class="w-[7em]">类型</th>
+                        <th>描述</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="skill in currentPageSkillList" :key="skill.data.name" class="hover:bg-black/30">
+                        <td>
+                            <div class="flex justify-between items-center">
+                                <div>{{ skill.data.name }}</div>
+                                <div v-if="MwConfig.getInstance().isStaff">
+                                    <NButton
+                                        size="tiny"
+                                        type="warning"
+                                        @click="() => gotoEditSkillData(skill.data.name)"
+                                    >
+                                        编辑
+                                    </NButton>
+                                </div>
                             </div>
-                        </div>
-                    </td>
-                    <td class="text-center">{{ skill.data.category }}</td>
-                    <td>{{ skill.data.description }}</td>
-                </tr>
-            </tbody>
-        </table>
-        <NPagination v-model:page="pageIndex" :pageCount="pageCount"></NPagination>
+                        </td>
+                        <td class="text-center">{{ skill.data.category }}</td>
+                        <td>{{ skill.data.description }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <NPagination v-model:page="pageIndex" :pageCount="pageCount"></NPagination>
+        </template>
     </div>
 </template>
 
@@ -82,7 +88,7 @@ const closeDetail = () => {
 const onFilterReset = () => {
     filter.value = {
         searchText: '',
-        skillType: ['武器技能', '支援技能', '攻击咒文', '回复咒文', '支援咒文', '妨碍咒文'],
+        skillType: ['武器技能', '支援技能', '攻击咒文', '回复咒文', '支援咒文', '妨碍咒文', '职业被动'],
     };
 };
 

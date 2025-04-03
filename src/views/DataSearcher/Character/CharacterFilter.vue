@@ -1,5 +1,5 @@
 <template>
-    <div class="flex flex-row flex-wrap gap-2 md:gap-6">
+    <div class="flex flex-row flex-wrap gap-2">
         <div class="flex flex-col w-60">
             <div class="flex justify-between items-center h-6">
                 <label class="text-sm">搜索词</label>
@@ -57,6 +57,14 @@
             </div>
             <div class="flex flex-row gap-2 items-center h-12">
                 <NSelect :options="genderOptions" v-model:value="filter.gender" class="w-24!"></NSelect>
+            </div>
+        </div>
+        <div class="flex flex-col">
+            <div class="flex justify-between items-center h-6">
+                <label class="text-sm">性格</label>
+            </div>
+            <div class="flex flex-row gap-2 items-center h-12">
+                <NSelect :options="personalityOptions" v-model:value="filter.personality" class="w-24!"></NSelect>
             </div>
         </div>
         <div class="flex flex-col order-2 md:order-1">

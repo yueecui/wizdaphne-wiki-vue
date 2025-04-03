@@ -44,6 +44,7 @@ const filter = ref<ICharacterFilter>({
     element: '',
     race: '',
     gender: '',
+    personality: '',
     rarity: '',
     fate: '',
     class: [''],
@@ -56,6 +57,20 @@ const filteredCharacterList = computed(() => characterList.value.filter((char) =
 
 onMounted(() => {
     characterList.value = SearcherExposeData.getInstance().getCharacterList();
+    // 按发布时间倒序排列
+    characterList.value.sort((a, b) => {
+        // 如果发布时间不同，晚发布的靠前
+        if (a.releaseDate.getTime() !== b.releaseDate.getTime()) {
+            return b.releaseDate.getTime() - a.releaseDate.getTime();
+        }
+
+        // 如果稀有度不同，稀有度高的靠前
+        if (a.rarityNumber !== b.rarityNumber) {
+            return b.rarityNumber - a.rarityNumber;
+        }
+        // 否则按中文名排序
+        return a.data.name.localeCompare(b.data.name);
+    });
     // if (IS_DEV) {
     //     showDetailCharacter.value = characterList.value[0];
     //     isShowDetail.value = true;
@@ -78,6 +93,7 @@ const onFilterReset = () => {
         element: '',
         race: '',
         gender: '',
+        personality: '',
         rarity: '',
         fate: '',
         class: [''],
