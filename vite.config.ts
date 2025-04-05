@@ -20,30 +20,30 @@ export default defineConfig(({ command, mode }) => {
         server: {
             port: Number(env.VITE_PORT),
             proxy: {
-                // [`/${env.VITE_WIKI_PREFIX}/uploads`]: {
-                //     target: 'https://huiji-public.huijistatic.com/',
-                //     changeOrigin: true,
-                //     secure: false,
-                //     bypass: (req) => {
-                //         req.headers.referer = `https://${env.VITE_WIKI_PREFIX}.huijiwiki.com/`;
-                //     },
-                // },
-                // '/api': {
-                //     target: `https://${env.VITE_WIKI_PREFIX}.huijiwiki.com/`,
-                //     changeOrigin: true,
-                //     secure: false,
-                //     bypass: (req) => {
-                //         req.headers.referer = `https://${env.VITE_WIKI_PREFIX}.huijiwiki.com/`;
-                //     },
-                // },
-                // '/index.php': {
-                //     target: `https://${env.VITE_WIKI_PREFIX}.huijiwiki.com/`,
-                //     changeOrigin: true,
-                //     secure: false,
-                //     bypass: (req) => {
-                //         req.headers.referer = `https://${env.VITE_WIKI_PREFIX}.huijiwiki.com/`;
-                //     },
-                // },
+                [`/${env.VITE_WIKI_PREFIX}/uploads`]: {
+                    target: 'https://huiji-public.huijistatic.com/',
+                    changeOrigin: true,
+                    secure: false,
+                    bypass: (req) => {
+                        req.headers.referer = `https://${env.VITE_WIKI_PREFIX}.huijiwiki.com/`;
+                    },
+                },
+                '/api': {
+                    target: `https://${env.VITE_WIKI_PREFIX}.huijiwiki.com/`,
+                    changeOrigin: true,
+                    secure: false,
+                    bypass: (req) => {
+                        req.headers.referer = `https://${env.VITE_WIKI_PREFIX}.huijiwiki.com/`;
+                    },
+                },
+                '/index.php': {
+                    target: `https://${env.VITE_WIKI_PREFIX}.huijiwiki.com/`,
+                    changeOrigin: true,
+                    secure: false,
+                    bypass: (req) => {
+                        req.headers.referer = `https://${env.VITE_WIKI_PREFIX}.huijiwiki.com/`;
+                    },
+                },
             },
         },
         css: {

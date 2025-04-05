@@ -21,6 +21,7 @@
     "dependencies": {
         "@tailwindcss/vite": "^4.0.17",
         "@vue-leaflet/vue-leaflet": "^0.10.1",
+        "@vueuse/core": "^13.0.0",
         "dexie": "^4.0.11",
         "dompurify": "^3.2.5",
         "dotenv": "^16.4.7",

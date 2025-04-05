@@ -14,3 +14,8 @@
     --breakpoint-2xl: 1366px;
     --breakpoint-3xl: 1600px;
 } */
+
+@theme {
+    --color-card: #312721;
+    --color-cardborder: #463d38;
+}
