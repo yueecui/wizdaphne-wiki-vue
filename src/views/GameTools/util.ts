@@ -1,13 +1,3 @@
-import type { IDropConfig } from './type';
-
-export const formatRefreshTime = (drop: IDropConfig) => {
-    const text = `${drop.days ? drop.days + '天' : ''}${drop.hours ? drop.hours + '小时' : ''}`;
-    if (text === '') {
-        return '未知';
-    }
-    return text;
-};
-
 export const formatTimeFromMilliseconds = (milliseconds: number) => {
     if (milliseconds < 0) {
         return '-';

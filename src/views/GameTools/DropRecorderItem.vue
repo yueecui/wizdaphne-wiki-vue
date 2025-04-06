@@ -7,12 +7,12 @@
                         <tbody>
                             <tr>
                                 <th colspan="2">
-                                    <div class="p-1">{{ item.title }}</div>
+                                    <div class="p-1">{{ item.data.title }}</div>
                                 </th>
                             </tr>
                             <tr>
                                 <th class="w-[6em]">更新周期</th>
-                                <td class="w-[10em]">{{ formatRefreshTime(item) }}</td>
+                                <td class="w-[10em]">{{ item.getRefreshTimeText() }}</td>
                             </tr>
                             <tr>
                                 <th>上次记录</th>
@@ -45,7 +45,7 @@
                                 </td>
                             </tr>
                             <tr>
-                                <th>{{ refreshHour > 0 ? '距离刷新' : '已过去' }}</th>
+                                <th>{{ item.isCountdown ? '距离刷新' : '已过去' }}</th>
                                 <td>{{ remainTimeText }}</td>
                             </tr>
                             <tr>
@@ -56,25 +56,25 @@
                             <tr>
                                 <td colspan="2">
                                     <div class="p-2 flex flex-col gap-2">
-                                        <div>{{ convertDescription(item.description ?? '') }}</div>
+                                        <div>{{ convertDescription(item.data.description ?? '') }}</div>
                                     </div>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-                <div class="flex-1" v-if="item.image">
+                <div class="flex-1" v-if="item.data.image">
                     <table class="wiztable my-0! w-full">
                         <tbody>
                             <tr>
                                 <th colspan="1">
-                                    <div class="p-2">位置图</div>
+                                    <div class="p-1">位置图</div>
                                 </th>
                             </tr>
                             <tr>
                                 <td rowspan="6" class="align-top">
-                                    <div class="p-2 flex flex-col gap-2">
-                                        <WikiNImage :imageName="item.image" class="w-full"></WikiNImage>
+                                    <div class="p-1 flex flex-col gap-2">
+                                        <WikiNImage :imageName="item.data.image" class="w-full"></WikiNImage>
                                     </div>
                                 </td>
                             </tr>
@@ -95,11 +95,12 @@ import WikiNImage from '../../components/huiji/WikiNImage.vue';
 
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { convertDescription } from '../DataSearcher/util/convertDescription';
-import { IDropConfig, IDropRecord } from './type';
-import { formatRefreshTime, formatTimeFromMilliseconds } from './util';
+import { DropConfig } from './DropConfig';
+import { IDropRecord } from './type';
+import { formatTimeFromMilliseconds } from './util';
 
 const props = defineProps<{
-    item: IDropConfig | null;
+    item: DropConfig | null;
     onClose?: () => void;
 }>();
 
@@ -107,15 +108,15 @@ const dropRecords = defineModel<IDropRecord[]>('dropRecords', {
     required: true,
 });
 
-const thisItemRecord = computed(() => {
+const itemRecord = computed(() => {
     if (props.item) {
-        return dropRecords.value.find((record) => record.id === props.item?.id);
+        return dropRecords.value.find((record) => record.id === props.item?.data.id);
     }
     return undefined;
 });
 const recordText = computed(() => {
-    if (thisItemRecord.value) {
-        return new Date(thisItemRecord.value.timestamp).toLocaleString();
+    if (itemRecord.value) {
+        return new Date(itemRecord.value.timestamp).toLocaleString();
     }
     return '';
 });
@@ -134,24 +135,16 @@ onUnmounted(() => {
     }
 });
 
-const refreshHour = computed(() => {
-    if (props.item) {
-        return props.item.hours + props.item.days * 24;
-    }
-    return 0;
-});
 const remainTimeText = computed(() => {
-    if (props.item && thisItemRecord.value) {
-        if (refreshHour.value > 0) {
-            const targetTime = thisItemRecord.value.timestamp + refreshHour.value * 60 * 60 * 1000;
-            const diff = targetTime - currentTime.value;
+    if (props.item && itemRecord.value) {
+        const diff = props.item.getDifferenceTime(itemRecord.value.timestamp, currentTime.value);
+        if (props.item.isCountdown) {
             if (diff < 0) {
                 return '已刷新';
             }
             return formatTimeFromMilliseconds(diff);
         } else {
             // 等于0时不知道刷新时间，所以改为已经经过的时间
-            const diff = currentTime.value - thisItemRecord.value.timestamp;
             return formatTimeFromMilliseconds(diff);
         }
     }
@@ -161,8 +154,8 @@ const remainTimeText = computed(() => {
 const timestamp = ref(0);
 const isShowRecord = ref(false);
 const showRecord = () => {
-    if (thisItemRecord.value) {
-        timestamp.value = thisItemRecord.value.timestamp;
+    if (itemRecord.value) {
+        timestamp.value = itemRecord.value.timestamp;
     } else {
         timestamp.value = Date.now();
     }
@@ -170,12 +163,12 @@ const showRecord = () => {
 };
 const saveRecord = () => {
     if (props.item) {
-        const record = dropRecords.value.find((record) => record.id === props.item?.id);
+        const record = dropRecords.value.find((record) => record.id === props.item?.data.id);
         if (record) {
             record.timestamp = timestamp.value;
         } else {
             dropRecords.value.push({
-                id: props.item.id,
+                id: props.item.data.id,
                 timestamp: timestamp.value,
             });
         }
@@ -184,7 +177,7 @@ const saveRecord = () => {
 };
 const clearRecord = () => {
     if (props.item) {
-        const record = dropRecords.value.find((record) => record.id === props.item?.id);
+        const record = dropRecords.value.find((record) => record.id === props.item?.data.id);
         if (record) {
             dropRecords.value.splice(dropRecords.value.indexOf(record), 1);
         }

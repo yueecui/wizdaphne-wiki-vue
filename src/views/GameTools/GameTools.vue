@@ -45,8 +45,10 @@
                 </div>
             </div>
             <NModal v-model:show="isShowDropRecorder">
-                <div class="w-[90%] md:h-auto md:w-[600px] m-auto huiji-css-hook bg-transparent!">
-                    <DropRecorder :onClose="closeDropRecorder" />
+                <div class="w-[90%] md:h-auto md:max-w-[960px] m-auto huiji-css-hook bg-transparent!">
+                    <div class="p-4 my-4 bg-card! border! border-cardborder! rounded">
+                        <DropRecorder :onClose="closeDropRecorder" />
+                    </div>
                 </div>
             </NModal>
             <NModal v-model:show="isShowCounter">
