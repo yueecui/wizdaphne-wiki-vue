@@ -28,14 +28,24 @@
                                                 <div
                                                     class="p-4 bg-card! border! border-cardborder! rounded huiji-css-hook flex flex-col gap-4"
                                                 >
-                                                    <NDatePicker
-                                                        type="datetime"
-                                                        v-model:value="timestamp"
-                                                    ></NDatePicker>
+                                                    <div class="flex gap-2 items-center">
+                                                        <NDatePicker
+                                                            type="datetime"
+                                                            v-model:value="timestamp"
+                                                        ></NDatePicker>
+                                                        <NButton size="small" type="primary" @click="saveRecord">
+                                                            更新
+                                                        </NButton>
+                                                    </div>
+
                                                     <div class="flex justify-between">
                                                         <NButton size="small" @click="clearRecord">清除记录</NButton>
-                                                        <NButton size="small" type="primary" @click="saveRecord">
-                                                            确定
+                                                        <NButton
+                                                            size="small"
+                                                            type="primary"
+                                                            @click="saveRecordUseCurrentTime"
+                                                        >
+                                                            以当前时间更新
                                                         </NButton>
                                                     </div>
                                                 </div>
@@ -56,7 +66,7 @@
                             <tr>
                                 <td colspan="2">
                                     <div class="p-2 flex flex-col gap-2">
-                                        <div>{{ convertDescription(item.data.description ?? '') }}</div>
+                                        <div v-html="convertDescription(item.data.description ?? '')"></div>
                                     </div>
                                 </td>
                             </tr>
@@ -175,6 +185,21 @@ const saveRecord = () => {
     }
     isShowRecord.value = false;
 };
+const saveRecordUseCurrentTime = () => {
+    if (props.item) {
+        const record = dropRecords.value.find((record) => record.id === props.item?.data.id);
+        if (record) {
+            record.timestamp = currentTime.value;
+        } else {
+            dropRecords.value.push({
+                id: props.item.data.id,
+                timestamp: currentTime.value,
+            });
+        }
+    }
+    isShowRecord.value = false;
+};
+
 const clearRecord = () => {
     if (props.item) {
         const record = dropRecords.value.find((record) => record.id === props.item?.data.id);
