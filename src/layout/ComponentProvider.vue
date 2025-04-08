@@ -1,19 +1,23 @@
 <template>
-    <NConfigProvider
-        :theme-overrides="themeOverrides"
-        :inline-theme-disabled="true"
-        :abstract="true"
-        :locale="zhCN"
-        :date-locale="dateZhCN"
-    >
-        <NLoadingBarProvider>
-            <NDialogProvider>
-                <NNotificationProvider>
-                    <NMessageProvider></NMessageProvider>
-                </NNotificationProvider>
-            </NDialogProvider>
-        </NLoadingBarProvider>
-    </NConfigProvider>
+    <ThemeConfigProvider>
+        <NConfigProvider
+            :theme-overrides="themeOverrides"
+            :inline-theme-disabled="true"
+            :abstract="true"
+            :locale="zhCN"
+            :date-locale="dateZhCN"
+        >
+            <NLoadingBarProvider>
+                <NDialogProvider>
+                    <NNotificationProvider>
+                        <NMessageProvider>
+                            <RegisterControler />
+                        </NMessageProvider>
+                    </NNotificationProvider>
+                </NDialogProvider>
+            </NLoadingBarProvider>
+        </NConfigProvider>
+    </ThemeConfigProvider>
 </template>
 
 <script lang="ts" setup>
@@ -30,6 +34,8 @@ import {
     dateZhCN,
     zhCN,
 } from 'naive-ui';
+import RegisterControler from './RegisterControler.vue';
+import ThemeConfigProvider from './ThemeConfigProvider.vue';
 
 import { ThemeOverrides } from './themeOverrides';
 

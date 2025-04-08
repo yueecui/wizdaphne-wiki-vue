@@ -1,13 +1,20 @@
 <template>
     <div class="flex flex-col gap-4 min-h-[480px]">
-        <div class="flex gap-2">
-            <NButton :type="activeKey === 'Near' ? 'primary' : 'default'" @click="() => (activeKey = 'Near')">
-                将有刷新
-            </NButton>
-            <NButton :type="activeKey === 'All' ? 'primary' : 'default'" @click="() => (activeKey = 'All')">
-                全部
-            </NButton>
+        <div class="flex justify-between">
+            <div class="flex gap-2">
+                <NButton :type="activeKey === 'Near' ? 'primary' : 'default'" @click="() => (activeKey = 'Near')">
+                    待办项目
+                </NButton>
+                <NButton :type="activeKey === 'All' ? 'primary' : 'default'" @click="() => (activeKey = 'All')">
+                    全部
+                </NButton>
+            </div>
+            <div class="flex gap-2">
+                <NButton @click="() => showImporter('export')">导出</NButton>
+                <NButton @click="() => showImporter('import')">导入</NButton>
+            </div>
         </div>
+
         <div v-if="activeKey === 'Near'">
             <table class="wiztable text-center my-0! w-full" v-if="nearDropConfigs.length > 0">
                 <thead>
@@ -36,7 +43,10 @@
                 <div class="text-center text-gray-400">暂无一天内会刷新的项目</div>
             </div>
         </div>
-        <div v-if="activeKey === 'All'">
+        <div v-if="activeKey === 'All'" class="flex flex-col gap-4">
+            <div class="text-center text-amber-300 mt-4 text-sm">
+                刷新周期目前为收集各网站的信息获得，正在逐步验证，可能有偏差，仅供参考
+            </div>
             <table class="wiztable text-center my-0! w-full" v-for="category in dropCategorys" :key="category.i">
                 <thead>
                     <tr>
@@ -64,9 +74,7 @@
             </table>
         </div>
     </div>
-    <div class="text-center text-amber-300 mt-4 text-sm">
-        刷新周期为收集各网站的信息获得，可能有偏差，而且周期较长难以验证，仅供参考
-    </div>
+
     <div class="md:hidden flex justify-center mt-4 gap-4" v-if="onClose">
         <NButton size="small" type="warning" @click="onClose">关闭</NButton>
     </div>
@@ -75,10 +83,12 @@
             <DropRecorderItem :item="showItem" v-model:dropRecords="dropRecords" :onClose="closeItem" />
         </div>
     </NModal>
+    <DropRecorderImporter v-model:show="isShowImporter" :mode="importMode" />
 </template>
 
 <script setup lang="ts">
 import { NButton } from 'naive-ui';
+import DropRecorderImporter from './DropRecorderImporter.vue';
 import DropRecorderItem from './DropRecorderItem.vue';
 
 import { useLocalStorage } from '@vueuse/core';
@@ -211,5 +221,13 @@ const getRemainTimeText = (item: DropConfig) => {
         }
     }
     return '-';
+};
+
+// 导入导出
+const isShowImporter = ref(false);
+const importMode = ref<'import' | 'export'>('import');
+const showImporter = (mode: 'import' | 'export') => {
+    importMode.value = mode;
+    isShowImporter.value = true;
 };
 </script>

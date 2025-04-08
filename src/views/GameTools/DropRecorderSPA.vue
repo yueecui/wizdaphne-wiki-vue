@@ -1,6 +1,8 @@
 <template>
     <ThemeConfigProvider>
-        <DropRecorder />
+        <div class="mt-8">
+            <DropRecorder />
+        </div>
     </ThemeConfigProvider>
 </template>
 
