@@ -21,22 +21,33 @@
                     <tr>
                         <th class="w-[4em] md:w-[8em]">类型</th>
                         <th>项目</th>
-                        <th class="w-[4em] md:w-[6em]">周期</th>
+                        <th class="w-[4em] md:w-[8em]">周期</th>
                         <th class="w-[5.5em] md:w-[10em]">计时</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr
-                        v-for="item in nearDropConfigs"
-                        :key="item.data.id"
-                        class="hover:bg-[#3b322c] cursor-pointer text-green-400"
-                        @click="() => clickItem(item)"
-                    >
-                        <td>{{ getDropCategoryText(item.data.category) }}</td>
-                        <td class="text-left">{{ item.data.title }}</td>
-                        <td>{{ item.getRefreshTimeText() }}</td>
-                        <td>{{ getRemainTimeText(item) }}</td>
-                    </tr>
+                    <template v-for="item in nearDropConfigs" :key="item.id">
+                        <tr
+                            v-if="item instanceof DropConfig"
+                            class="hover:bg-[#3b322c] cursor-pointer text-green-400"
+                            @click="() => clickItem(item)"
+                        >
+                            <td>{{ getDropCategoryText(item.category) }}</td>
+                            <td class="text-left">{{ item.title }}</td>
+                            <td>{{ item.getRefreshTimeText() }}</td>
+                            <td>{{ getRemainTimeText(item) }}</td>
+                        </tr>
+                        <tr
+                            v-if="item instanceof FixedRefreshConfig"
+                            class="hover:bg-[#3b322c] cursor-pointer text-green-400"
+                            @click="() => clickItem(item)"
+                        >
+                            <td>固定周期</td>
+                            <td class="text-left">{{ item.title }}</td>
+                            <td>{{ item.getRefreshTimeText() }}</td>
+                            <td>{{ getRemainTimeText(item) }}</td>
+                        </tr>
+                    </template>
                 </tbody>
             </table>
             <div class="h-[360px] flex items-center justify-center" v-else>
@@ -47,6 +58,31 @@
             <div class="text-center text-amber-300 mt-4 text-sm">
                 刷新周期目前为收集各网站的信息获得，正在逐步验证，可能有偏差，仅供参考
             </div>
+            <table class="wiztable text-center my-0! w-full">
+                <thead>
+                    <tr>
+                        <th colspan="3">固定周期</th>
+                    </tr>
+                    <tr>
+                        <th>项目</th>
+                        <th class="w-[4em] md:w-[8em]">周期</th>
+                        <th class="w-[5.5em] md:w-[10em]">计时</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr
+                        v-for="item in fixedConfigs"
+                        :key="item.data.id"
+                        class="hover:bg-[#3b322c] cursor-pointer"
+                        :class="isNear(item) ? 'text-green-400' : ''"
+                        @click="() => clickItem(item)"
+                    >
+                        <td class="text-left">{{ item.data.title }}</td>
+                        <td>{{ item.getRefreshTimeText() }}</td>
+                        <td>{{ getRemainTimeText(item) }}</td>
+                    </tr>
+                </tbody>
+            </table>
             <table class="wiztable text-center my-0! w-full" v-for="category in dropCategorys" :key="category.i">
                 <thead>
                     <tr>
@@ -95,8 +131,9 @@ import { useLocalStorage } from '@vueuse/core';
 import { NModal } from 'naive-ui';
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { IS_DEV } from '../../util';
-import { DropConfig } from './DropConfig';
-import { IDropCategory, IDropConfigFile, IDropRecord } from './type';
+import { DropConfig } from './classes/DropConfig';
+import { FixedRefreshConfig } from './classes/FixedRefreshConfig';
+import { IDropCategory, IDropConfigFile, IDropRecord, RecordConfig } from './type';
 import { formatTimeFromMilliseconds } from './util';
 
 defineProps<{
@@ -105,26 +142,53 @@ defineProps<{
 
 const dropConfigs = ref<DropConfig[]>([]);
 const dropCategorys = ref<IDropCategory[]>([]);
+const fixedConfigs: FixedRefreshConfig[] = [
+    new FixedRefreshConfig({
+        id: 'F1',
+        title: '每周官网商店领50石',
+        description: '每周可以登录官网商店领取50石，每周日23点刷新',
+        refreshType: '每周日',
+        refreshText: '每周日晚23点',
+        link: 'https://store.wizardry.info/ja-JP',
+        linkText: '点击打开官网商店',
+    }),
+    new FixedRefreshConfig({
+        id: 'F2',
+        title: '炉壶的灵庙刷新',
+        description: '每两周的周六晚23点，炉壶的灵庙会更新',
+        refreshType: '双周六',
+        refreshText: '双周六晚23点',
+    }),
+];
 
 const dropRecords = useLocalStorage<IDropRecord[]>('drop-records', []);
 
-const nearDropConfigs = computed(() => {
-    const nearConfigs = dropRecords.value
-        .filter((record) => {
+const nearDropConfigs = computed<RecordConfig[]>(() => {
+    const nearConfigs = [
+        // 第一部分是有记录的drop record，并且临期了
+        ...dropRecords.value.map((record) => {
             const dropConfig = dropConfigs.value.find((config) => config.data.id === record.id);
             if (dropConfig) {
-                return dropConfig.isNear(record.timestamp, currentTime.value);
-            }
-            return false;
-        })
-        .map((record) => {
-            const dropConfig = dropConfigs.value.find((config) => config.data.id === record.id);
-            if (dropConfig) {
-                return dropConfig;
+                if (dropConfig.isNear(record.timestamp, currentTime.value)) {
+                    return dropConfig;
+                }
+                return null;
             }
             return null;
-        })
-        .filter((item) => item !== null) as DropConfig[];
+        }),
+        // 第二部分是检查所有固定项目，临期或是没记录的都要
+        ...fixedConfigs.map((config) => {
+            const dropRecord = dropRecords.value.find((item) => item.id === config.data.id);
+            if (dropRecord) {
+                if (config.isNear(dropRecord.timestamp, currentTime.value)) {
+                    return config;
+                }
+                return null;
+            } else {
+                return config;
+            }
+        }),
+    ].filter((item) => item !== null);
 
     nearConfigs.sort((a, b) => {
         const aRecord = dropRecords.value.find((record) => record.id === a.data.id);
@@ -184,8 +248,8 @@ const getDropConfigsByCategory = (categoryIndex: number) => {
 };
 
 const isShowItem = ref(false);
-const showItem = ref<DropConfig | null>(null);
-const clickItem = (item: DropConfig) => {
+const showItem = ref<RecordConfig | null>(null);
+const clickItem = (item: RecordConfig) => {
     isShowItem.value = true;
     showItem.value = item;
 };
@@ -193,9 +257,9 @@ const closeItem = () => {
     isShowItem.value = false;
 };
 
-const isNear = (item: DropConfig) => {
+const isNear = (item: RecordConfig) => {
     if (dropRecords.value) {
-        const itemRecord = dropRecords.value.find((record) => record.id === item.data.id);
+        const itemRecord = dropRecords.value.find((record) => record.id === item.id);
         if (itemRecord) {
             return item.isNear(itemRecord.timestamp, currentTime.value);
         }
@@ -203,9 +267,9 @@ const isNear = (item: DropConfig) => {
     return false;
 };
 
-const getRemainTimeText = (item: DropConfig) => {
+const getRemainTimeText = (item: RecordConfig) => {
     if (dropRecords.value) {
-        const itemRecord = dropRecords.value.find((record) => record.id === item.data.id);
+        const itemRecord = dropRecords.value.find((record) => record.id === item.id);
         if (!itemRecord) {
             return '-';
         }

@@ -7,7 +7,7 @@
                         <tbody>
                             <tr>
                                 <th colspan="2">
-                                    <div class="p-1">{{ item.data.title }}</div>
+                                    <div class="p-1">{{ item.title }}</div>
                                 </th>
                             </tr>
                             <tr>
@@ -66,14 +66,19 @@
                             <tr>
                                 <td colspan="2">
                                     <div class="p-2 flex flex-col gap-2">
-                                        <div v-html="convertDescription(item.data.description ?? '')"></div>
+                                        <div v-html="convertDescription(item.description ?? '')"></div>
+                                        <div v-if="item instanceof FixedRefreshConfig && item.data.link">
+                                            <a :href="item.data.link" target="_blank">
+                                                {{ item.data.linkText ?? item.data.link }}
+                                            </a>
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-                <div class="flex-1" v-if="item.data.image">
+                <div class="flex-1" v-if="item instanceof DropConfig && item.data.image">
                     <table class="wiztable my-0! w-full">
                         <tbody>
                             <tr>
@@ -105,12 +110,13 @@ import WikiNImage from '../../components/huiji/WikiNImage.vue';
 
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { convertDescription } from '../DataSearcher/util/convertDescription';
-import { DropConfig } from './DropConfig';
-import { IDropRecord } from './type';
+import { DropConfig } from './classes/DropConfig';
+import { FixedRefreshConfig } from './classes/FixedRefreshConfig';
+import { IDropRecord, RecordConfig } from './type';
 import { formatTimeFromMilliseconds } from './util';
 
 const props = defineProps<{
-    item: DropConfig | null;
+    item: RecordConfig | null;
     onClose?: () => void;
 }>();
 
@@ -120,7 +126,7 @@ const dropRecords = defineModel<IDropRecord[]>('dropRecords', {
 
 const itemRecord = computed(() => {
     if (props.item) {
-        return dropRecords.value.find((record) => record.id === props.item?.data.id);
+        return dropRecords.value.find((record) => record.id === props.item?.id);
     }
     return undefined;
 });
@@ -173,12 +179,12 @@ const showRecord = () => {
 };
 const saveRecord = () => {
     if (props.item) {
-        const record = dropRecords.value.find((record) => record.id === props.item?.data.id);
+        const record = dropRecords.value.find((record) => record.id === props.item?.id);
         if (record) {
             record.timestamp = timestamp.value;
         } else {
             dropRecords.value.push({
-                id: props.item.data.id,
+                id: props.item.id,
                 timestamp: timestamp.value,
             });
         }
@@ -187,12 +193,12 @@ const saveRecord = () => {
 };
 const saveRecordUseCurrentTime = () => {
     if (props.item) {
-        const record = dropRecords.value.find((record) => record.id === props.item?.data.id);
+        const record = dropRecords.value.find((record) => record.id === props.item?.id);
         if (record) {
             record.timestamp = currentTime.value;
         } else {
             dropRecords.value.push({
-                id: props.item.data.id,
+                id: props.item.id,
                 timestamp: currentTime.value,
             });
         }
@@ -202,7 +208,7 @@ const saveRecordUseCurrentTime = () => {
 
 const clearRecord = () => {
     if (props.item) {
-        const record = dropRecords.value.find((record) => record.id === props.item?.data.id);
+        const record = dropRecords.value.find((record) => record.id === props.item?.id);
         if (record) {
             dropRecords.value.splice(dropRecords.value.indexOf(record), 1);
         }

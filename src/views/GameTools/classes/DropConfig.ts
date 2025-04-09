@@ -1,10 +1,23 @@
-import type { IDropConfig } from './type';
+import { type IDropConfig, NEAR_TIME, type RecordConfig } from '../type';
 
-// 1天内视为临期
-export const NEAR_TIME = 24 * 60 * 60 * 1000 * 1;
-
-export class DropConfig {
+export class DropConfig implements RecordConfig {
     constructor(public data: IDropConfig) {}
+
+    get id() {
+        return this.data.id;
+    }
+
+    get category() {
+        return this.data.category;
+    }
+
+    get title() {
+        return this.data.title;
+    }
+
+    get description() {
+        return this.data.description || '';
+    }
 
     get refreshMilliseconds() {
         const { days, hours } = this.data;
