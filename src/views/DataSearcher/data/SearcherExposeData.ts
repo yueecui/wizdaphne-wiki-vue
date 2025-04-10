@@ -1,4 +1,3 @@
-import { sum } from 'lodash-es';
 import { getData } from '../../../util/getData';
 import { Character } from '../Character/Character';
 import { Skill } from '../Skill/Skill';
@@ -11,7 +10,6 @@ export class SearcherExposeData {
 
     private constructor() {
         this.data = getData<ISearcherExposeData>('DATA');
-        this.init();
     }
 
     static getInstance() {
@@ -19,16 +17,6 @@ export class SearcherExposeData {
             this.instance = new SearcherExposeData();
         }
         return this.instance;
-    }
-
-    private init() {
-        // 根据规则计算角色属性
-        this.data.character.forEach((character) => {
-            const totalStats = sum(Object.values(character.stats));
-            if (totalStats === 0) {
-                character.stats = this.calculateStats(character);
-            }
-        });
     }
 
     public calculateStats(data: Pick<ICharacter, 'race' | 'gender' | 'element' | 'class'>) {

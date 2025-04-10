@@ -10,18 +10,23 @@ export class Skill {
             if (this.data.name.includes(filter.searchText)) {
                 found = true;
             }
-            if (this.data.name_en.includes(filter.searchText)) {
+            if (this.data.name_en && this.data.name_en.includes(filter.searchText)) {
                 found = true;
             }
-            if (this.data.name_jp.includes(filter.searchText)) {
+            if (this.data.name_jp && this.data.name_jp.includes(filter.searchText)) {
                 found = true;
             }
             if (!found) {
                 return false;
             }
         }
-        if (filter.skillType.length > 0) {
-            if (!filter.skillType.includes(this.data.category)) {
+        if (filter.category) {
+            if (!(this.data.category === filter.category)) {
+                return false;
+            }
+        }
+        if (filter.type) {
+            if (!(this.data.type === filter.type)) {
                 return false;
             }
         }

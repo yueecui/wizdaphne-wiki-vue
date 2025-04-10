@@ -1,9 +1,14 @@
 import { COMMON_CLASS } from '../data/enum';
-import type { ICharacter } from '../data/SearcherExposeData.types';
+import { SearcherExposeData } from '../data/SearcherExposeData';
+import type { ICharacter, ICharacterStats } from '../data/SearcherExposeData.types';
 import type { ICharacterFilter } from './types';
 
 export class Character {
-    constructor(public data: ICharacter) {}
+    stats: ICharacterStats;
+
+    constructor(public data: ICharacter) {
+        this.stats = SearcherExposeData.getInstance().calculateStats(this.data);
+    }
 
     // 是否满足过滤器
     isMatch(filter: ICharacterFilter): boolean {
@@ -86,13 +91,8 @@ export class Character {
 
     // 发布时间
     get releaseDate() {
-        // 格式为 YYYY-MM-DD，需要转为时间戳
-        const date = this.data.release_date.split('-');
-        const year = parseInt(date[0]);
-        const month = parseInt(date[1]) - 1; // 月份从0开始
-        const day = parseInt(date[2]);
-        const releaseDate = new Date(year, month, day);
-        return releaseDate;
+        // 将时间戳按UTC时间戳转换为Date对象
+        return new Date(this.data.release_date.milliseconds);
     }
 
     get rarityNumber() {

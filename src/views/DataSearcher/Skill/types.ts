@@ -1,4 +1,5 @@
 export interface ISkillFilter {
     searchText: string;
-    skillType: string[];
+    category: string;
+    type: string;
 }

@@ -38,18 +38,4 @@ onMounted(() => {
 });
 
 const activeKey = ref('Character');
-const menuOptions = [
-    {
-        label: '角色',
-        key: 'character',
-    },
-    {
-        label: '武器',
-        key: 'weapon',
-    },
-    {
-        label: '圣遗物',
-        key: 'artifact',
-    },
-];
 </script>

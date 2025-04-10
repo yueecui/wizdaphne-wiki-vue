@@ -20,15 +20,6 @@
                         <td>
                             <div class="flex justify-between items-center">
                                 <div>{{ skill.data.name }}</div>
-                                <div v-if="MwConfig.getInstance().isStaff">
-                                    <NButton
-                                        size="tiny"
-                                        type="warning"
-                                        @click="() => gotoEditSkillData(skill.data.name)"
-                                    >
-                                        编辑
-                                    </NButton>
-                                </div>
                             </div>
                         </td>
                         <td class="text-center">{{ skill.data.category }}</td>
@@ -46,7 +37,6 @@ import { NButton, NPagination } from 'naive-ui';
 import SkillFilter from './SkillFilter.vue';
 
 import { computed, onMounted, ref, shallowRef, watch } from 'vue';
-import { MwConfig } from '../../../huiji/MwConfig';
 import { Character } from '../Character/Character';
 import { SearcherExposeData } from '../data/SearcherExposeData';
 import { convertDescription } from '../util/convertDescription';
@@ -55,7 +45,8 @@ import { ISkillFilter } from './types';
 
 const filter = ref<ISkillFilter>({
     searchText: '',
-    skillType: [],
+    category: '',
+    type: '',
 });
 
 watch(
@@ -97,7 +88,8 @@ const closeDetail = () => {
 const onFilterReset = () => {
     filter.value = {
         searchText: '',
-        skillType: ['武器技能', '支援技能', '攻击咒文', '回复咒文', '支援咒文', '妨碍咒文', '职业被动'],
+        category: '',
+        type: '',
     };
 };
 

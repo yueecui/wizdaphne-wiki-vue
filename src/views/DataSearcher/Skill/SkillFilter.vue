@@ -10,15 +10,26 @@
         </div>
         <div class="flex flex-col">
             <div class="flex justify-between items-center h-6">
+                <label class="text-sm">分类</label>
+            </div>
+            <div class="flex flex-row gap-2 items-center h-12">
+                <NSelect
+                    :options="categoryOptions"
+                    v-model:value="filter.category"
+                    class="w-40!"
+                    maxTagCount="responsive"
+                ></NSelect>
+            </div>
+        </div>
+        <div class="flex flex-col">
+            <div class="flex justify-between items-center h-6">
                 <label class="text-sm">类型</label>
             </div>
             <div class="flex flex-row gap-2 items-center h-12">
                 <NSelect
-                    :options="skillTypesOptions"
-                    multiple
-                    v-model:value="filter.skillType"
-                    clearable
-                    class="w-80!"
+                    :options="typeOptions"
+                    v-model:value="filter.type"
+                    class="w-40!"
                     maxTagCount="responsive"
                 ></NSelect>
             </div>
@@ -37,23 +48,35 @@ const filter = defineModel<ISkillFilter>('filter', {
     required: true,
 });
 
-const SKILL_TYPES = [
-    '武器技能',
-    '支援技能',
-    '特殊技能',
-    '攻击咒文',
-    '回复咒文',
-    '支援咒文',
-    '妨碍咒文',
-    '职业被动',
-    '角色固有技',
-    '角色技能',
-    '克己被动',
-    '有缘人被动',
+const CATEGORY_LIST = [
+    '战士',
+    '盗贼',
+    '僧侣',
+    '法师',
+    '忍者',
+    '角色特殊技能',
+    '角色固有被动',
+    '角色克己被动',
     '其他被动',
 ];
-const skillTypesOptions = computed<SelectOption[]>(() => [
-    ...Object.values(SKILL_TYPES).map((r) => ({
+const categoryOptions = computed<SelectOption[]>(() => [
+    {
+        label: '全部',
+        value: '',
+    },
+    ...Object.values(CATEGORY_LIST).map((r) => ({
+        label: r,
+        value: r,
+    })),
+]);
+
+const TYPE_LIST = ['攻击技能', '支援技能', '攻击咒文', '妨碍咒文', '回复咒文', '支援咒文', '被动'];
+const typeOptions = computed<SelectOption[]>(() => [
+    {
+        label: '全部',
+        value: '',
+    },
+    ...Object.values(TYPE_LIST).map((r) => ({
         label: r,
         value: r,
     })),

@@ -23,7 +23,14 @@ export interface ICharacterStats {
     luck: number;
 }
 
+export interface TabxDate {
+    date: string; // "2024-10-14"
+    milliseconds: number;
+    time: string; // "16:00:00"
+}
+
 export interface ICharacter {
+    index: number;
     key: string;
     name: string;
     name_jp: string;
@@ -35,13 +42,12 @@ export interface ICharacter {
     element: ELEMENT_TYPE;
     personality: PERSONALITY_TYPE;
     fate_type: FATE_TYPE;
-    stats: ICharacterStats;
     class: string[];
     passive_skill: string;
     unique_skill: string[];
     inherit_skill: string;
     discipline_skill: string;
-    release_date: string;
+    release_date: TabxDate;
 }
 
 export interface IClass {
@@ -72,22 +78,21 @@ export interface IClass {
 }
 
 export interface ISkill {
+    index: number;
     name: string;
-    name_jp: string;
-    name_en: string;
+    name_jp?: string;
+    name_en?: string;
     description: string;
-    upgrade_description: string;
+    upgrade_description?: string;
     required_class: string[];
     required_weapon_range: string[];
-    tags: string[];
+    cost_type?: string;
+    cost_value?: number;
     category: string;
-    element: '默认' | ELEMENT_TYPE;
+    type: string;
+    element?: ELEMENT_TYPE;
     max_level: number;
-    page_title: string;
-    levels: {
-        level: number;
-        mp: number;
-        sp: number;
-        description: string;
-    }[];
+    page_title?: string;
+    active_tags: string[];
+    passive_tags: string[];
 }

@@ -34,31 +34,31 @@
                         </tr>
                         <tr>
                             <th>力</th>
-                            <td>{{ character.data.stats.strength }}</td>
+                            <td>{{ character.stats.strength }}</td>
                         </tr>
                         <tr>
                             <th>智慧</th>
-                            <td>{{ character.data.stats.intelligence }}</td>
+                            <td>{{ character.stats.intelligence }}</td>
                         </tr>
                         <tr>
                             <th>信仰心</th>
-                            <td>{{ character.data.stats.piety }}</td>
+                            <td>{{ character.stats.piety }}</td>
                         </tr>
                         <tr>
                             <th>生命力</th>
-                            <td>{{ character.data.stats.vitality }}</td>
+                            <td>{{ character.stats.vitality }}</td>
                         </tr>
                         <tr>
                             <th>灵巧</th>
-                            <td>{{ character.data.stats.dexterity }}</td>
+                            <td>{{ character.stats.dexterity }}</td>
                         </tr>
                         <tr>
                             <th>敏捷</th>
-                            <td>{{ character.data.stats.speed }}</td>
+                            <td>{{ character.stats.speed }}</td>
                         </tr>
                         <tr>
                             <th>运</th>
-                            <td>{{ character.data.stats.luck }}</td>
+                            <td>{{ character.stats.luck }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -74,18 +74,6 @@
                                 <div class="p-2">
                                     <div class="text-light pb-0.5 border-b! mb-2 relative">
                                         {{ character.data.passive_skill }}
-                                        <div
-                                            class="absolute right-0 -top-1"
-                                            v-if="mwConfig.isSystemAdmin && showEditSkillButton"
-                                        >
-                                            <NButton
-                                                size="tiny"
-                                                type="warning"
-                                                @click="() => gotoEditSkillData(character.data.passive_skill)"
-                                            >
-                                                编辑
-                                            </NButton>
-                                        </div>
                                     </div>
                                     <div v-html="getSkillDescription(character.data.passive_skill)"></div>
                                 </div>
@@ -100,18 +88,6 @@
                                     <div class="p-2">
                                         <div class="text-light pb-0.5 border-b! mb-2 relative">
                                             {{ skill }}
-                                            <div
-                                                class="absolute right-0 -top-1"
-                                                v-if="mwConfig.isSystemAdmin && showEditSkillButton"
-                                            >
-                                                <NButton
-                                                    size="tiny"
-                                                    type="warning"
-                                                    @click="() => gotoEditSkillData(skill)"
-                                                >
-                                                    编辑
-                                                </NButton>
-                                            </div>
                                         </div>
                                         <div v-html="getSkillDescription(skill)"></div>
                                     </div>
@@ -126,18 +102,6 @@
                                 <div class="p-2">
                                     <div class="text-light pb-0.5 border-b! mb-2 relative">
                                         {{ character.data.inherit_skill }}
-                                        <div
-                                            class="absolute right-0 -top-1"
-                                            v-if="mwConfig.isSystemAdmin && showEditSkillButton"
-                                        >
-                                            <NButton
-                                                size="tiny"
-                                                type="warning"
-                                                @click="() => gotoEditSkillData(character.data.inherit_skill)"
-                                            >
-                                                编辑
-                                            </NButton>
-                                        </div>
                                     </div>
                                     <div v-html="getSkillDescription(character.data.inherit_skill)"></div>
                                 </div>
@@ -151,18 +115,6 @@
                                 <div class="p-2">
                                     <div class="text-light pb-0.5 border-b! mb-2 relative">
                                         {{ character.data.discipline_skill }}
-                                        <div
-                                            class="absolute right-0 -top-1"
-                                            v-if="mwConfig.isSystemAdmin && showEditSkillButton"
-                                        >
-                                            <NButton
-                                                size="tiny"
-                                                type="warning"
-                                                @click="() => gotoEditSkillData(character.data.discipline_skill)"
-                                            >
-                                                编辑
-                                            </NButton>
-                                        </div>
                                     </div>
                                     <div>{{ getSkillDescription(character.data.discipline_skill) }}</div>
                                 </div>
@@ -173,12 +125,6 @@
             </div>
         </div>
         <div class="flex justify-center mt-4 gap-4" v-if="onClose">
-            <NButton size="small" type="info" v-if="mwConfig.isSystemAdmin" @click="gotoEditCharacterData">
-                编辑档案
-            </NButton>
-            <NButton size="small" type="info" v-if="mwConfig.isSystemAdmin" @click="toggleEditSkillButton">
-                切换编辑技能按钮显示
-            </NButton>
             <NButton size="small" type="warning" @click="onClose">关闭</NButton>
         </div>
     </div>
