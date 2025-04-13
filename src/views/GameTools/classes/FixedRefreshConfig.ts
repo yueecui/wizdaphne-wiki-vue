@@ -37,15 +37,29 @@ export class FixedRefreshConfig implements RecordConfig {
         // 双周六晚23点：2025年4月5日23点开始，每两周的周六晚23点
         // 每周日晚23点：每周的周日晚23点
         if (this.data.refreshType === '双周六') {
-            const nextSaturday = getNextTargetDay23(new Date(recordTime), 6);
+            let nextSaturday = getNextTargetDay23(new Date(recordTime), 6);
             const days = (nextSaturday.getTime() - TEMPLE_REFRESH_TIME) / (1000 * 60 * 60 * 24);
             if (days % 14 !== 0) {
                 // 如果不是双周六，则加上7天
                 nextSaturday.setDate(nextSaturday.getDate() + 7);
             }
+            // 如果不是UTC+8时区，则根据时区偏移量调整修正为UTC+8时区的时间
+            const offset = nextSaturday.getTimezoneOffset();
+
+            if (offset !== -480) {
+                const offset_minutes = offset - -480;
+                nextSaturday = new Date(nextSaturday.getTime() + offset_minutes * 60 * 1000);
+            }
+
             return nextSaturday.getTime();
         } else if (this.data.refreshType === '每周日') {
-            const nextSunday = getNextTargetDay23(new Date(recordTime), 0);
+            let nextSunday = getNextTargetDay23(new Date(recordTime), 0);
+            // 如果不是UTC+8时区，则根据时区偏移量调整修正为UTC+8时区的时间
+            const offset = nextSunday.getTimezoneOffset();
+            if (offset !== -480) {
+                const offset_minutes = -480 - offset;
+                nextSunday = new Date(nextSunday.getTime() + offset_minutes * 60 * 1000);
+            }
             return nextSunday.getTime();
         }
         return 0;
@@ -86,6 +100,7 @@ export class FixedRefreshConfig implements RecordConfig {
 function getNextTargetDay23(givenDate, weekday: number) {
     // 创建基准备日期，时间设为当天的23:00:00
     const baseDate = new Date(givenDate);
+    // 获取当前的UTC时间
     baseDate.setHours(23, 0, 0, 0);
 
     // 计算到下一个周X所需的天数
