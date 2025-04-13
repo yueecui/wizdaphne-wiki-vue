@@ -2,7 +2,7 @@
     <div class="p-4 bg-card! border! border-cardborder! rounded huiji-css-hook max-w-[640px]">
         <template v-if="item">
             <div class="flex flex-col md:flex-row gap-4">
-                <div class="md:w-[20em]">
+                <div class="md:w-[24em]">
                     <table class="wiztable my-0! w-full">
                         <tbody>
                             <tr>
@@ -17,7 +17,7 @@
                             <tr>
                                 <th>上次记录</th>
                                 <td>
-                                    <div class="flex justify-between items-center">
+                                    <div class="flex gap-2 justify-between items-center">
                                         <div v-if="recordText">
                                             {{ recordText }}
                                         </div>
@@ -55,8 +55,21 @@
                                 </td>
                             </tr>
                             <tr>
-                                <th>{{ item.isCountdown ? '距离刷新' : '已过去' }}</th>
+                                <th>刷新时间</th>
                                 <td>{{ remainTimeText }}</td>
+                            </tr>
+                            <tr>
+                                <th>最后检查于</th>
+                                <td>
+                                    <div class="flex gap-2 justify-between items-center">
+                                        <div>
+                                            {{ lastCheckText }}
+                                        </div>
+                                        <div v-if="itemRecord">
+                                            <NButton size="tiny" @click="updateLastCheckTime">更新</NButton>
+                                        </div>
+                                    </div>
+                                </td>
                             </tr>
                             <tr>
                                 <th colspan="2">
@@ -155,8 +168,8 @@ const remainTimeText = computed(() => {
     if (props.item && itemRecord.value) {
         const diff = props.item.getDifferenceTime(itemRecord.value.timestamp, currentTime.value);
         if (props.item.isCountdown) {
-            if (diff < 0) {
-                return '已刷新';
+            if (diff <= 0) {
+                return `已过 ${formatTimeFromMilliseconds(-diff)}`;
             }
             return formatTimeFromMilliseconds(diff);
         } else {
@@ -166,6 +179,30 @@ const remainTimeText = computed(() => {
     }
     return '-';
 });
+
+const lastCheckText = computed(() => {
+    if (props.item && itemRecord.value && itemRecord.value.lt) {
+        const diff = props.item.getDifferenceTime(itemRecord.value.timestamp, itemRecord.value.lt);
+        if (props.item.isCountdown) {
+            if (diff <= 0) {
+                return `已过 ${formatTimeFromMilliseconds(-diff)}`;
+            }
+            return formatTimeFromMilliseconds(diff);
+        } else {
+            // 等于0时不知道刷新时间，所以改为已经经过的时间
+            return formatTimeFromMilliseconds(diff);
+        }
+    }
+    return '-';
+});
+const updateLastCheckTime = () => {
+    if (props.item) {
+        const record = dropRecords.value.find((record) => record.id === props.item?.id);
+        if (record) {
+            record.lt = currentTime.value;
+        }
+    }
+};
 
 const timestamp = ref(0);
 const isShowRecord = ref(false);
@@ -182,6 +219,7 @@ const saveRecord = () => {
         const record = dropRecords.value.find((record) => record.id === props.item?.id);
         if (record) {
             record.timestamp = timestamp.value;
+            record.lt = undefined;
         } else {
             dropRecords.value.push({
                 id: props.item.id,
@@ -196,6 +234,7 @@ const saveRecordUseCurrentTime = () => {
         const record = dropRecords.value.find((record) => record.id === props.item?.id);
         if (record) {
             record.timestamp = currentTime.value;
+            record.lt = undefined;
         } else {
             dropRecords.value.push({
                 id: props.item.id,

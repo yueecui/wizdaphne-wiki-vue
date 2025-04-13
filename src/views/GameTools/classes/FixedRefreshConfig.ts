@@ -66,6 +66,19 @@ export class FixedRefreshConfig implements RecordConfig {
         const differenceTime = this.getDifferenceTime(recordTime, currentTime);
         return differenceTime < NEAR_TIME;
     }
+
+    getNearClass(recordTime: number, currentTime: number) {
+        if (!this.isCountdown) {
+            return '';
+        }
+        const differenceTime = this.getDifferenceTime(recordTime, currentTime);
+        // 如果为正数表示还未到达目标时间
+        if (differenceTime > 0) {
+            return 'text-green-700';
+        } else {
+            return 'text-green-400';
+        }
+    }
 }
 
 // 计算下一个指定周几的23点

@@ -21,7 +21,17 @@
                     <tr>
                         <th class="w-[4em] md:w-[8em]">类型</th>
                         <th>项目</th>
-                        <th class="w-[4em] md:w-[8em]">周期</th>
+                        <th class="w-[4em] md:w-[10em]">
+                            <NTooltip trigger="hover">
+                                <template #trigger>
+                                    <div class="flex items-center justify-center gap-1 leading-none">
+                                        刷新时间
+                                        <NIcon><QuestionIcon /></NIcon>
+                                    </div>
+                                </template>
+                                <component :is="refreshText" />
+                            </NTooltip>
+                        </th>
                         <th class="w-[5.5em] md:w-[10em]">计时</th>
                     </tr>
                 </thead>
@@ -29,17 +39,28 @@
                     <template v-for="item in nearDropConfigs" :key="item.id">
                         <tr
                             v-if="item instanceof DropConfig"
-                            class="hover:bg-[#3b322c] cursor-pointer text-green-400"
+                            class="hover:bg-[#3b322c] cursor-pointer"
+                            :class="getNearClass(item)"
                             @click="() => clickItem(item)"
                         >
                             <td>{{ getDropCategoryText(item.category) }}</td>
                             <td class="text-left">{{ item.title }}</td>
                             <td>{{ item.getRefreshTimeText() }}</td>
-                            <td>{{ getRemainTimeText(item) }}</td>
+                            <td>
+                                <div class="flex flex-col">
+                                    <div>
+                                        {{ getRemainTimeText(item) }}
+                                    </div>
+                                    <div v-if="isItemHasLastCheck(item)" class="text-xs text-gray-400">
+                                        {{ getLastCheckText(item) }} 检查
+                                    </div>
+                                </div>
+                            </td>
                         </tr>
                         <tr
                             v-if="item instanceof FixedRefreshConfig"
-                            class="hover:bg-[#3b322c] cursor-pointer text-green-400"
+                            class="hover:bg-[#3b322c] cursor-pointer"
+                            :class="getNearClass(item)"
                             @click="() => clickItem(item)"
                         >
                             <td>固定周期</td>
@@ -56,7 +77,12 @@
         </div>
         <div v-if="activeKey === 'All'" class="flex flex-col gap-4">
             <div class="text-center text-amber-300 mt-4 text-sm">
-                刷新周期目前为收集各网站的信息获得，正在逐步验证，可能有偏差，仅供参考
+                <refreshText />
+                <span>
+                    还可参阅
+                    <a href="/wiki/可刷新奖励">可刷新奖励</a>
+                    条目获取更多信息
+                </span>
             </div>
             <table class="wiztable text-center my-0! w-full">
                 <thead>
@@ -65,7 +91,7 @@
                     </tr>
                     <tr>
                         <th>项目</th>
-                        <th class="w-[4em] md:w-[8em]">周期</th>
+                        <th class="w-[4em] md:w-[10em]">刷新时间</th>
                         <th class="w-[5.5em] md:w-[10em]">计时</th>
                     </tr>
                 </thead>
@@ -90,7 +116,7 @@
                     </tr>
                     <tr>
                         <th>项目</th>
-                        <th class="w-[4em] md:w-[6em]">周期</th>
+                        <th class="w-[4em] md:w-[10em]">刷新时间</th>
                         <th class="w-[5.5em] md:w-[10em]">计时</th>
                     </tr>
                 </thead>
@@ -104,7 +130,16 @@
                     >
                         <td class="text-left">{{ item.data.title }}</td>
                         <td>{{ item.getRefreshTimeText() }}</td>
-                        <td>{{ getRemainTimeText(item) }}</td>
+                        <td>
+                            <div class="flex flex-col">
+                                <div>
+                                    {{ getRemainTimeText(item) }}
+                                </div>
+                                <div v-if="isItemHasLastCheck(item)" class="text-xs text-gray-400">
+                                    {{ getLastCheckText(item) }} 检查
+                                </div>
+                            </div>
+                        </td>
                     </tr>
                 </tbody>
             </table>
@@ -122,8 +157,9 @@
     <DropRecorderImporter v-model:show="isShowImporter" :mode="importMode" />
 </template>
 
-<script setup lang="ts">
-import { NButton } from 'naive-ui';
+<script setup lang="tsx">
+import { QuestionCircle as QuestionIcon } from '@vicons/fa';
+import { NButton, NIcon, NTooltip } from 'naive-ui';
 import DropRecorderImporter from './DropRecorderImporter.vue';
 import DropRecorderItem from './DropRecorderItem.vue';
 
@@ -267,6 +303,16 @@ const isNear = (item: RecordConfig) => {
     return false;
 };
 
+const getNearClass = (item: RecordConfig) => {
+    if (dropRecords.value) {
+        const itemRecord = dropRecords.value.find((record) => record.id === item.id);
+        if (itemRecord) {
+            return item.getNearClass(itemRecord.timestamp, currentTime.value);
+        }
+    }
+    return '';
+};
+
 const getRemainTimeText = (item: RecordConfig) => {
     if (dropRecords.value) {
         const itemRecord = dropRecords.value.find((record) => record.id === item.id);
@@ -276,12 +322,41 @@ const getRemainTimeText = (item: RecordConfig) => {
 
         const diff = item.getDifferenceTime(itemRecord.timestamp, currentTime.value);
         if (item.isCountdown) {
-            if (diff < 0) {
-                return '已刷新';
+            if (diff <= 0) {
+                return `已过 ${formatTimeFromMilliseconds(-diff)}`;
             }
             return formatTimeFromMilliseconds(diff);
         } else {
             return `已过 ${formatTimeFromMilliseconds(diff)}`;
+        }
+    }
+    return '-';
+};
+
+const isItemHasLastCheck = (item: RecordConfig) => {
+    if (dropRecords.value) {
+        const itemRecord = dropRecords.value.find((record) => record.id === item.id);
+        if (itemRecord && itemRecord.lt) {
+            return true;
+        }
+    }
+    return false;
+};
+
+const getLastCheckText = (item: RecordConfig) => {
+    if (dropRecords.value) {
+        const itemRecord = dropRecords.value.find((record) => record.id === item.id);
+        if (itemRecord && itemRecord.lt) {
+            const diff = item.getDifferenceTime(itemRecord.timestamp, itemRecord.lt);
+            if (item.isCountdown) {
+                if (diff <= 0) {
+                    return `已过 ${formatTimeFromMilliseconds(-diff)}`;
+                }
+                return formatTimeFromMilliseconds(diff);
+            } else {
+                // 等于0时不知道刷新时间，所以改为已经经过的时间
+                return formatTimeFromMilliseconds(diff);
+            }
         }
     }
     return '-';
@@ -293,5 +368,24 @@ const importMode = ref<'import' | 'export'>('import');
 const showImporter = (mode: 'import' | 'export') => {
     importMode.value = mode;
     isShowImporter.value = true;
+};
+
+// 刷新说明文本
+const refreshText = () => {
+    return (
+        <div>
+            刷新时间根据网络收集和实际测试总结，未必与官方设置相同，仅供参考
+            <br />
+            刷新时间如果有两个时间，第一个时间表示观察到的最短刷新时间
+            <br />
+            第二个时间表示最短刷新时间后，再次判定是否刷新的间隔时间
+            <br />
+            例如：“16小时+8小时”，表示开启箱子16小时后可能刷新
+            <br />
+            如果没刷，24/32/40小时的时候会再次判定是否刷新
+            <br />
+            <span class="text-red-400">【重要】以上均为推测，未必与官方设置相同，持续修正中，仅供参考</span>
+        </div>
+    );
 };
 </script>

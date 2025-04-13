@@ -12,12 +12,14 @@ export interface RecordConfig {
     getTargetTime: (recordTime: number) => number;
     getDifferenceTime: (recordTime: number, currentTime: number) => number;
     isNear: (recordTime: number, currentTime: number) => boolean;
+    getNearClass: (recordTime: number, currentTime: number) => string;
 }
 
 // localStorage存储的格式
 export interface IDropRecord {
     id: string;
-    timestamp: number;
+    timestamp: number; // 记录时间
+    lt?: number; // 最后一次检查的记录时间
 }
 
 // 配置文件
@@ -27,13 +29,14 @@ export interface IDropConfigFile {
 }
 
 export interface IDropConfig {
+    index: number;
     id: string;
     category: number;
     title: string;
     description?: string;
     image?: string;
-    days: number;
-    hours: number;
+    min_interval: number;
+    step: number;
 }
 
 export interface IDropCategory {

@@ -1,4 +1,3 @@
-import DataSearcher from '@/views/DataSearcher/DataSearcher.vue';
 import type { LoaderConfig } from '../loaderConfig.type';
 import { hasHTMLElement } from '../util';
 
@@ -9,7 +8,7 @@ const config: LoaderConfig = {
         {
             selector: '#data-searcher',
             type: 'exist',
-            app: DataSearcher,
+            app: () => import('@/views/DataSearcher/DataSearcher.vue'),
         },
     ],
 };
