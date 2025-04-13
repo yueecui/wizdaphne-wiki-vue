@@ -1,7 +1,8 @@
+import { clone } from 'lodash-es';
 import { getData } from '../../../util/getData';
 import { Character } from '../Character/Character';
 import { Skill } from '../Skill/Skill';
-import type { ICharacter, ICharacterStats, ISearcherExposeData } from './SearcherExposeData.types';
+import type { ICharacterStats, ISearcherExposeData } from './SearcherExposeData.types';
 
 // 写在页面里的数据
 export class SearcherExposeData {
@@ -19,7 +20,7 @@ export class SearcherExposeData {
         return this.instance;
     }
 
-    public calculateStats(data: Pick<ICharacter, 'race' | 'gender' | 'element' | 'class'>) {
+    public calculateStats(data: { race: string; gender: string; element: string; class: string }) {
         const stats: ICharacterStats = {
             strength: 10,
             intelligence: 10,
@@ -30,7 +31,7 @@ export class SearcherExposeData {
             luck: 10,
         };
 
-        const classStats = this.data.characterConfig.CLASS_STAT_CONFIG[data.class[0]] ?? {};
+        const classStats = this.data.characterConfig.CLASS_STAT_CONFIG[data.class] ?? {};
         const elementStats = this.data.characterConfig.ELEMNET_STAT_CONFIG[data.element] ?? {};
         const genderStats = this.data.characterConfig.GENDER_STAT_CONFIG[data.gender] ?? {};
         const raceStats = this.data.characterConfig.RACE_STAT_CONFIG[data.race] ?? {};
@@ -50,11 +51,39 @@ export class SearcherExposeData {
         return this.data.character.map((character) => new Character(character));
     }
 
+    public getCharacterData(characterKey: string) {
+        return this.data.character.find((character) => character.key === characterKey);
+    }
+
     public getSkillList() {
         return this.data.skill.map((skill) => new Skill(skill));
     }
 
     public getSkillData(skillName: string) {
         return this.data.skill.find((skill) => skill.name === skillName);
+    }
+
+    public getStatSet(kind: string) {
+        if (kind === 'race') {
+            return this.data.characterConfig.RACE_STAT_CONFIG;
+        } else if (kind === 'gender') {
+            return this.data.characterConfig.GENDER_STAT_CONFIG;
+        } else if (kind === 'element') {
+            return this.data.characterConfig.ELEMNET_STAT_CONFIG;
+        } else if (kind === 'class') {
+            return this.data.characterConfig.CLASS_STAT_CONFIG;
+        } else {
+            return null;
+        }
+    }
+
+    public getAllClass() {
+        const classList = clone(this.data.standardClass);
+        for (const key in this.data.characterConfig.CLASS_STAT_CONFIG) {
+            if (!classList.includes(key)) {
+                classList.push(key);
+            }
+        }
+        return classList;
     }
 }

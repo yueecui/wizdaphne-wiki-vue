@@ -7,7 +7,12 @@ export class Character {
     stats: ICharacterStats;
 
     constructor(public data: ICharacter) {
-        this.stats = SearcherExposeData.getInstance().calculateStats(this.data);
+        this.stats = SearcherExposeData.getInstance().calculateStats({
+            race: this.data.race,
+            gender: this.data.gender,
+            element: this.data.element,
+            class: this.data.class[0],
+        });
     }
 
     // 是否满足过滤器

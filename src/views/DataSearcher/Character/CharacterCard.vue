@@ -125,6 +125,7 @@
             </div>
         </div>
         <div class="flex justify-center mt-4 gap-4" v-if="onClose">
+            <NButton size="small" type="warning" @click="startCalcCharacter" v-if="startCalcStat">计算属性</NButton>
             <NButton size="small" type="warning" @click="onClose">关闭</NButton>
         </div>
     </div>
@@ -134,8 +135,7 @@
 import CharacterItem from './CharacterItem.vue';
 
 import { NButton } from 'naive-ui';
-import { computed, ref } from 'vue';
-import { MwConfig } from '../../../huiji/MwConfig';
+import { computed, inject, ref } from 'vue';
 import { SearcherExposeData } from '../data/SearcherExposeData';
 import { convertDescription } from '../util/convertDescription';
 import { Character } from './Character';
@@ -144,8 +144,6 @@ const props = defineProps<{
     character: Character;
     onClose?: () => void;
 }>();
-
-const mwConfig = MwConfig.getInstance();
 
 const getSkillDescription = (skillName: string) => {
     const data = SearcherExposeData.getInstance().getSkillData(skillName);
@@ -177,5 +175,17 @@ const toggleEditSkillButton = () => {
 const gotoEditSkillData = (skillName: string) => {
     const url = `/wiki/Data:Skill.schema?target=Data:Skill/${skillName}.json`;
     window.open(url, '_blank');
+};
+
+const startCalcStat = inject<(characterName: string) => void>('startCalcStat');
+
+// 计算该角色的属性
+const startCalcCharacter = () => {
+    if (startCalcStat) {
+        startCalcStat(props.character.data.key);
+    }
+    if (props.onClose) {
+        props.onClose();
+    }
 };
 </script>
