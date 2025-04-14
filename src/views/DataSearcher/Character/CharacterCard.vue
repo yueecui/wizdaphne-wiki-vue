@@ -21,6 +21,10 @@
                             <td>{{ character.data.race }}</td>
                         </tr>
                         <tr>
+                            <th>性别</th>
+                            <td>{{ character.data.gender }}</td>
+                        </tr>
+                        <tr>
                             <th>性格</th>
                             <td>{{ character.data.personality }}</td>
                         </tr>
@@ -125,6 +129,7 @@
             </div>
         </div>
         <div class="flex justify-center mt-4 gap-4" v-if="onClose">
+            <NButton size="small" type="primary" @click="gotoDetail">查看详情页</NButton>
             <NButton size="small" type="warning" @click="startCalcCharacter" v-if="startCalcStat">计算属性</NButton>
             <NButton size="small" type="warning" @click="onClose">关闭</NButton>
         </div>
@@ -177,8 +182,12 @@ const gotoEditSkillData = (skillName: string) => {
     window.open(url, '_blank');
 };
 
-const startCalcStat = inject<(characterName: string) => void>('startCalcStat');
+const gotoDetail = () => {
+    const url = `/wiki/${props.character.data.key}`;
+    window.open(url, '_blank');
+};
 
+const startCalcStat = inject<(characterName: string) => void>('startCalcStat');
 // 计算该角色的属性
 const startCalcCharacter = () => {
     if (startCalcStat) {
