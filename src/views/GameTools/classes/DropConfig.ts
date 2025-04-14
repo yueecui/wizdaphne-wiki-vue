@@ -1,6 +1,10 @@
-import { type IDropConfig, NEAR_TIME, type RecordConfig } from '../type';
+import { useUtilStore } from '../../../stores/util';
+import { useDropRecordStore } from '../dropRecordStore';
+import { type AbstractRecordConfig, type IDropConfig } from '../type';
+import { formatTimeFromMilliseconds } from '../util';
+import { addNewRecordTime, clearRecord, NEAR_TIME, updateLastRecordTime } from './recordConfigUtil';
 
-export class DropConfig implements RecordConfig {
+export class DropConfig implements AbstractRecordConfig {
     constructor(public data: IDropConfig) {}
 
     get id() {
@@ -27,8 +31,28 @@ export class DropConfig implements RecordConfig {
         return this.refreshMilliseconds > 0;
     }
 
-    getRefreshTimeText() {
-        const { min_interval, step } = this.data;
+    getRecordData() {
+        return useDropRecordStore().dropRecords.find((record) => record.id === this.id);
+    }
+
+    getRecords() {
+        return this.getRecordData()?.r ?? [];
+    }
+
+    getLastRecord() {
+        const records = this.getRecords();
+        if (records.length > 0) {
+            return records[records.length - 1];
+        }
+        return 0;
+    }
+
+    getLastCheck() {
+        return this.getRecordData()?.lt ?? 0;
+    }
+
+    getRefreshTimeText(mode: 'range' | 'plus' = 'range') {
+        const { min_interval, max_interval } = this.data;
         const texts: string[] = [];
         if (min_interval <= 0) {
             return '未知';
@@ -43,12 +67,13 @@ export class DropConfig implements RecordConfig {
                 texts.push(`${days}天${hours}小时`);
             }
         }
-        if (step) {
-            if (step < 96) {
-                texts.push(`${step}小时`);
+        if (max_interval) {
+            const t = mode === 'range' ? max_interval : max_interval - min_interval;
+            if (t < 96) {
+                texts.push(`${t}小时`);
             } else {
-                const days = Math.floor(step / 24);
-                const hours = step % 24;
+                const days = Math.floor(t / 24);
+                const hours = t % 24;
                 if (hours === 0) {
                     texts.push(`${days}天`);
                 } else {
@@ -56,60 +81,107 @@ export class DropConfig implements RecordConfig {
                 }
             }
         }
-        return texts.join('+');
+        return mode === 'range' ? texts.join('～') : texts.join('+');
     }
 
-    getTargetTime(recordTime: number) {
-        if (this.isCountdown) {
-            return recordTime + this.refreshMilliseconds;
+    hasMaxInterval() {
+        return (this.data.max_interval ?? 0) > 0;
+    }
+
+    getNextTargetTime() {
+        if (this.isCountdown && this.getLastRecord()) {
+            return this.getLastRecord() + this.refreshMilliseconds;
         } else {
             return 0;
         }
     }
 
     // 根据记录时间和当前时间，参考本掉落的刷新时间配置，给出时间差
-    getDifferenceTime(recordTime: number, currentTime: number) {
+    getDifferenceTime(timestamp?: number) {
+        timestamp = timestamp ?? useUtilStore().currentTime;
         if (this.isCountdown) {
-            return this.getTargetTime(recordTime) - currentTime;
+            return this.getNextTargetTime() - timestamp;
         } else {
-            return currentTime - recordTime;
+            return timestamp - this.getLastRecord();
         }
     }
 
-    isNear(recordTime: number, currentTime: number) {
+    isNear() {
         if (!this.isCountdown) {
             return false;
         }
-        const differenceTime = this.getDifferenceTime(recordTime, currentTime);
+        if (this.getNextTargetTime() === 0) {
+            return false;
+        }
+        const differenceTime = this.getDifferenceTime();
         return differenceTime < NEAR_TIME;
     }
 
-    getNearClass(recordTime: number, currentTime: number) {
+    // 用于在近期列表里获取不同的颜色来表示是否临期
+    getNearClass() {
         if (!this.isCountdown) {
             return '';
         }
-        const differenceTime = this.getDifferenceTime(recordTime, currentTime);
+        const differenceTime = this.getDifferenceTime();
         // 如果为正数表示还未到达目标时间
         if (differenceTime > 0) {
             return 'text-green-700';
         } else {
-            if (this.data.step) {
-                // const stepMilliseconds = this.data.step * 60 * 60 * 1000;
-                // const step_times = Math.floor(Math.abs(differenceTime) / stepMilliseconds);
-                // if (step_times === 0) {
-                //     return `text-green-700 level-${step_times}`;
-                // } else if (step_times === 1) {
-                //     return `text-green-600 level-${step_times}`;
-                // } else if (step_times === 2) {
-                //     return `text-green-500 level-${step_times}`;
-                // } else if (step_times >= 3) {
-                //     return `text-green-400 level-${step_times}`;
-                // }
-                // return `text-green-400 level-${step_times}`;
-                return 'text-green-400';
-            } else {
-                return 'text-green-400';
-            }
+            return 'text-green-400';
         }
+    }
+
+    getRemainTimeText() {
+        if (!this.getLastRecord()) {
+            return '-';
+        }
+
+        const diff = this.getDifferenceTime();
+        if (this.isCountdown) {
+            if (diff <= 0) {
+                return `已过 ${formatTimeFromMilliseconds(-diff)}`;
+            }
+            return formatTimeFromMilliseconds(diff);
+        } else {
+            return `已过 ${formatTimeFromMilliseconds(diff)}`;
+        }
+    }
+
+    getLastCheckText() {
+        const lastCheck = this.getLastCheck();
+        if (lastCheck) {
+            const diff = this.getDifferenceTime(lastCheck);
+            if (this.isCountdown) {
+                if (diff <= 0) {
+                    return `已过 ${formatTimeFromMilliseconds(-diff)}`;
+                }
+                return formatTimeFromMilliseconds(diff);
+            } else {
+                // 等于0时不知道刷新时间，所以改为已经经过的时间
+                return formatTimeFromMilliseconds(diff);
+            }
+        } else {
+            return '-';
+        }
+    }
+
+    updateLastCheckTime(timestamp?: number) {
+        const record = this.getRecordData();
+        if (record) {
+            record.lt = timestamp ?? useUtilStore().currentTime;
+        }
+    }
+
+    // 写入操作需要拿到引用对象
+    updateLastRecordTime(timestamp?: number) {
+        updateLastRecordTime(this.id, timestamp);
+    }
+
+    addNewRecordTime() {
+        addNewRecordTime(this.id);
+    }
+
+    clearRecord() {
+        clearRecord(this.id);
     }
 }

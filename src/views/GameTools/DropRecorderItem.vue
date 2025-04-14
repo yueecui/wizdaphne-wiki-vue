@@ -11,11 +11,11 @@
                                 </th>
                             </tr>
                             <tr>
-                                <th class="w-[6em]">更新周期</th>
+                                <th class="w-[6em]">刷新时间</th>
                                 <td class="w-[10em]">{{ item.getRefreshTimeText() }}</td>
                             </tr>
                             <tr>
-                                <th>上次记录</th>
+                                <th>最新记录</th>
                                 <td>
                                     <div class="flex gap-2 justify-between items-center">
                                         <div v-if="recordText">
@@ -33,19 +33,15 @@
                                                             type="datetime"
                                                             v-model:value="timestamp"
                                                         ></NDatePicker>
-                                                        <NButton size="small" type="primary" @click="saveRecord">
-                                                            更新
+                                                        <NButton size="small" type="primary" @click="updateRecord">
+                                                            修改
                                                         </NButton>
                                                     </div>
 
                                                     <div class="flex justify-between">
                                                         <NButton size="small" @click="clearRecord">清除记录</NButton>
-                                                        <NButton
-                                                            size="small"
-                                                            type="primary"
-                                                            @click="saveRecordUseCurrentTime"
-                                                        >
-                                                            以当前时间更新
+                                                        <NButton size="small" type="primary" @click="saveNewRecord">
+                                                            以当前时间记录
                                                         </NButton>
                                                     </div>
                                                 </div>
@@ -56,17 +52,17 @@
                             </tr>
                             <tr>
                                 <th>刷新时间</th>
-                                <td>{{ remainTimeText }}</td>
+                                <td>{{ item.getRemainTimeText() }}</td>
                             </tr>
                             <tr>
                                 <th>最后检查于</th>
                                 <td>
                                     <div class="flex gap-2 justify-between items-center">
                                         <div>
-                                            {{ lastCheckText }}
+                                            {{ item.getLastCheckText() }}
                                         </div>
-                                        <div v-if="itemRecord">
-                                            <NButton size="tiny" @click="updateLastCheckTime">更新</NButton>
+                                        <div v-if="item.getLastRecord()">
+                                            <NButton size="tiny" @click="updateLastCheck">更新</NButton>
                                         </div>
                                     </div>
                                 </td>
@@ -121,137 +117,59 @@
 import { NButton, NDatePicker, NModal } from 'naive-ui';
 import WikiNImage from '../../components/huiji/WikiNImage.vue';
 
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, ref, toRefs } from 'vue';
 import { convertDescription } from '../DataSearcher/util/convertDescription';
 import { DropConfig } from './classes/DropConfig';
 import { FixedRefreshConfig } from './classes/FixedRefreshConfig';
-import { IDropRecord, RecordConfig } from './type';
-import { formatTimeFromMilliseconds } from './util';
+import { AbstractRecordConfig } from './type';
 
 const props = defineProps<{
-    item: RecordConfig | null;
+    item: AbstractRecordConfig | null;
     onClose?: () => void;
 }>();
 
-const dropRecords = defineModel<IDropRecord[]>('dropRecords', {
-    required: true,
-});
+const { item } = toRefs(props);
 
-const itemRecord = computed(() => {
-    if (props.item) {
-        return dropRecords.value.find((record) => record.id === props.item?.id);
-    }
-    return undefined;
-});
 const recordText = computed(() => {
-    if (itemRecord.value) {
-        return new Date(itemRecord.value.timestamp).toLocaleString();
+    if (item.value?.getLastRecord()) {
+        return new Date(item.value?.getLastRecord()).toLocaleString();
     }
     return '';
 });
 
-const currentTime = ref(Date.now());
-let timer: NodeJS.Timeout | null = null;
-onMounted(() => {
-    timer = setInterval(() => {
-        currentTime.value = Date.now();
-    }, 1000);
-});
-
-onUnmounted(() => {
-    if (timer) {
-        clearTimeout(timer);
-    }
-});
-
-const remainTimeText = computed(() => {
-    if (props.item && itemRecord.value) {
-        const diff = props.item.getDifferenceTime(itemRecord.value.timestamp, currentTime.value);
-        if (props.item.isCountdown) {
-            if (diff <= 0) {
-                return `已过 ${formatTimeFromMilliseconds(-diff)}`;
-            }
-            return formatTimeFromMilliseconds(diff);
-        } else {
-            // 等于0时不知道刷新时间，所以改为已经经过的时间
-            return formatTimeFromMilliseconds(diff);
-        }
-    }
-    return '-';
-});
-
-const lastCheckText = computed(() => {
-    if (props.item && itemRecord.value && itemRecord.value.lt) {
-        const diff = props.item.getDifferenceTime(itemRecord.value.timestamp, itemRecord.value.lt);
-        if (props.item.isCountdown) {
-            if (diff <= 0) {
-                return `已过 ${formatTimeFromMilliseconds(-diff)}`;
-            }
-            return formatTimeFromMilliseconds(diff);
-        } else {
-            // 等于0时不知道刷新时间，所以改为已经经过的时间
-            return formatTimeFromMilliseconds(diff);
-        }
-    }
-    return '-';
-});
-const updateLastCheckTime = () => {
-    if (props.item) {
-        const record = dropRecords.value.find((record) => record.id === props.item?.id);
-        if (record) {
-            record.lt = currentTime.value;
-        }
-    }
-};
-
 const timestamp = ref(0);
 const isShowRecord = ref(false);
 const showRecord = () => {
-    if (itemRecord.value) {
-        timestamp.value = itemRecord.value.timestamp;
+    if (item.value?.getLastRecord()) {
+        timestamp.value = item.value.getLastRecord();
     } else {
         timestamp.value = Date.now();
     }
     isShowRecord.value = true;
 };
-const saveRecord = () => {
-    if (props.item) {
-        const record = dropRecords.value.find((record) => record.id === props.item?.id);
-        if (record) {
-            record.timestamp = timestamp.value;
-            record.lt = undefined;
-        } else {
-            dropRecords.value.push({
-                id: props.item.id,
-                timestamp: timestamp.value,
-            });
-        }
-    }
+const updateRecord = () => {
+    item.value?.updateLastRecordTime(timestamp.value);
     isShowRecord.value = false;
 };
-const saveRecordUseCurrentTime = () => {
-    if (props.item) {
-        const record = dropRecords.value.find((record) => record.id === props.item?.id);
-        if (record) {
-            record.timestamp = currentTime.value;
-            record.lt = undefined;
-        } else {
-            dropRecords.value.push({
-                id: props.item.id,
-                timestamp: currentTime.value,
-            });
-        }
-    }
+const saveNewRecord = () => {
+    item.value?.addNewRecordTime(timestamp.value);
     isShowRecord.value = false;
 };
 
+const updateLastCheck = () => {
+    item.value?.updateLastCheckTime();
+};
+
 const clearRecord = () => {
-    if (props.item) {
-        const record = dropRecords.value.find((record) => record.id === props.item?.id);
-        if (record) {
-            dropRecords.value.splice(dropRecords.value.indexOf(record), 1);
-        }
-    }
-    isShowRecord.value = false;
+    window.$dialog.error({
+        title: '清除记录',
+        content: '确定要清除记录吗？',
+        positiveText: '清除',
+        negativeText: '取消',
+        onPositiveClick: () => {
+            item.value?.clearRecord();
+            isShowRecord.value = false;
+        },
+    });
 };
 </script>

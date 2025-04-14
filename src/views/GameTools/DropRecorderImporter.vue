@@ -81,12 +81,15 @@ const copyText = () => {
 
 // 三种模式，覆盖、旧数据优先、新数据优先
 const importData = (mode: 'cover' | 'old' | 'new') => {
+    const showErrorMsg = () => {
+        window.$message.error('导入数据格式错误');
+    };
     const dropRecords = useLocalStorage<IDropRecord[]>('drop-records', []);
     const comeData = (() => {
         try {
             return JSON.parse(text.value);
         } catch (e) {
-            window.$message.error('导入数据格式错误');
+            showErrorMsg();
             return null;
         }
     })();
@@ -95,15 +98,29 @@ const importData = (mode: 'cover' | 'old' | 'new') => {
     }
     // 数据不一定是可用的，所以需要检查
     if (!Array.isArray(comeData)) {
-        window.$message.error('导入数据格式错误');
+        showErrorMsg();
         return;
     }
     const newRecords: IDropRecord[] = [];
     for (const record of comeData) {
-        if (record.id && record.timestamp) {
+        // 老数据兼容
+        if (record.timestamp && !record.r){
+            record.r = [record.timestamp];
+        }
+        if (record.id && record.r) {
+            if (typeof record.id !== 'string') {
+                showErrorMsg();
+                return;
+            }
+            for (const r of record.r) {
+                if (typeof r !== 'number') {
+                    showErrorMsg();
+                    return;
+                }
+            }
             newRecords.push({
                 id: record.id,
-                timestamp: record.timestamp,
+                r: record.r,
             });
         }
     }

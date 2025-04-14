@@ -1,24 +1,31 @@
-export const NEAR_TIME = 24 * 60 * 60 * 1000 * 1; // 1天内视为临期
-export const TEMPLE_REFRESH_TIME = new Date('2025-04-05T23:00:00+08:00').getTime(); // 炉壶的神庙刷新时间戳
-
-export interface RecordConfig {
+export interface AbstractRecordConfig {
     id: string;
     category: number;
     title: string;
     description: string;
     refreshMilliseconds: number;
     isCountdown: boolean;
+    getRecordData(): IDropRecord | undefined;
+    getRecords(): number[];
+    getLastRecord(): number;
+    getLastCheck(): number;
+    getNextTargetTime(): number;
     getRefreshTimeText: () => string;
-    getTargetTime: (recordTime: number) => number;
-    getDifferenceTime: (recordTime: number, currentTime: number) => number;
-    isNear: (recordTime: number, currentTime: number) => boolean;
-    getNearClass: (recordTime: number, currentTime: number) => string;
+    getDifferenceTime: (timestamp?: number) => number;
+    isNear: () => boolean;
+    getNearClass: () => string;
+    getRemainTimeText: () => string;
+    getLastCheckText: () => string;
+    updateLastCheckTime: (timestamp?: number) => void;
+    updateLastRecordTime: (timestamp?: number) => void;
+    addNewRecordTime: (timestamp?: number) => void;
+    clearRecord: () => void;
 }
-
 // localStorage存储的格式
 export interface IDropRecord {
     id: string;
-    timestamp: number; // 记录时间
+    r: number[]; // 记录的时间，最后一个是最新的
+    timestamp?: number; // 旧的记录时间
     lt?: number; // 最后一次检查的记录时间
 }
 
@@ -36,7 +43,7 @@ export interface IDropConfig {
     description?: string;
     image?: string;
     min_interval: number;
-    step: number;
+    max_interval: number;
 }
 
 export interface IDropCategory {

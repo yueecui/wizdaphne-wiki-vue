@@ -21,7 +21,7 @@
                     <tr>
                         <th class="w-[4em] md:w-[8em]">类型</th>
                         <th>项目</th>
-                        <th class="w-[4em] md:w-[10em]">
+                        <th class="w-[4em] md:w-[11em]">
                             <NTooltip trigger="hover">
                                 <template #trigger>
                                     <div class="flex items-center justify-center gap-1 leading-none">
@@ -32,7 +32,7 @@
                                 <component :is="refreshText" />
                             </NTooltip>
                         </th>
-                        <th class="w-[5.5em] md:w-[10em]">计时</th>
+                        <th class="w-[5.5em] md:w-[11em]">计时</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -45,7 +45,17 @@
                         >
                             <td>{{ getDropCategoryText(item.category) }}</td>
                             <td class="text-left">{{ item.title }}</td>
-                            <td>{{ item.getRefreshTimeText() }}</td>
+                            <td>
+                                <NTooltip trigger="hover" v-if="item.hasMaxInterval()">
+                                    <template #trigger>
+                                        <div class="w-full h-full">{{ item.getRefreshTimeText() }}</div>
+                                    </template>
+                                    <div>{{ item.getRefreshTimeText('plus') }}</div>
+                                </NTooltip>
+                                <template v-else>
+                                    {{ item.getRefreshTimeText() }}
+                                </template>
+                            </td>
                             <td>
                                 <div class="flex flex-col">
                                     <div>
@@ -91,8 +101,8 @@
                     </tr>
                     <tr>
                         <th>项目</th>
-                        <th class="w-[4em] md:w-[10em]">刷新时间</th>
-                        <th class="w-[5.5em] md:w-[10em]">计时</th>
+                        <th class="w-[4em] md:w-[11em]">刷新时间</th>
+                        <th class="w-[5.5em] md:w-[11em]">计时</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -116,8 +126,8 @@
                     </tr>
                     <tr>
                         <th>项目</th>
-                        <th class="w-[4em] md:w-[10em]">刷新时间</th>
-                        <th class="w-[5.5em] md:w-[10em]">计时</th>
+                        <th class="w-[4em] md:w-[11em]">刷新时间</th>
+                        <th class="w-[5.5em] md:w-[11em]">计时</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -129,7 +139,17 @@
                         @click="() => clickItem(item)"
                     >
                         <td class="text-left">{{ item.data.title }}</td>
-                        <td>{{ item.getRefreshTimeText() }}</td>
+                        <td>
+                            <NTooltip trigger="hover" v-if="item.hasMaxInterval()">
+                                <template #trigger>
+                                    <div class="w-full h-full">{{ item.getRefreshTimeText() }}</div>
+                                </template>
+                                <div>{{ item.getRefreshTimeText('plus') }}</div>
+                            </NTooltip>
+                            <template v-else>
+                                {{ item.getRefreshTimeText() }}
+                            </template>
+                        </td>
                         <td>
                             <div class="flex flex-col">
                                 <div>
@@ -151,7 +171,7 @@
     </div>
     <NModal v-model:show="isShowItem">
         <div class="max-w-[90%] mx-auto huiji-css-hook bg-transparent!">
-            <DropRecorderItem :item="showItem" v-model:dropRecords="dropRecords" :onClose="closeItem" />
+            <DropRecorderItem :item="showItem" :onClose="closeItem" />
         </div>
     </NModal>
     <DropRecorderImporter v-model:show="isShowImporter" :mode="importMode" />
@@ -163,129 +183,51 @@ import { NButton, NIcon, NTooltip } from 'naive-ui';
 import DropRecorderImporter from './DropRecorderImporter.vue';
 import DropRecorderItem from './DropRecorderItem.vue';
 
-import { useLocalStorage } from '@vueuse/core';
 import { NModal } from 'naive-ui';
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
-import { IS_DEV } from '../../util';
+import { computed, ref, toRefs, watch } from 'vue';
 import { DropConfig } from './classes/DropConfig';
 import { FixedRefreshConfig } from './classes/FixedRefreshConfig';
-import { IDropCategory, IDropConfigFile, IDropRecord, RecordConfig } from './type';
-import { formatTimeFromMilliseconds } from './util';
+import { useDropRecordStore } from './dropRecordStore';
+import { AbstractRecordConfig } from './type';
 
 defineProps<{
     onClose?: () => void;
 }>();
 
-const dropConfigs = ref<DropConfig[]>([]);
-const dropCategorys = ref<IDropCategory[]>([]);
-const fixedConfigs: FixedRefreshConfig[] = [
-    new FixedRefreshConfig({
-        id: 'F1',
-        title: '每周官网商店领50石',
-        description: '每周可以登录官网商店领取50石，每周日23点刷新',
-        refreshType: '每周日',
-        refreshText: '每周日晚23点',
-        link: 'https://store.wizardry.info/ja-JP',
-        linkText: '点击打开官网商店',
-    }),
-    new FixedRefreshConfig({
-        id: 'F2',
-        title: '炉壶的灵庙刷新',
-        description: '每两周的周六晚23点，炉壶的灵庙会更新',
-        refreshType: '双周六',
-        refreshText: '双周六晚23点',
-    }),
-];
+const dropRecordStore = useDropRecordStore();
 
-const dropRecords = useLocalStorage<IDropRecord[]>('drop-records', []);
+const { dropConfigs, fixedConfigs, getDropConfigsByCategory, dropCategorys, getDropCategoryText } =
+    toRefs(dropRecordStore);
 
-const nearDropConfigs = computed<RecordConfig[]>(() => {
+const activeKey = ref('Near');
+watch(
+    () => dropRecordStore.isInit,
+    (isInit) => {
+        if (isInit) {
+            if (nearDropConfigs.value.length === 0) {
+                activeKey.value = 'All';
+            }
+        }
+    },
+);
+
+const nearDropConfigs = computed<AbstractRecordConfig[]>(() => {
     const nearConfigs = [
         // 第一部分是有记录的drop record，并且临期了
-        ...dropRecords.value.map((record) => {
-            const dropConfig = dropConfigs.value.find((config) => config.data.id === record.id);
-            if (dropConfig) {
-                if (dropConfig.isNear(record.timestamp, currentTime.value)) {
-                    return dropConfig;
-                }
-                return null;
-            }
-            return null;
-        }),
+        ...dropConfigs.value.filter((config) => config.isNear()),
         // 第二部分是检查所有固定项目，临期或是没记录的都要
-        ...fixedConfigs.map((config) => {
-            const dropRecord = dropRecords.value.find((item) => item.id === config.data.id);
-            if (dropRecord) {
-                if (config.isNear(dropRecord.timestamp, currentTime.value)) {
-                    return config;
-                }
-                return null;
-            } else {
-                return config;
-            }
-        }),
-    ].filter((item) => item !== null);
+        ...fixedConfigs.value.filter((config) => config.isNear()),
+    ];
 
     nearConfigs.sort((a, b) => {
-        const aRecord = dropRecords.value.find((record) => record.id === a.data.id);
-        const bRecord = dropRecords.value.find((record) => record.id === b.data.id);
-        if (aRecord && bRecord) {
-            return a.getTargetTime(aRecord.timestamp) - b.getTargetTime(bRecord.timestamp);
-        }
-        return 0;
+        return a.getNextTargetTime() - b.getNextTargetTime();
     });
     return nearConfigs;
 });
 
-const currentTime = ref(Date.now());
-let timer: NodeJS.Timeout | null = null;
-onMounted(() => {
-    timer = setInterval(() => {
-        currentTime.value = Date.now();
-    }, 1000);
-
-    fetch(IS_DEV ? '/dropconfig.json' : '/api.php?action=lua&module=Api/GetDropConfig&format=json&utf8=1').then(
-        (res) => {
-            if (res.ok) {
-                res.json().then((data: IDropConfigFile) => {
-                    dropConfigs.value = data.drops.map((item) => new DropConfig(item));
-                    dropCategorys.value = data.categorys;
-
-                    nextTick(() => {
-                        if (nearDropConfigs.value.length === 0) {
-                            activeKey.value = 'All';
-                        }
-                    });
-                });
-            } else {
-                console.error('获取掉落记录配置失败');
-            }
-        },
-    );
-});
-
-onUnmounted(() => {
-    if (timer) {
-        clearTimeout(timer);
-    }
-});
-
-const activeKey = ref('Near');
-
-const getDropCategoryText = (categoryIndex: number) => {
-    const category = dropCategorys.value.find((item) => item.i === categoryIndex);
-    if (category) {
-        return category.name;
-    }
-    return '';
-};
-const getDropConfigsByCategory = (categoryIndex: number) => {
-    return dropConfigs.value.filter((item) => item.data.category === categoryIndex);
-};
-
 const isShowItem = ref(false);
-const showItem = ref<RecordConfig | null>(null);
-const clickItem = (item: RecordConfig) => {
+const showItem = ref<AbstractRecordConfig | null>(null);
+const clickItem = (item: AbstractRecordConfig) => {
     isShowItem.value = true;
     showItem.value = item;
 };
@@ -293,73 +235,24 @@ const closeItem = () => {
     isShowItem.value = false;
 };
 
-const isNear = (item: RecordConfig) => {
-    if (dropRecords.value) {
-        const itemRecord = dropRecords.value.find((record) => record.id === item.id);
-        if (itemRecord) {
-            return item.isNear(itemRecord.timestamp, currentTime.value);
-        }
-    }
-    return false;
+const isNear = (item: AbstractRecordConfig) => {
+    return item.isNear();
 };
 
-const getNearClass = (item: RecordConfig) => {
-    if (dropRecords.value) {
-        const itemRecord = dropRecords.value.find((record) => record.id === item.id);
-        if (itemRecord) {
-            return item.getNearClass(itemRecord.timestamp, currentTime.value);
-        }
-    }
-    return '';
+const getNearClass = (item: AbstractRecordConfig) => {
+    return item.getNearClass();
 };
 
-const getRemainTimeText = (item: RecordConfig) => {
-    if (dropRecords.value) {
-        const itemRecord = dropRecords.value.find((record) => record.id === item.id);
-        if (!itemRecord) {
-            return '-';
-        }
-
-        const diff = item.getDifferenceTime(itemRecord.timestamp, currentTime.value);
-        if (item.isCountdown) {
-            if (diff <= 0) {
-                return `已过 ${formatTimeFromMilliseconds(-diff)}`;
-            }
-            return formatTimeFromMilliseconds(diff);
-        } else {
-            return `已过 ${formatTimeFromMilliseconds(diff)}`;
-        }
-    }
-    return '-';
+const getRemainTimeText = (item: AbstractRecordConfig) => {
+    return item.getRemainTimeText();
 };
 
-const isItemHasLastCheck = (item: RecordConfig) => {
-    if (dropRecords.value) {
-        const itemRecord = dropRecords.value.find((record) => record.id === item.id);
-        if (itemRecord && itemRecord.lt) {
-            return true;
-        }
-    }
-    return false;
+const isItemHasLastCheck = (item: AbstractRecordConfig) => {
+    return !!item.getLastCheck();
 };
 
-const getLastCheckText = (item: RecordConfig) => {
-    if (dropRecords.value) {
-        const itemRecord = dropRecords.value.find((record) => record.id === item.id);
-        if (itemRecord && itemRecord.lt) {
-            const diff = item.getDifferenceTime(itemRecord.timestamp, itemRecord.lt);
-            if (item.isCountdown) {
-                if (diff <= 0) {
-                    return `已过 ${formatTimeFromMilliseconds(-diff)}`;
-                }
-                return formatTimeFromMilliseconds(diff);
-            } else {
-                // 等于0时不知道刷新时间，所以改为已经经过的时间
-                return formatTimeFromMilliseconds(diff);
-            }
-        }
-    }
-    return '-';
+const getLastCheckText = (item: AbstractRecordConfig) => {
+    return item.getLastCheckText();
 };
 
 // 导入导出
@@ -372,20 +265,6 @@ const showImporter = (mode: 'import' | 'export') => {
 
 // 刷新说明文本
 const refreshText = () => {
-    return (
-        <div>
-            刷新时间根据网络收集和实际测试总结，未必与官方设置相同，仅供参考
-            <br />
-            刷新时间如果有两个时间，第一个时间表示观察到的最短刷新时间
-            <br />
-            第二个时间表示最短刷新时间后，再次判定是否刷新的间隔时间
-            <br />
-            例如：“16小时+8小时”，表示开启箱子16小时后可能刷新
-            <br />
-            如果没刷，24/32/40小时的时候会再次判定是否刷新
-            <br />
-            <span class="text-red-400">【重要】以上均为推测，未必与官方设置相同，持续修正中，仅供参考</span>
-        </div>
-    );
+    return <div>刷新时间根据网络收集和实际测试总结，未必与官方设置相同，仅供参考</div>;
 };
 </script>

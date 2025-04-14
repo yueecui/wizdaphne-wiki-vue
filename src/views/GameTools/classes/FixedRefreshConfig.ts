@@ -1,6 +1,12 @@
-import { type IFixedRefreshConfig, NEAR_TIME, type RecordConfig, TEMPLE_REFRESH_TIME } from '../type';
+import { useUtilStore } from '../../../stores/util';
+import { useDropRecordStore } from '../dropRecordStore';
+import { type AbstractRecordConfig, type IFixedRefreshConfig } from '../type';
+import { formatTimeFromMilliseconds } from '../util';
+import { addNewRecordTime, clearRecord, NEAR_TIME, updateLastRecordTime } from './recordConfigUtil';
 
-export class FixedRefreshConfig implements RecordConfig {
+export const TEMPLE_REFRESH_TIME = new Date('2025-04-05T23:00:00+08:00').getTime(); // 炉壶的神庙刷新时间戳
+
+export class FixedRefreshConfig implements AbstractRecordConfig {
     constructor(public data: IFixedRefreshConfig) {}
 
     get id() {
@@ -19,7 +25,6 @@ export class FixedRefreshConfig implements RecordConfig {
         return this.data.description || '';
     }
 
-    // 固定刷新时间不用这个项目
     get refreshMilliseconds() {
         return 0;
     }
@@ -28,14 +33,35 @@ export class FixedRefreshConfig implements RecordConfig {
         return true;
     }
 
+    getRecordData() {
+        return useDropRecordStore().dropRecords.find((record) => record.id === this.id);
+    }
+
+    getRecords() {
+        return this.getRecordData()?.r ?? [];
+    }
+
+    getLastRecord() {
+        const records = this.getRecords();
+        if (records.length > 0) {
+            return records[records.length - 1];
+        }
+        return 0;
+    }
+
+    getLastCheck() {
+        return 0;
+    }
+
     getRefreshTimeText() {
         return this.data.refreshText;
     }
 
-    getTargetTime(recordTime: number) {
+    getNextTargetTime() {
         // 目前有两种，都只能单独处理，根据刷新文本识别
         // 双周六晚23点：2025年4月5日23点开始，每两周的周六晚23点
         // 每周日晚23点：每周的周日晚23点
+        const recordTime = this.getLastRecord();
         if (this.data.refreshType === '双周六') {
             let nextSaturday = getNextTargetDay23(new Date(recordTime), 6);
             const days = (nextSaturday.getTime() - TEMPLE_REFRESH_TIME) / (1000 * 60 * 60 * 24);
@@ -66,32 +92,84 @@ export class FixedRefreshConfig implements RecordConfig {
     }
 
     // 根据记录时间和当前时间，参考本掉落的刷新时间配置，给出时间差
-    getDifferenceTime(recordTime: number, currentTime: number) {
-        return this.getTargetTime(recordTime) - currentTime;
+    getDifferenceTime(timestamp?: number) {
+        timestamp = timestamp ?? useUtilStore().currentTime;
+        return this.getNextTargetTime() - timestamp;
     }
 
-    isNear(recordTime: number, currentTime: number) {
-        if (!this.isCountdown) {
-            return false;
-        }
-        if (!recordTime) {
+    isNear() {
+        if (!this.getLastRecord()) {
             return true; // 没有记录的话也要显示
         }
-        const differenceTime = this.getDifferenceTime(recordTime, currentTime);
+        const differenceTime = this.getDifferenceTime();
         return differenceTime < NEAR_TIME;
     }
 
-    getNearClass(recordTime: number, currentTime: number) {
+    getNearClass() {
         if (!this.isCountdown) {
             return '';
         }
-        const differenceTime = this.getDifferenceTime(recordTime, currentTime);
+        const differenceTime = this.getDifferenceTime();
         // 如果为正数表示还未到达目标时间
         if (differenceTime > 0) {
             return 'text-green-700';
         } else {
             return 'text-green-400';
         }
+    }
+
+    getRemainTimeText() {
+        if (!this.getLastRecord()) {
+            return '-';
+        }
+
+        const diff = this.getDifferenceTime();
+        if (this.isCountdown) {
+            if (diff <= 0) {
+                return `已过 ${formatTimeFromMilliseconds(-diff)}`;
+            }
+            return formatTimeFromMilliseconds(diff);
+        } else {
+            return `已过 ${formatTimeFromMilliseconds(diff)}`;
+        }
+    }
+
+    getLastCheckText() {
+        const lastCheck = this.getLastCheck();
+        if (lastCheck) {
+            const diff = this.getDifferenceTime(lastCheck);
+            if (this.isCountdown) {
+                if (diff <= 0) {
+                    return `已过 ${formatTimeFromMilliseconds(-diff)}`;
+                }
+                return formatTimeFromMilliseconds(diff);
+            } else {
+                // 等于0时不知道刷新时间，所以改为已经经过的时间
+                return formatTimeFromMilliseconds(diff);
+            }
+        } else {
+            return '-';
+        }
+    }
+
+    updateLastCheckTime(timestamp?: number) {
+        const record = this.getRecordData();
+        if (record) {
+            record.lt = timestamp ?? useUtilStore().currentTime;
+        }
+    }
+
+    // 写入操作需要拿到引用对象
+    updateLastRecordTime(timestamp?: number) {
+        updateLastRecordTime(this.id, timestamp);
+    }
+
+    addNewRecordTime() {
+        addNewRecordTime(this.id);
+    }
+
+    clearRecord() {
+        clearRecord(this.id);
     }
 }
 
