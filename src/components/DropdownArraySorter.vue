@@ -13,7 +13,7 @@ import { NDropdown, NInputNumber } from 'naive-ui';
 import { DropdownMixedOption } from 'naive-ui/es/dropdown/src/interface';
 import { h, ref } from 'vue';
 
-const dialog = window.$dialog;
+const dialog = window.wiz.$dialog;
 
 const props = defineProps<{
     listItems: any[];

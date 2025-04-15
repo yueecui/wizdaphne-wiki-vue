@@ -5,10 +5,13 @@ import { NotificationApiInjection } from 'naive-ui/es/notification/src/Notificat
 
 declare global {
     interface Window {
-        $message: MessageApiInjection;
-        $dialog: DialogApiInjection;
-        $loadingbar: LoadingBarApiInjection;
-        $notification: NotificationApiInjection;
+        wiz: {
+            $message: MessageApiInjection;
+            $dialog: DialogApiInjection;
+            $loadingbar: LoadingBarApiInjection;
+            $notification: NotificationApiInjection;
+        };
+
         mw: {
             config: {
                 get: <T = any>(key: string) => T;

@@ -71,10 +71,10 @@ const onAfterLeave = () => {
 const copyText = () => {
     navigator.clipboard.writeText(text.value).then(
         () => {
-            window.$message.success('复制成功');
+            window.wiz.$message.success('复制成功');
         },
         () => {
-            window.$message.error('复制失败');
+            window.wiz.$message.error('复制失败');
         },
     );
 };
@@ -82,7 +82,7 @@ const copyText = () => {
 // 三种模式，覆盖、旧数据优先、新数据优先
 const importData = (mode: 'cover' | 'old' | 'new') => {
     const showErrorMsg = () => {
-        window.$message.error('导入数据格式错误');
+        window.wiz.$message.error('导入数据格式错误');
     };
     const dropRecords = useLocalStorage<IDropRecord[]>('drop-records', []);
     const comeData = (() => {
@@ -104,7 +104,7 @@ const importData = (mode: 'cover' | 'old' | 'new') => {
     const newRecords: IDropRecord[] = [];
     for (const record of comeData) {
         // 老数据兼容
-        if (record.timestamp && !record.r){
+        if (record.timestamp && !record.r) {
             record.r = [record.timestamp];
         }
         if (record.id && record.r) {
@@ -125,7 +125,7 @@ const importData = (mode: 'cover' | 'old' | 'new') => {
         }
     }
     if (newRecords.length === 0) {
-        window.$message.error('没有有效数据');
+        window.wiz.$message.error('没有有效数据');
         return;
     }
 
@@ -149,7 +149,7 @@ const importData = (mode: 'cover' | 'old' | 'new') => {
             }
         }
     }
-    window.$message.success('导入成功');
+    window.wiz.$message.success('导入成功');
     isShowImporter.value = false;
 };
 </script>

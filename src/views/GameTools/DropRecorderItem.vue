@@ -12,7 +12,50 @@
                             </tr>
                             <tr>
                                 <th class="w-[6em]">刷新时间</th>
-                                <td class="w-[10em]">{{ item.getRefreshTimeText() }}</td>
+                                <td class="w-[10em]">
+                                    <div class="flex gap-2 justify-between items-center">
+                                        <div>
+                                            {{ item.getRefreshTimeText() }}
+                                        </div>
+                                        <div v-if="item.hasHistory">
+                                            <NButton size="tiny" @click="checkHistory">历史</NButton>
+                                            <NModal v-model:show="isShowHistory">
+                                                <div
+                                                    class="p-4 bg-card! border! border-cardborder! rounded flex flex-col gap-4 min-w-[360px]"
+                                                >
+                                                    <table class="wiztable">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>#</th>
+                                                                <th>时间</th>
+                                                                <th>间隔</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr
+                                                                v-for="(record, index) in recordHistory"
+                                                                :key="index"
+                                                                class="hover:bg-trhoverbg!"
+                                                            >
+                                                                <td
+                                                                    class="cursor-pointer hover:text-red-400 hover:line-through text-center"
+                                                                    @click="() => removeRecord(record)"
+                                                                >
+                                                                    {{ index + 1 }}
+                                                                </td>
+                                                                <td>{{ record.timetext }}</td>
+                                                                <td>{{ record.intervaltext }}</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                    <div class="text-xs text-gray-500">
+                                                        最多存储100条记录，点击序号可以删除
+                                                    </div>
+                                                </div>
+                                            </NModal>
+                                        </div>
+                                    </div>
+                                </td>
                             </tr>
                             <tr>
                                 <th>最新记录</th>
@@ -51,10 +94,12 @@
                                 </td>
                             </tr>
                             <tr>
-                                <th>刷新时间</th>
-                                <td>{{ item.getRemainTimeText() }}</td>
+                                <th>计时</th>
+                                <td>
+                                    {{ item.getRemainTimeText() }}
+                                </td>
                             </tr>
-                            <tr>
+                            <tr v-if="item.canCheck">
                                 <th>最后检查于</th>
                                 <td>
                                     <div class="flex gap-2 justify-between items-center">
@@ -122,6 +167,7 @@ import { convertDescription } from '../DataSearcher/util/convertDescription';
 import { DropConfig } from './classes/DropConfig';
 import { FixedRefreshConfig } from './classes/FixedRefreshConfig';
 import { AbstractRecordConfig } from './type';
+import { formatTimeFromMilliseconds } from './util';
 
 const props = defineProps<{
     item: AbstractRecordConfig | null;
@@ -161,14 +207,53 @@ const updateLastCheck = () => {
 };
 
 const clearRecord = () => {
-    window.$dialog.error({
+    window.wiz.$dialog.error({
         title: '清除记录',
         content: '确定要清除记录吗？',
         positiveText: '清除',
         negativeText: '取消',
+        style: 'width: 400px;',
         onPositiveClick: () => {
             item.value?.clearRecord();
             isShowRecord.value = false;
+        },
+    });
+};
+
+const isShowHistory = ref(false);
+const checkHistory = () => {
+    isShowHistory.value = true;
+};
+interface RecordHistory {
+    index: number;
+    timetext: string;
+    intervaltext: string;
+}
+const recordHistory = computed(() => {
+    const history = item.value?.getRecordHistory() ?? [];
+    const result: RecordHistory[] = [];
+    // 最新的在最前面展示
+    for (let i = history.length - 1; i >= 0; i--) {
+        const record = history[i];
+        const interval = i === 0 ? 0 : record - history[i - 1];
+        result.push({
+            index: i,
+            timetext: new Date(record).toLocaleString(),
+            intervaltext: interval === 0 ? '-' : formatTimeFromMilliseconds(interval),
+        });
+    }
+    return result;
+});
+const removeRecord = (record: RecordHistory) => {
+    window.wiz.$dialog.error({
+        title: '删除记录',
+        content: `确定要删除 ${record.timetext} 的记录吗？`,
+        positiveText: '删除',
+        negativeText: '取消',
+        style: 'width: 400px;',
+        onPositiveClick: () => {
+            item.value?.removeRecord(record.index);
+            isShowHistory.value = false;
         },
     });
 };

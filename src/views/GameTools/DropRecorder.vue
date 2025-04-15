@@ -39,7 +39,7 @@
                     <template v-for="item in nearDropConfigs" :key="item.id">
                         <tr
                             v-if="item instanceof DropConfig"
-                            class="hover:bg-[#3b322c] cursor-pointer"
+                            class="hover:bg-trhoverbg cursor-pointer"
                             :class="getNearClass(item)"
                             @click="() => clickItem(item)"
                         >
@@ -69,7 +69,7 @@
                         </tr>
                         <tr
                             v-if="item instanceof FixedRefreshConfig"
-                            class="hover:bg-[#3b322c] cursor-pointer"
+                            class="hover:bg-trhoverbg cursor-pointer"
                             :class="getNearClass(item)"
                             @click="() => clickItem(item)"
                         >
@@ -109,7 +109,7 @@
                     <tr
                         v-for="item in fixedConfigs"
                         :key="item.data.id"
-                        class="hover:bg-[#3b322c] cursor-pointer"
+                        class="hover:bg-trhoverbg cursor-pointer"
                         :class="isNear(item) ? 'text-green-400' : ''"
                         @click="() => clickItem(item)"
                     >
@@ -134,7 +134,7 @@
                     <tr
                         v-for="item in getDropConfigsByCategory(category.i)"
                         :key="item.data.id"
-                        class="hover:bg-[#3b322c] cursor-pointer"
+                        class="hover:bg-trhoverbg cursor-pointer"
                         :class="isNear(item) ? 'text-green-400' : ''"
                         @click="() => clickItem(item)"
                     >
@@ -265,6 +265,12 @@ const showImporter = (mode: 'import' | 'export') => {
 
 // 刷新说明文本
 const refreshText = () => {
-    return <div>刷新时间根据网络收集和实际测试总结，未必与官方设置相同，仅供参考</div>;
+    return (
+        <div>
+            刷新时间根据网络收集和实际测试总结，未必与官方设置相同，仅供参考
+            <br />
+            只有一个时间的也不表示到时肯定刷新，只是目前数据不足，实际应该也是一定时间范围内随机刷新
+        </div>
+    );
 };
 </script>

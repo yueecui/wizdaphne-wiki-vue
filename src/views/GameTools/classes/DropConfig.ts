@@ -2,7 +2,7 @@ import { useUtilStore } from '../../../stores/util';
 import { useDropRecordStore } from '../dropRecordStore';
 import { type AbstractRecordConfig, type IDropConfig } from '../type';
 import { formatTimeFromMilliseconds } from '../util';
-import { addNewRecordTime, clearRecord, NEAR_TIME, updateLastRecordTime } from './recordConfigUtil';
+import { addNewRecordTime, clearRecord, NEAR_TIME, removeRecord, updateLastRecordTime } from './recordConfigUtil';
 
 export class DropConfig implements AbstractRecordConfig {
     constructor(public data: IDropConfig) {}
@@ -31,16 +31,24 @@ export class DropConfig implements AbstractRecordConfig {
         return this.refreshMilliseconds > 0;
     }
 
+    get hasHistory() {
+        return this.getRecordHistory().length > 0;
+    }
+
+    get canCheck() {
+        return true;
+    }
+
     getRecordData() {
         return useDropRecordStore().dropRecords.find((record) => record.id === this.id);
     }
 
-    getRecords() {
+    getRecordHistory() {
         return this.getRecordData()?.r ?? [];
     }
 
     getLastRecord() {
-        const records = this.getRecords();
+        const records = this.getRecordHistory();
         if (records.length > 0) {
             return records[records.length - 1];
         }
@@ -183,5 +191,9 @@ export class DropConfig implements AbstractRecordConfig {
 
     clearRecord() {
         clearRecord(this.id);
+    }
+
+    removeRecord(index: number) {
+        removeRecord(this.id, index);
     }
 }

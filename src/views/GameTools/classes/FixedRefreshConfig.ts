@@ -2,7 +2,7 @@ import { useUtilStore } from '../../../stores/util';
 import { useDropRecordStore } from '../dropRecordStore';
 import { type AbstractRecordConfig, type IFixedRefreshConfig } from '../type';
 import { formatTimeFromMilliseconds } from '../util';
-import { addNewRecordTime, clearRecord, NEAR_TIME, updateLastRecordTime } from './recordConfigUtil';
+import { clearRecord, NEAR_TIME, removeRecord, updateLastRecordTime } from './recordConfigUtil';
 
 export const TEMPLE_REFRESH_TIME = new Date('2025-04-05T23:00:00+08:00').getTime(); // 炉壶的神庙刷新时间戳
 
@@ -33,16 +33,24 @@ export class FixedRefreshConfig implements AbstractRecordConfig {
         return true;
     }
 
+    get hasHistory() {
+        return false;
+    }
+
+    get canCheck() {
+        return false;
+    }
+
     getRecordData() {
         return useDropRecordStore().dropRecords.find((record) => record.id === this.id);
     }
 
-    getRecords() {
+    getRecordHistory() {
         return this.getRecordData()?.r ?? [];
     }
 
     getLastRecord() {
-        const records = this.getRecords();
+        const records = this.getRecordHistory();
         if (records.length > 0) {
             return records[records.length - 1];
         }
@@ -165,11 +173,16 @@ export class FixedRefreshConfig implements AbstractRecordConfig {
     }
 
     addNewRecordTime() {
-        addNewRecordTime(this.id);
+        // 固定项目不需要历史记录，所以也采取更新最后一次记录的方式
+        updateLastRecordTime(this.id);
     }
 
     clearRecord() {
         clearRecord(this.id);
+    }
+
+    removeRecord(index: number) {
+        removeRecord(this.id, index);
     }
 }
 

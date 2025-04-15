@@ -29,6 +29,10 @@ export const addNewRecordTime = (id: string, timestamp?: number) => {
     const recordData = dropRecords.value.find((record) => record.id === id);
     if (recordData) {
         recordData.r.push(timestamp);
+        // 如果记录数超过100，则从前面删除
+        if (recordData.r.length > 100) {
+            recordData.r.splice(0, recordData.r.length - 100);
+        }
         recordData.lt = undefined;
     } else {
         dropRecords.value.push({
@@ -43,5 +47,16 @@ export const clearRecord = (id: string) => {
     const recordIndex = dropRecords.value.findIndex((record) => record.id === id);
     if (recordIndex !== -1) {
         dropRecords.value.splice(recordIndex, 1);
+    }
+};
+
+export const removeRecord = (id: string, index: number) => {
+    const { dropRecords } = toRefs(useDropRecordStore());
+    const recordData = dropRecords.value.find((record) => record.id === id);
+    if (recordData) {
+        recordData.r.splice(index, 1);
+        if (recordData.r.length === 0) {
+            clearRecord(id);
+        }
     }
 };

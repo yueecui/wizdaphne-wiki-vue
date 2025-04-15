@@ -599,10 +599,10 @@ const copyToExcelHeader = () => {
         )
         .then(
             () => {
-                window.$message.success('复制 Excel表头 成功');
+                window.wiz.$message.success('复制 Excel表头 成功');
             },
             () => {
-                window.$message.error('复制 Excel表头 失败');
+                window.wiz.$message.error('复制 Excel表头 失败');
             },
         );
 };
@@ -614,10 +614,10 @@ const copyToExcelRow = () => {
         )
         .then(
             () => {
-                window.$message.success('复制 Excel行 成功');
+                window.wiz.$message.success('复制 Excel行 成功');
             },
             () => {
-                window.$message.error('复制 Excel行 失败');
+                window.wiz.$message.error('复制 Excel行 失败');
             },
         );
 };

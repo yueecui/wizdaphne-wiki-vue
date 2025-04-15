@@ -5,8 +5,10 @@ export interface AbstractRecordConfig {
     description: string;
     refreshMilliseconds: number;
     isCountdown: boolean;
+    hasHistory: boolean;
+    canCheck: boolean;
     getRecordData(): IDropRecord | undefined;
-    getRecords(): number[];
+    getRecordHistory(): number[];
     getLastRecord(): number;
     getLastCheck(): number;
     getNextTargetTime(): number;
@@ -20,6 +22,7 @@ export interface AbstractRecordConfig {
     updateLastRecordTime: (timestamp?: number) => void;
     addNewRecordTime: (timestamp?: number) => void;
     clearRecord: () => void;
+    removeRecord: (index: number) => void;
 }
 // localStorage存储的格式
 export interface IDropRecord {
