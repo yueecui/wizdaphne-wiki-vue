@@ -40,7 +40,7 @@ import ThemeConfigProvider from './ThemeConfigProvider.vue';
 import { ThemeOverrides } from './themeOverrides';
 
 defineOptions({
-    name: '组件加载模块',
+    // name: '组件加载模块',
 });
 
 const themeOverrides: GlobalThemeOverrides = ThemeOverrides;

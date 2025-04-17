@@ -81,7 +81,7 @@ export class FixedRefreshConfig implements AbstractRecordConfig {
             const offset = nextSaturday.getTimezoneOffset();
 
             if (offset !== -480) {
-                const offset_minutes = offset - -480;
+                const offset_minutes = -480 - offset;
                 nextSaturday = new Date(nextSaturday.getTime() + offset_minutes * 60 * 1000);
             }
 

@@ -25,6 +25,7 @@ import CharacterSearcher from './Character/CharacterSearcher.vue';
 import SkillSearcher from './Skill/SkillSearcher.vue';
 import StatCalculator from './StatCalculator/StatCalculator.vue';
 
+import { useLocalStorage } from '@vueuse/core';
 import { onMounted, provide, ref } from 'vue';
 
 defineOptions({
@@ -62,5 +63,5 @@ const startCalcStat = (characterName: string) => {
 };
 provide('startCalcStat', startCalcStat);
 
-const activeKey = ref('Character');
+const activeKey = useLocalStorage<string>('searcherActiveKey', 'Character');
 </script>

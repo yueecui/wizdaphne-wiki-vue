@@ -19,16 +19,16 @@ export class Character {
     isMatch(filter: ICharacterFilter): boolean {
         if (filter.searchText) {
             let found = false;
-            if (this.data.key.includes(filter.searchText)) {
+            if (this.data.key && this.data.key.includes(filter.searchText)) {
                 found = true;
             }
-            if (this.data.name.includes(filter.searchText)) {
+            if (this.data.name && this.data.name.includes(filter.searchText)) {
                 found = true;
             }
-            if (this.data.name_en.includes(filter.searchText)) {
+            if (this.data.name_en && this.data.name_en.includes(filter.searchText)) {
                 found = true;
             }
-            if (this.data.name_jp.includes(filter.searchText)) {
+            if (this.data.name_jp && this.data.name_jp.includes(filter.searchText)) {
                 found = true;
             }
             if (!found) {

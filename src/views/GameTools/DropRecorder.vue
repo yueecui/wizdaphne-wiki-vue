@@ -88,8 +88,8 @@
         <div v-if="activeKey === 'All'" class="flex flex-col gap-4">
             <div class="text-center text-amber-300 mt-4 text-sm">
                 <refreshText />
-                <span>
-                    还可参阅
+                <span class="text-red-400 font-bold">
+                    刷新迷宫的方法请参考
                     <a href="/wiki/可刷新奖励">可刷新奖励</a>
                     条目获取更多信息
                 </span>
@@ -268,6 +268,8 @@ const refreshText = () => {
     return (
         <div>
             刷新时间根据网络收集和实际测试总结，未必与官方设置相同，仅供参考
+            <br />
+            有比列表所示时间提前刷新的情况，如果有时间可以提前去看
             <br />
             只有一个时间的也不表示到时肯定刷新，只是目前数据不足，实际应该也是一定时间范围内随机刷新
         </div>

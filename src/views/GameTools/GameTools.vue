@@ -79,6 +79,10 @@ import SomethingCounter from './SomethingCounter.vue';
 
 import { ref } from 'vue';
 
+defineOptions({
+    // name: '侧边工具栏',
+});
+
 const isShowDropRecorder = ref(false);
 const showDropRecorder = () => {
     isShowDropRecorder.value = true;
