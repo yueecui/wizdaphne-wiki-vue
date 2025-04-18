@@ -24,7 +24,7 @@
                         <th class="hidden md:table-cell! md:w-[2em]">回避</th>
                         <th class="hidden md:table-cell! md:w-[2em]">抵抗</th>
                         <th class="hidden md:table-cell!">非武器类型特性</th>
-                        <th class="xl:w-[20em] hidden md:table-cell!">描述</th>
+                        <th class="xl:w-[20em] hidden md:table-cell!">其他</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -85,8 +85,8 @@
 
 <script setup lang="tsx">
 import { NButton, NModal, NPagination } from 'naive-ui';
-import EquipmentCard from './EquipmentCard.vue';
 import ArmorFilter from './ArmorFilter.vue';
+import EquipmentCard from './EquipmentCard.vue';
 
 import { computed, onMounted, ref, toRefs, watch } from 'vue';
 import { convertDescription } from '../util/convertDescription';

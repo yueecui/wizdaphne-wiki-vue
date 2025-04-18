@@ -4,11 +4,11 @@
             <table class="wikitable my-0! w-full">
                 <tbody>
                     <tr>
-                        <th class="w-1/2">装备名称</th>
+                        <th colspan="2" class="w-1/2">装备名称</th>
                         <th class="w-1/2">特性</th>
                     </tr>
                     <tr>
-                        <td class="text-center">{{ equipment.data.n }}</td>
+                        <td colspan="2" class="text-center">{{ equipment.data.n }}</td>
                         <td class="align-top" rowspan="7">
                             <div class="flex flex-col gap-4">
                                 <div v-for="skill in equipment.data.sk">
@@ -27,16 +27,18 @@
                         </td>
                     </tr>
                     <tr>
-                        <th>装备类型</th>
+                        <th>类型</th>
+                        <th>阶级</th>
                     </tr>
                     <tr>
                         <td class="text-center">{{ equipment.data.sub }}</td>
+                        <td class="text-center">{{ equipment.data.t }}</td>
                     </tr>
                     <tr>
-                        <th>主要来源</th>
+                        <th colspan="2">主要来源</th>
                     </tr>
                     <tr>
-                        <td class="text-center">
+                        <td colspan="2" class="text-center">
                             <div v-if="equipment.data.sou" class="flex flex-col gap-2">
                                 <div v-for="source in equipment.data.sou">
                                     {{ source }}
@@ -45,10 +47,15 @@
                         </td>
                     </tr>
                     <tr>
-                        <th>其他</th>
+                        <th colspan="2">其他</th>
                     </tr>
                     <tr>
-                        <td class="text-center">&nbsp;</td>
+                        <td colspan="2" class="text-center">
+                            <div class="text-sm">
+                                <div v-if="equipment.data.req">职业限制：{{ equipment.data.req }}</div>
+                                <div v-if="equipment.data.desc" v-html="convertDescription(equipment.data.desc)"></div>
+                            </div>
+                        </td>
                     </tr>
                 </tbody>
             </table>
@@ -83,6 +90,13 @@
                 </tbody>
             </table>
         </div>
+        <div class="text-sm text-gray-400">
+            <div>
+                ※
+                +0数据红色表示比同类型装备的基准值低，绿色表示比同类型装备的基准值高。其他强化值数据，绿色表示相比+0有所提升
+            </div>
+            <div>※ 阶级为根据装备图标、主要属性数值或强化费用推测，仅作为参考。</div>
+        </div>
         <div class="flex justify-center gap-4" v-if="onClose">
             <NButton size="small" type="warning" @click="onClose">关闭</NButton>
         </div>
@@ -95,6 +109,8 @@ import { toRefs } from 'vue';
 import { convertDescription } from '../util/convertDescription';
 import { useEquipmentStore } from './equipmentStore';
 import { Equipment } from './Equpment';
+
+convertDescription;
 
 const props = defineProps<{
     equipment: Equipment;

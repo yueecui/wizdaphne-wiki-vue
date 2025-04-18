@@ -69,6 +69,7 @@ export class Equipment {
 
     getLvZeroStatColorClass(stat: string): string {
         if (!stat) return '';
+        if (this.data.sub === '工具') return '';
         const statValue = this.data[stat];
         const statBaseValue = BASE_STAT_BY_SUBCATEGORY[this.data.sub][stat] ?? 0;
         if (statBaseValue === -1) {
@@ -211,15 +212,21 @@ const BASE_STAT_BY_SUBCATEGORY: Record<string, IEquipmentStat> = {
         eva: 2,
     },
     投掷忍具: {
+        c: 2,
+        def: -1,
+        mdef: -1,
         acc: -6,
         sur: 1,
     },
     忍者刀: {
+        def: -1,
+        mdef: -1,
         spe: 1,
         sur: 3,
         eva: 3,
     },
     刀: {
+        c: 2,
         acc: 6,
     },
     双手剑: {

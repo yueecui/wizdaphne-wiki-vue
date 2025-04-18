@@ -32,7 +32,7 @@ export interface IEquipmentBase {
     sk?: string[];
     csk?: string[];
     desc?: string;
-    req?: string[];
+    req?: string;
     sou?: string[];
 }
 
