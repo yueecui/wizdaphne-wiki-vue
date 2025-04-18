@@ -46,6 +46,7 @@ export interface ICharacter {
     passive_skill: string;
     unique_skill: string[];
     inherit_skill: string;
+    inherit_skill2?: string;
     discipline_skill: string;
     release_date: TabxDate;
 }

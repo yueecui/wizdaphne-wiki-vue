@@ -111,6 +111,24 @@
                                 </div>
                             </td>
                         </tr>
+                        <template v-if="character.data.inherit_skill2">
+                            <tr>
+                                <th class="text-center">
+                                    潜在继承技能
+                                    <WikiImg imageName="icon_RareSkills.png" class="w-5 h-5" />
+                                </th>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="p-2">
+                                        <div class="text-light pb-0.5 border-b! mb-2 relative">
+                                            {{ character.data.inherit_skill2 }}
+                                        </div>
+                                        <div v-html="getSkillDescription(character.data.inherit_skill2)"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
                         <tr>
                             <th class="text-center">克己技能</th>
                         </tr>
@@ -137,6 +155,7 @@
 </template>
 
 <script setup lang="ts">
+import WikiImg from '@/components/huiji/WikiImg.vue';
 import CharacterItem from './CharacterItem.vue';
 
 import { NButton } from 'naive-ui';

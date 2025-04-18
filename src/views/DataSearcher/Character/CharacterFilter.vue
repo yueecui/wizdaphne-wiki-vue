@@ -5,7 +5,7 @@
                 <label class="text-sm">搜索词</label>
             </div>
             <div class="flex items-center h-12">
-                <NInput v-model:value="filter.searchText" placeholder="支持三语名字"></NInput>
+                <NInput v-model:value="filter.searchText" placeholder="支持三语角色名，中文继承技能名"></NInput>
             </div>
         </div>
         <div class="flex flex-col">

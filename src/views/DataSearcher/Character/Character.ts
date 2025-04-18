@@ -31,6 +31,12 @@ export class Character {
             if (this.data.name_jp && this.data.name_jp.includes(filter.searchText)) {
                 found = true;
             }
+            if (this.data.inherit_skill && this.data.inherit_skill.includes(filter.searchText)) {
+                found = true;
+            }
+            if (this.data.inherit_skill2 && this.data.inherit_skill2.includes(filter.searchText)) {
+                found = true;
+            }
             if (!found) {
                 return false;
             }
