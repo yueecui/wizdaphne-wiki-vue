@@ -8,7 +8,7 @@
         <div class="flex flex-wrap -mx-2">
             <template v-for="char in filteredCharacterList" :key="char.data.key">
                 <div
-                    class="cursor-pointer relative p-2 group w-1/2 md:w-1/3 lg:w-1/4 xl:w-1/5 3xl:w-1/6"
+                    class="cursor-pointer relative p-2 group w-1/2 md:w-1/3 lg:w-1/4 xl:w-1/5 3xl:w-1/6 select-none"
                     @click="() => showDetail(char)"
                 >
                     <div

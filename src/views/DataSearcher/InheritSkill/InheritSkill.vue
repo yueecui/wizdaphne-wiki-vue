@@ -1,6 +1,6 @@
 <template>
     <div>
-        <table class="wikitable text-sm">
+        <table class="wikitable text-sm select-none">
             <thead>
                 <tr>
                     <th>角色</th>

@@ -10,8 +10,8 @@
             <table class="wikitable text-sm">
                 <thead>
                     <tr>
-                        <th class="w-[16em]">名称</th>
-                        <th class="w-[7em]">类型</th>
+                        <th class="md:w-[16em]">名称</th>
+                        <th class="md:w-[7em]">分类</th>
                         <th>描述</th>
                     </tr>
                 </thead>

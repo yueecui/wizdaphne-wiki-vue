@@ -1,35 +1,60 @@
 export interface IEquipmentFilter {
     searchText: string;
     category: string;
+    skill: string;
+    showMaxLv: boolean;
 }
 
 // 配置文件
 export interface IEquipmentJson {
-    equipments: IEquipment[];
+    equipments: IEquipmentBase[];
+    levels: Record<string, IEquipmentStatLevel[]>;
+    skill: IEquipmentSkill[];
 }
 
-export interface IEquipment {
-    name: string;
-    name_jp: string;
-    name_en: string;
-    category: string;
-    subcategory: string;
-    tier: number;
-    enhance_level: number;
-    attack_power: number;
-    attack_count: number;
-    magic_power: number;
-    divine_power: number;
-    defense: number;
-    magic_defense: number;
-    action_speed: number;
-    accuracy: number;
-    surety: number;
-    evasion: number;
-    resistance: number;
-    skills?: string[];
-    category_skills?: string[];
-    description?: string;
-    required_class?: string[];
-    sources?: string[];
+export interface IEquipmentBase {
+    n: string;
+    njp: string;
+    cate: string;
+    sub: string;
+    t: number;
+    atk: number;
+    c: number; // 攻击次数
+    mag: number;
+    div: number;
+    def: number;
+    mdef: number;
+    spe: number;
+    acc: number;
+    sur: number;
+    eva: number;
+    res: number;
+    sk?: string[];
+    csk?: string[];
+    desc?: string;
+    req?: string[];
+    sou?: string[];
+}
+
+export type IEquipmentStatLevel = IEquipmentStat & {
+    lv: number;
+};
+
+export interface IEquipmentStat {
+    atk?: number;
+    c?: number; // 攻击次数
+    mag?: number;
+    div?: number;
+    def?: number;
+    mdef?: number;
+    spe?: number;
+    acc?: number;
+    sur?: number;
+    eva?: number;
+    res?: number;
+}
+
+export interface IEquipmentSkill {
+    n: string;
+    d: string;
 }

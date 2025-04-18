@@ -1,33 +1,65 @@
 <template>
+    <div>
+        <div class="flex flex-wrap flex-row gap-2 items-center">
+            <NButton
+                size="small"
+                :type="filter.category === '' ? 'primary' : 'default'"
+                @click="() => (filter.category = '')"
+            >
+                全部
+            </NButton>
+            <template v-for="(weapon, index) in WEAPON_SORT_ORDER" :key="index">
+                <NButton
+                    size="small"
+                    :type="filter.category === weapon ? 'primary' : 'default'"
+                    @click="() => (filter.category = weapon)"
+                >
+                    {{ weapon }}
+                </NButton>
+            </template>
+        </div>
+    </div>
     <div class="flex flex-row flex-wrap gap-2 md:gap-6">
         <div class="flex flex-col w-60">
             <div class="flex justify-between items-center h-6">
                 <label class="text-sm">搜索词</label>
             </div>
             <div class="flex items-center h-12">
-                <NInput v-model:value="filter.searchText" placeholder="支持三语名字"></NInput>
+                <NInput v-model:value="filter.searchText" placeholder="支持中日名字"></NInput>
             </div>
         </div>
         <div class="flex flex-col">
             <div class="flex justify-between items-center h-6">
-                <label class="text-sm">分类</label>
+                <label class="text-sm">特性</label>
             </div>
             <div class="flex flex-row gap-2 items-center h-12">
                 <NSelect
-                    :options="categoryOptions"
-                    v-model:value="filter.category"
+                    clearable
+                    filterable
+                    :options="skillOptions"
+                    v-model:value="filter.skill"
                     class="w-40!"
                     maxTagCount="responsive"
                 ></NSelect>
+            </div>
+        </div>
+        <div class="flex flex-col">
+            <div class="flex justify-between items-center h-6">
+                <label class="text-sm">&nbsp;</label>
+            </div>
+            <div class="flex flex-row gap-2 items-center h-12">
+                <NCheckbox v-model:checked="filter.showMaxLv">显示满强化</NCheckbox>
             </div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { NInput, NSelect, SelectOption } from 'naive-ui';
+import { NButton, NCheckbox, NInput, NSelect, SelectOption } from 'naive-ui';
 
-import { computed } from 'vue';
+import { computed, toRefs } from 'vue';
+import { useEquipmentStore } from './equipmentStore';
+import { WEAPON_SORT_ORDER } from './Equpment';
 import { IEquipmentFilter } from './types';
 
 const filter = defineModel<IEquipmentFilter>('filter', {
@@ -35,35 +67,38 @@ const filter = defineModel<IEquipmentFilter>('filter', {
     required: true,
 });
 
-const CATEGORY_LIST = [
-    '战士',
-    '盗贼',
-    '僧侣',
-    '法师',
-    '忍者',
-    '角色特殊技能',
-    '角色固有被动',
-    '角色克己被动',
-    '其他被动',
-];
-const categoryOptions = computed<SelectOption[]>(() => [
-    {
-        label: '全部',
-        value: '',
-    },
-    ...Object.values(CATEGORY_LIST).map((r) => ({
-        label: r,
-        value: r,
-    })),
-]);
+const { equipments, equipmentSkills } = toRefs(useEquipmentStore());
+const allWeapon = computed(() => {
+    return equipments.value.filter((equipment) => equipment.data.cate === '武器');
+});
 
-const TYPE_LIST = ['攻击技能', '支援技能', '攻击咒文', '妨碍咒文', '回复咒文', '支援咒文', '被动'];
-const typeOptions = computed<SelectOption[]>(() => [
+const allWeaponSkill = computed(() => {
+    const skills = allWeapon.value.reduce((acc, equipment) => {
+        if (equipment.data.sk) {
+            acc.push(...equipment.data.sk);
+        }
+        if (equipment.data.csk) {
+            acc.push(...equipment.data.csk);
+        }
+        return acc;
+    }, [] as string[]);
+    const result: string[] = [];
+    for (const skill of equipmentSkills.value) {
+        if (skills.includes(skill.n)) {
+            result.push(skill.n);
+        }
+    }
+    {
+    }
+    return result;
+});
+
+const skillOptions = computed<SelectOption[]>(() => [
     {
         label: '全部',
         value: '',
     },
-    ...Object.values(TYPE_LIST).map((r) => ({
+    ...Object.values(allWeaponSkill.value).map((r) => ({
         label: r,
         value: r,
     })),

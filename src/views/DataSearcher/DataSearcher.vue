@@ -1,7 +1,7 @@
 <template>
     <ThemeConfigProvider>
-        <div class="mt-8 px-4 flex flex-col gap-4">
-            <div class="flex flex-row gap-2">
+        <div class="mt-8 -mx-4 md:mx-0 px-4 flex flex-col gap-4">
+            <div class="flex flex-wrap flex-row gap-2">
                 <NButton
                     v-for="tab in tabs"
                     :key="tab.key"
@@ -16,6 +16,7 @@
             <InheritSkill v-if="activeKey == 'InheritSkill'" />
             <StatCalculator v-if="activeKey == 'StatCalculator'" v-model:character="calcStatCharacter" />
             <WeaponSearcher v-if="activeKey == 'Weapon'" />
+            <ArmorSearcher v-if="activeKey == 'Armor'" />
         </div>
     </ThemeConfigProvider>
 </template>
@@ -24,6 +25,7 @@
 import { NButton } from 'naive-ui';
 import ThemeConfigProvider from '../../layout/ThemeConfigProvider.vue';
 import CharacterSearcher from './Character/CharacterSearcher.vue';
+import ArmorSearcher from './Equipment/ArmorSearcher.vue';
 import WeaponSearcher from './Equipment/WeaponSearcher.vue';
 import InheritSkill from './InheritSkill/InheritSkill.vue';
 import SkillSearcher from './Skill/SkillSearcher.vue';
@@ -57,10 +59,14 @@ const tabs = [
         key: 'InheritSkill',
         label: '继承技能',
     },
-    // {
-    //     key: 'Weapon',
-    //     label: '武器',
-    // },
+    {
+        key: 'Weapon',
+        label: '武器',
+    },
+    {
+        key: 'Armor',
+        label: '防具',
+    },
     {
         key: 'StatCalculator',
         label: '属性计算',

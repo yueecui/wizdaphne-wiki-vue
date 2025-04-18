@@ -577,7 +577,6 @@ const characterTotalStats = computed(() => {
 
 onMounted(() => {
     if (character.value) {
-        console.log(character.value);
         const data = exposeData.getCharacterData(character.value);
         if (data) {
             simCharacterConfig.value = {
