@@ -2,7 +2,14 @@ import { useUtilStore } from '../../../stores/util';
 import { useDropRecordStore } from '../dropRecordStore';
 import { type AbstractRecordConfig, type IDropConfig } from '../type';
 import { formatTimeFromMilliseconds } from '../util';
-import { addNewRecordTime, clearRecord, NEAR_TIME, removeRecord, updateLastRecordTime } from './recordConfigUtil';
+import {
+    addNewRecordTime,
+    clearRecord,
+    NEAR_TIME,
+    removeRecord,
+    toggleHidden,
+    updateLastRecordTime,
+} from './recordConfigUtil';
 
 export class DropConfig implements AbstractRecordConfig {
     constructor(public data: IDropConfig) {}
@@ -29,6 +36,14 @@ export class DropConfig implements AbstractRecordConfig {
 
     get isCountdown() {
         return this.refreshMilliseconds > 0;
+    }
+
+    get isHidden() {
+        return this.getRecordData()?.h ?? false;
+    }
+
+    get hasHidden() {
+        return true;
     }
 
     get hasHistory() {
@@ -114,6 +129,7 @@ export class DropConfig implements AbstractRecordConfig {
         }
     }
 
+    // 是否显示在「待办项目」
     isNear() {
         if (!this.isCountdown) {
             return false;
@@ -129,6 +145,12 @@ export class DropConfig implements AbstractRecordConfig {
     getNearClass() {
         if (!this.isCountdown) {
             return '';
+        }
+        if (this.getLastRecord() === 0) {
+            return '';
+        }
+        if (this.isHidden) {
+            return 'text-gray-400';
         }
         const differenceTime = this.getDifferenceTime();
         // 如果为正数表示还未到达目标时间
@@ -195,5 +217,9 @@ export class DropConfig implements AbstractRecordConfig {
 
     removeRecord(index: number) {
         removeRecord(this.id, index);
+    }
+
+    toggleHidden() {
+        toggleHidden(this.id);
     }
 }

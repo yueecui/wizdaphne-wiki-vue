@@ -110,7 +110,7 @@
                         v-for="item in fixedConfigs"
                         :key="item.data.id"
                         class="hover:bg-trhoverbg cursor-pointer"
-                        :class="isNear(item) ? 'text-green-400' : ''"
+                        :class="getNearClass(item)"
                         @click="() => clickItem(item)"
                     >
                         <td class="text-left">{{ item.data.title }}</td>
@@ -135,10 +135,13 @@
                         v-for="item in getDropConfigsByCategory(category.i)"
                         :key="item.data.id"
                         class="hover:bg-trhoverbg cursor-pointer"
-                        :class="isNear(item) ? 'text-green-400' : ''"
+                        :class="getNearClass(item)"
                         @click="() => clickItem(item)"
                     >
-                        <td class="text-left">{{ item.data.title }}</td>
+                        <td class="text-left">
+                            <template v-if="item.isHidden">【隐藏】</template>
+                            {{ item.data.title }}
+                        </td>
                         <td>
                             <NTooltip trigger="hover" v-if="item.hasMaxInterval()">
                                 <template #trigger>
@@ -214,7 +217,7 @@ watch(
 const nearDropConfigs = computed<AbstractRecordConfig[]>(() => {
     const nearConfigs = [
         // 第一部分是有记录的drop record，并且临期了
-        ...dropConfigs.value.filter((config) => config.isNear()),
+        ...dropConfigs.value.filter((config) => config.isNear() && !config.isHidden),
         // 第二部分是检查所有固定项目，临期或是没记录的都要
         ...fixedConfigs.value.filter((config) => config.isNear()),
     ];

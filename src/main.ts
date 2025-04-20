@@ -12,11 +12,8 @@ import { loadAllComponents } from './loader';
 
     console.log(`${Package.displayName} loaded! author: ${Package.author}. Version: ${Package.version}`);
 
-    // dev环境优先挂载一下 Provider
-    // 正式环境下，Provider会由驾驶室挂载
-    // if (process.env.NODE_ENV === 'development') {
     // 改为正式环境也挂载，主要问题是弹窗部分需要统一管理，用驾驶室的会分开技术z-index
     const componentProvider = createApp(ComponentProvider);
+    document.querySelector('body')?.appendChild(document.createElement('div')).setAttribute('id', 'componentProvider');
     componentProvider.mount('#componentProvider', true);
-    // }
 })();

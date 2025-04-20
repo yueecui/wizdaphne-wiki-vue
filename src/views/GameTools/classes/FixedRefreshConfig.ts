@@ -33,6 +33,14 @@ export class FixedRefreshConfig implements AbstractRecordConfig {
         return true;
     }
 
+    get isHidden() {
+        return false;
+    }
+
+    get hasHidden() {
+        return false;
+    }
+
     get hasHistory() {
         return false;
     }
@@ -117,6 +125,9 @@ export class FixedRefreshConfig implements AbstractRecordConfig {
         if (!this.isCountdown) {
             return '';
         }
+        if (this.getLastRecord() === 0) {
+            return '';
+        }
         const differenceTime = this.getDifferenceTime();
         // 如果为正数表示还未到达目标时间
         if (differenceTime > 0) {
@@ -183,6 +194,10 @@ export class FixedRefreshConfig implements AbstractRecordConfig {
 
     removeRecord(index: number) {
         removeRecord(this.id, index);
+    }
+
+    toggleHidden() {
+        // 无操作
     }
 }
 

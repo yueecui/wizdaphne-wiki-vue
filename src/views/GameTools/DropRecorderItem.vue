@@ -96,7 +96,21 @@
                             <tr>
                                 <th>计时</th>
                                 <td>
-                                    {{ item.getRemainTimeText() }}
+                                    <div class="flex gap-2 justify-between items-center">
+                                        <div>
+                                            {{ item.getRemainTimeText() }}
+                                        </div>
+                                        <div v-if="item.hasHidden && item.getLastRecord()">
+                                            <NTooltip>
+                                                <template #trigger>
+                                                    <NButton size="tiny" @click="toggleHidden">
+                                                        {{ item.isHidden ? '显示' : '隐藏' }}
+                                                    </NButton>
+                                                </template>
+                                                隐藏的项目将不在「待办项目」中显示，持续到解除隐藏或产生新记录
+                                            </NTooltip>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                             <tr v-if="item.canCheck">
@@ -159,7 +173,7 @@
 </template>
 
 <script lang="ts" setup>
-import { NButton, NDatePicker, NModal } from 'naive-ui';
+import { NButton, NDatePicker, NModal, NTooltip } from 'naive-ui';
 import WikiNImage from '../../components/huiji/WikiNImage.vue';
 
 import { computed, ref, toRefs } from 'vue';
@@ -256,5 +270,9 @@ const removeRecord = (record: RecordHistory) => {
             isShowHistory.value = false;
         },
     });
+};
+
+const toggleHidden = () => {
+    item.value?.toggleHidden();
 };
 </script>

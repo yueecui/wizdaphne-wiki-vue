@@ -121,6 +121,8 @@ const importData = (mode: 'cover' | 'old' | 'new') => {
             newRecords.push({
                 id: record.id,
                 r: record.r,
+                h: record.h,
+                lt: record.lt,
             });
         }
     }

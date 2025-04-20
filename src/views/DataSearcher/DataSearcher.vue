@@ -31,8 +31,7 @@ import InheritSkill from './InheritSkill/InheritSkill.vue';
 import SkillSearcher from './Skill/SkillSearcher.vue';
 import StatCalculator from './StatCalculator/StatCalculator.vue';
 
-import { useLocalStorage } from '@vueuse/core';
-import { onMounted, provide, ref } from 'vue';
+import { onMounted, provide, ref, watch } from 'vue';
 
 defineOptions({
     name: '数据搜索器',
@@ -43,6 +42,13 @@ onMounted(() => {
     const firstHeading = document.getElementById('firstHeading');
     if (firstHeading) {
         firstHeading.style.display = 'none';
+    }
+
+    const searcherActiveKey = localStorage.getItem('searcherActiveKey');
+    if (searcherActiveKey) {
+        activeKey.value = searcherActiveKey;
+    } else {
+        activeKey.value = 'Character';
     }
 });
 
@@ -81,5 +87,14 @@ const startCalcStat = (characterName: string) => {
 };
 provide('startCalcStat', startCalcStat);
 
-const activeKey = useLocalStorage<string>('searcherActiveKey', 'Character');
+const activeKey = ref<string>('');
+watch(
+    activeKey,
+    (newKey) => {
+        if (newKey) {
+            localStorage.setItem('searcherActiveKey', newKey);
+        }
+    },
+    { immediate: true },
+);
 </script>

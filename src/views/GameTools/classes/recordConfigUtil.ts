@@ -34,6 +34,7 @@ export const addNewRecordTime = (id: string, timestamp?: number) => {
             recordData.r.splice(0, recordData.r.length - 100);
         }
         recordData.lt = undefined;
+        recordData.h = undefined;
     } else {
         dropRecords.value.push({
             id: id,
@@ -58,5 +59,13 @@ export const removeRecord = (id: string, index: number) => {
         if (recordData.r.length === 0) {
             clearRecord(id);
         }
+    }
+};
+
+export const toggleHidden = (id: string) => {
+    const { dropRecords } = toRefs(useDropRecordStore());
+    const recordData = dropRecords.value.find((record) => record.id === id);
+    if (recordData) {
+        recordData.h = recordData.h ? undefined : true;
     }
 };

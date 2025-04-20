@@ -5,6 +5,8 @@ export interface AbstractRecordConfig {
     description: string;
     refreshMilliseconds: number;
     isCountdown: boolean;
+    isHidden: boolean;
+    hasHidden: boolean;
     hasHistory: boolean;
     canCheck: boolean;
     getRecordData(): IDropRecord | undefined;
@@ -23,13 +25,16 @@ export interface AbstractRecordConfig {
     addNewRecordTime: (timestamp?: number) => void;
     clearRecord: () => void;
     removeRecord: (index: number) => void;
+    toggleHidden: () => void;
 }
 // localStorage存储的格式
 export interface IDropRecord {
     id: string;
     r: number[]; // 记录的时间，最后一个是最新的
-    timestamp?: number; // 旧的记录时间
     lt?: number; // 最后一次检查的记录时间
+    h?: boolean; // 是否隐藏
+
+    timestamp?: number; // 旧的记录时间
 }
 
 // 配置文件
