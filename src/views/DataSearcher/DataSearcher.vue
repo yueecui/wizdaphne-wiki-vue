@@ -14,7 +14,7 @@
             <CharacterSearcher v-if="activeKey == 'Character'" />
             <SkillSearcher v-if="activeKey == 'Skill'" />
             <InheritSkill v-if="activeKey == 'InheritSkill'" />
-            <StatCalculator v-if="activeKey == 'StatCalculator'" v-model:character="calcStatCharacter" />
+            <StatCalculator v-if="activeKey == 'StatCalculator'" v-model:character="calcStatCharacterConfig" />
             <WeaponSearcher v-if="activeKey == 'Weapon'" />
             <ArmorSearcher v-if="activeKey == 'Armor'" />
         </div>
@@ -32,6 +32,8 @@ import SkillSearcher from './Skill/SkillSearcher.vue';
 import StatCalculator from './StatCalculator/StatCalculator.vue';
 
 import { onMounted, provide, ref, watch } from 'vue';
+import { SimCharacterConfig } from './StatCalculator/types';
+import { SearcherExposeData } from './data/SearcherExposeData';
 
 defineOptions({
     name: '数据搜索器',
@@ -75,14 +77,24 @@ const tabs = [
     },
     {
         key: 'StatCalculator',
-        label: '属性计算',
+        label: '特性值计算',
     },
 ];
 
-const calcStatCharacter = ref<string | null>(null);
+const calcStatCharacterConfig = ref<SimCharacterConfig | null>(null);
 
-const startCalcStat = (characterName: string) => {
-    calcStatCharacter.value = characterName;
+const startCalcStat = (characterName: string, isSub: boolean) => {
+    const exposeData = SearcherExposeData.getInstance();
+    const data = exposeData.getCharacterData(characterName);
+    if (data) {
+        calcStatCharacterConfig.value = {
+            race: data.race,
+            gender: data.gender,
+            element: data.element,
+            class: isSub && data.class.length > 1 ? data.class[1] : data.class[0],
+            tier: 0,
+        };
+    }
     activeKey.value = 'StatCalculator';
 };
 provide('startCalcStat', startCalcStat);

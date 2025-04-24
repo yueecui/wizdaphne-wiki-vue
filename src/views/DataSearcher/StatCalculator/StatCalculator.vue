@@ -410,8 +410,9 @@ import { computed, onMounted, ref } from 'vue';
 import { ELEMENT_TYPE, GENDER_TYPE, RACE_TYPE } from '../data/enum';
 import { SearcherExposeData } from '../data/SearcherExposeData';
 import { ICharacterStats } from '../data/SearcherExposeData.types';
+import { SimCharacterConfig } from './types';
 
-const character = defineModel<string | null>('character', {
+const character = defineModel<SimCharacterConfig | null>('character', {
     default: null,
 });
 
@@ -426,7 +427,7 @@ const getStatSet = (kind: string, key: string, stat: string) => {
     }
 };
 
-const simCharacterConfig = ref({
+const simCharacterConfig = ref<SimCharacterConfig>({
     race: '人类',
     gender: '男',
     element: '火',
@@ -577,16 +578,7 @@ const characterTotalStats = computed(() => {
 
 onMounted(() => {
     if (character.value) {
-        const data = exposeData.getCharacterData(character.value);
-        if (data) {
-            simCharacterConfig.value = {
-                race: data.race,
-                gender: data.gender,
-                element: data.element,
-                class: data.class[0],
-                tier: 0,
-            };
-        }
+        simCharacterConfig.value = character.value;
         character.value = null;
     }
 });

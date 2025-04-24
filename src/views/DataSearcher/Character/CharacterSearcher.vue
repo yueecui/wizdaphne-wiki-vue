@@ -49,6 +49,7 @@ const filter = ref<ICharacterFilter>({
     fate: '',
     class: [''],
     onlyPrimary: true,
+    discipline_tags: [],
 });
 
 const characterList = shallowRef<Character[]>([]);
@@ -98,6 +99,7 @@ const onFilterReset = () => {
         fate: '',
         class: [''],
         onlyPrimary: true,
+        discipline_tags: [],
     };
 };
 </script>

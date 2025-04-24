@@ -4,7 +4,8 @@ import type { ICharacter, ICharacterStats } from '../data/SearcherExposeData.typ
 import type { ICharacterFilter } from './types';
 
 export class Character {
-    stats: ICharacterStats;
+    stats: ICharacterStats; // 主职业的1级属性
+    subStats?: ICharacterStats; // 副职业的1级属性
 
     constructor(public data: ICharacter) {
         this.stats = SearcherExposeData.getInstance().calculateStats({
@@ -13,6 +14,15 @@ export class Character {
             element: this.data.element,
             class: this.data.class[0],
         });
+
+        if (this.data.class.length > 1) {
+            this.subStats = SearcherExposeData.getInstance().calculateStats({
+                race: this.data.race,
+                gender: this.data.gender,
+                element: this.data.element,
+                class: this.data.class[1],
+            });
+        }
     }
 
     // 是否满足过滤器
@@ -94,6 +104,17 @@ export class Character {
                 }
             }
             if (matchCount !== filter.class.length) {
+                return false;
+            }
+        }
+        if (filter.discipline_tags.length > 0) {
+            let matchCount = 0;
+            for (let i = 0; i < filter.discipline_tags.length; i++) {
+                if (this.data.discipline_tags.includes(filter.discipline_tags[i])) {
+                    matchCount++;
+                }
+            }
+            if (matchCount !== filter.discipline_tags.length) {
                 return false;
             }
         }

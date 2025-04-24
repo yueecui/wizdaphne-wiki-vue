@@ -10,4 +10,5 @@ export interface ICharacterFilter {
     fate: FATE_TYPE | '';
     class: (string | '特殊' | '')[];
     onlyPrimary: boolean; // 只检查主职业
+    discipline_tags: string[];
 }

@@ -97,6 +97,21 @@
                 <NSelect :options="fateOptions" v-model:value="filter.fate" class="w-24!"></NSelect>
             </div>
         </div>
+        <div class="flex flex-col order-1 md:order-3">
+            <div class="flex justify-between items-center h-6">
+                <label class="text-sm">克己能力</label>
+            </div>
+            <div class="flex flex-row gap-2 items-center h-12">
+                <NSelect
+                    :options="statOptions"
+                    multiple
+                    v-model:value="filter.discipline_tags"
+                    clearable
+                    class="w-full md:w-64!"
+                    max-tag-count="responsive"
+                ></NSelect>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -107,6 +122,7 @@ import ElementIcon from '../../../components/ElementIcon.vue';
 import { computed } from 'vue';
 import {
     COMMON_CLASS,
+    DISCIPLINE_TAGS_LIST,
     ELEMENT_TYPE,
     FATE_TYPE,
     GENDER_TYPE,
@@ -246,4 +262,12 @@ const updateOnlyPrimary = (value: boolean) => {
         filter.value.class = filter.value.class.filter((c) => c !== '');
     }
 };
+
+const statOptions = computed<SelectOption[]>(() => [
+    ...Object.values(DISCIPLINE_TAGS_LIST).map((r) => ({
+        label: r,
+        value: r,
+        disabled: filter.value.class.length === 2 && filter.value.class.indexOf(r) === -1,
+    })),
+]);
 </script>

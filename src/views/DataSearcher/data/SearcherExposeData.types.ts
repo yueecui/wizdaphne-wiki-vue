@@ -48,6 +48,7 @@ export interface ICharacter {
     inherit_skill: string;
     inherit_skill2?: string;
     discipline_skill: string;
+    discipline_tags: string[];
     release_date: TabxDate;
 }
 

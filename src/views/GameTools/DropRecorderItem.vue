@@ -48,6 +48,11 @@
                                                             </tr>
                                                         </tbody>
                                                     </table>
+                                                    <div>
+                                                        <NButton size="tiny" @click="clearRecord" type="error">
+                                                            清除所有记录
+                                                        </NButton>
+                                                    </div>
                                                     <div class="text-xs text-gray-500">
                                                         最多存储100条记录，点击序号可以删除
                                                     </div>
@@ -81,8 +86,7 @@
                                                         </NButton>
                                                     </div>
 
-                                                    <div class="flex justify-between">
-                                                        <NButton size="small" @click="clearRecord">清除记录</NButton>
+                                                    <div class="flex justify-end">
                                                         <NButton size="small" type="primary" @click="saveNewRecord">
                                                             以当前时间记录
                                                         </NButton>
@@ -101,7 +105,7 @@
                                             {{ item.getRemainTimeText() }}
                                         </div>
                                         <div v-if="item.hasHidden && item.getLastRecord()">
-                                            <NTooltip>
+                                            <NTooltip placement="bottom">
                                                 <template #trigger>
                                                     <NButton size="tiny" @click="toggleHidden">
                                                         {{ item.isHidden ? '显示' : '隐藏' }}
@@ -223,7 +227,7 @@ const updateLastCheck = () => {
 const clearRecord = () => {
     window.wiz.$dialog.error({
         title: '清除记录',
-        content: '确定要清除记录吗？',
+        content: '确定要清除所有记录吗？',
         positiveText: '清除',
         negativeText: '取消',
         style: 'width: 400px;',

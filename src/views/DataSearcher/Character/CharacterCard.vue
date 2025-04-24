@@ -10,59 +10,118 @@
                 <table class="wikitable my-0! w-full text-center">
                     <tbody>
                         <tr>
-                            <th colspan="2" class="w-1/2">信息</th>
+                            <th colspan="3">信息</th>
                         </tr>
                         <tr>
-                            <th>风格</th>
-                            <td>{{ character.data.style ? character.data.style : '基本' }}</td>
+                            <th class="w-1/3">风格</th>
+                            <td colspan="2" class="w-2/3">
+                                {{ character.data.style ? character.data.style : '基本' }}
+                            </td>
                         </tr>
                         <tr>
                             <th>种族</th>
-                            <td>{{ character.data.race }}</td>
+                            <td colspan="2">{{ character.data.race }}</td>
                         </tr>
                         <tr>
                             <th>性别</th>
-                            <td>{{ character.data.gender }}</td>
+                            <td colspan="2">{{ character.data.gender }}</td>
                         </tr>
                         <tr>
                             <th>性格</th>
-                            <td>{{ character.data.personality }}</td>
+                            <td colspan="2">{{ character.data.personality }}</td>
                         </tr>
                         <tr>
                             <th>缘类型</th>
-                            <td>{{ character.data.fate_type }}</td>
+                            <td colspan="2">{{ character.data.fate_type }}</td>
                         </tr>
                         <tr>
-                            <th class="w-1/2">属性</th>
-                            <th class="w-1/2">数值</th>
+                            <th class="w-1/3">特性</th>
+                            <th colspan="2" class="w-2/3">
+                                <div class="flex gap-1 justify-center">
+                                    <div>1级数值</div>
+                                    <NTooltip trigger="hover">
+                                        <template #trigger>
+                                            <div class="flex items-center justify-center gap-1 leading-none">
+                                                <NIcon><QuestionIcon /></NIcon>
+                                            </div>
+                                        </template>
+                                        1级基准特性值是用来对比检查角色的个体情况
+                                        <br />
+                                        红色背景为该职业的该属性可能无法在1级看到个体奖励的1点特性值
+                                        <br />
+                                        具体可参考
+                                        <a href="/wiki/能力值#无法识别的个体" target="_blank">这里</a>
+                                    </NTooltip>
+                                </div>
+                            </th>
                         </tr>
                         <tr>
-                            <th>力</th>
-                            <td>{{ character.stats.strength }}</td>
+                            <th class="w-1/3">职业</th>
+                            <th :class="hasSubClass ? 'w-1/3' : 'w-2/3'">{{ character.data.class[0] }}</th>
+                            <th class="w-1/3" v-if="hasSubClass">{{ character.data.class[1] }}</th>
                         </tr>
                         <tr>
-                            <th>智慧</th>
-                            <td>{{ character.stats.intelligence }}</td>
+                            <th class="w-1/3">力</th>
+                            <td :class="[hasSubClass ? 'w-1/3' : 'w-2/3', getStatBgColor(false, '力')]">
+                                {{ character.stats.strength }}
+                            </td>
+                            <td :class="['w-1/3', getStatBgColor(true, '力')]" v-if="character.subStats">
+                                {{ character.subStats.strength }}
+                            </td>
                         </tr>
                         <tr>
-                            <th>信仰心</th>
-                            <td>{{ character.stats.piety }}</td>
+                            <th class="w-1/3">智慧</th>
+                            <td :class="[hasSubClass ? 'w-1/3' : 'w-2/3', getStatBgColor(false, '智慧')]">
+                                {{ character.stats.intelligence }}
+                            </td>
+                            <td :class="['w-1/3', getStatBgColor(true, '智慧')]" v-if="character.subStats">
+                                {{ character.subStats.intelligence }}
+                            </td>
                         </tr>
                         <tr>
-                            <th>生命力</th>
-                            <td>{{ character.stats.vitality }}</td>
+                            <th class="w-1/3">信仰心</th>
+                            <td :class="[hasSubClass ? 'w-1/3' : 'w-2/3', getStatBgColor(false, '信仰心')]">
+                                {{ character.stats.piety }}
+                            </td>
+                            <td :class="['w-1/3', getStatBgColor(true, '信仰心')]" v-if="character.subStats">
+                                {{ character.subStats.piety }}
+                            </td>
                         </tr>
                         <tr>
-                            <th>灵巧</th>
-                            <td>{{ character.stats.dexterity }}</td>
+                            <th class="w-1/3">生命力</th>
+                            <td :class="[hasSubClass ? 'w-1/3' : 'w-2/3', getStatBgColor(false, '生命力')]">
+                                {{ character.stats.vitality }}
+                            </td>
+                            <td :class="['w-1/3', getStatBgColor(true, '生命力')]" v-if="character.subStats">
+                                {{ character.subStats.vitality }}
+                            </td>
                         </tr>
                         <tr>
-                            <th>敏捷</th>
-                            <td>{{ character.stats.speed }}</td>
+                            <th class="w-1/3">灵巧</th>
+                            <td :class="[hasSubClass ? 'w-1/3' : 'w-2/3', getStatBgColor(false, '灵巧')]">
+                                {{ character.stats.dexterity }}
+                            </td>
+                            <td :class="['w-1/3', getStatBgColor(true, '灵巧')]" v-if="character.subStats">
+                                {{ character.subStats.dexterity }}
+                            </td>
                         </tr>
                         <tr>
-                            <th>运</th>
-                            <td>{{ character.stats.luck }}</td>
+                            <th class="w-1/3">敏捷</th>
+                            <td :class="[hasSubClass ? 'w-1/3' : 'w-2/3', getStatBgColor(false, '敏捷')]">
+                                {{ character.stats.speed }}
+                            </td>
+                            <td :class="['w-1/3', getStatBgColor(true, '敏捷')]" v-if="character.subStats">
+                                {{ character.subStats.speed }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="w-1/3">运</th>
+                            <td :class="[hasSubClass ? 'w-1/3' : 'w-2/3', getStatBgColor(false, '运')]">
+                                {{ character.stats.luck }}
+                            </td>
+                            <td :class="['w-1/3', getStatBgColor(true, '运')]" v-if="character.subStats">
+                                {{ character.subStats.luck }}
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -148,7 +207,17 @@
         </div>
         <div class="flex justify-center mt-4 gap-4" v-if="onClose">
             <NButton size="small" type="primary" @click="gotoDetail">查看详情页</NButton>
-            <NButton size="small" type="warning" @click="startCalcCharacter" v-if="startCalcStat">计算属性</NButton>
+            <NButton size="small" type="warning" @click="() => startCalcCharacter(false)" v-if="startCalcStat">
+                计算属性({{ character.data.class[0] }})
+            </NButton>
+            <NButton
+                size="small"
+                type="warning"
+                @click="() => startCalcCharacter(true)"
+                v-if="startCalcStat && hasSubClass"
+            >
+                计算属性({{ character.data.class[1] }})
+            </NButton>
             <NButton size="small" type="warning" @click="onClose">关闭</NButton>
         </div>
     </div>
@@ -156,6 +225,8 @@
 
 <script setup lang="ts">
 import WikiImg from '@/components/huiji/WikiImg.vue';
+import { QuestionCircle as QuestionIcon } from '@vicons/fa';
+import { NIcon, NTooltip } from 'naive-ui';
 import CharacterItem from './CharacterItem.vue';
 
 import { NButton } from 'naive-ui';
@@ -185,6 +256,11 @@ const uniqueSkills = computed(() => {
     });
 });
 
+// 是否有副职业
+const hasSubClass = computed(() => {
+    return props.character.data.class.length > 1;
+});
+
 // 编辑链接
 const gotoEditCharacterData = () => {
     const url = `/wiki/Data:Character.schema?target=Data:Character/${props.character.data.key}.json`;
@@ -206,14 +282,28 @@ const gotoDetail = () => {
     window.open(url, '_blank');
 };
 
-const startCalcStat = inject<(characterName: string) => void>('startCalcStat');
+const startCalcStat = inject<(characterName: string, sub?: boolean) => void>('startCalcStat');
 // 计算该角色的属性
-const startCalcCharacter = () => {
+const startCalcCharacter = (sub: boolean) => {
     if (startCalcStat) {
-        startCalcStat(props.character.data.key);
+        startCalcStat(props.character.data.key, sub);
     }
     if (props.onClose) {
         props.onClose();
     }
+};
+
+// 获取1级属性背景色
+const redBgMap = ['战士-智慧', '战士-信仰心', '骑士-智慧', '骑士-敏捷', '盗贼-信仰心', '法师-力', '僧侣-敏捷'];
+
+const getStatBgColor = (isSub: boolean, stat: string) => {
+    const jobName = isSub ? props.character.data.class[1] : props.character.data.class[0];
+    if (!jobName) return '';
+
+    const checkStr = `${jobName}-${stat}`;
+    if (redBgMap.includes(checkStr)) {
+        return 'bg-red-800/30';
+    }
+    return '';
 };
 </script>
