@@ -37,6 +37,10 @@ export class FixedRefreshConfig implements AbstractRecordConfig {
         return false;
     }
 
+    get isJunk() {
+        return false;
+    }
+
     get hasHidden() {
         return false;
     }

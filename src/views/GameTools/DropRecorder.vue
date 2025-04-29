@@ -15,9 +15,12 @@
             </div>
         </div>
 
-        <div v-if="activeKey === 'Near'">
+        <div v-if="activeKey === 'Near'" class="flex flex-col gap-4">
             <table class="wiztable text-center my-0! w-full" v-if="nearDropConfigs.length > 0">
                 <thead>
+                    <tr>
+                        <th colspan="4">重要物品计时</th>
+                    </tr>
                     <tr>
                         <th class="w-[4em] md:w-[8em]">类型</th>
                         <th>项目</th>
@@ -81,7 +84,78 @@
                     </template>
                 </tbody>
             </table>
-            <div class="h-[360px] flex items-center justify-center" v-else>
+            <table class="wiztable text-center my-0! w-full" v-if="nerfJunkDropConfigs.length > 0">
+                <thead>
+                    <tr>
+                        <th colspan="4">杂物类计时</th>
+                    </tr>
+                    <tr>
+                        <th class="w-[4em] md:w-[8em]">类型</th>
+                        <th>项目</th>
+                        <th class="w-[4em] md:w-[11em]">
+                            <NTooltip trigger="hover">
+                                <template #trigger>
+                                    <div class="flex items-center justify-center gap-1 leading-none">
+                                        刷新时间
+                                        <NIcon><QuestionIcon /></NIcon>
+                                    </div>
+                                </template>
+                                <component :is="refreshText" />
+                            </NTooltip>
+                        </th>
+                        <th class="w-[5.5em] md:w-[11em]">计时</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template v-for="item in nerfJunkDropConfigs" :key="item.id">
+                        <tr
+                            v-if="item instanceof DropConfig"
+                            class="hover:bg-trhoverbg cursor-pointer"
+                            :class="getNearClass(item)"
+                            @click="() => clickItem(item)"
+                        >
+                            <td>{{ getDropCategoryText(item.category) }}</td>
+                            <td class="text-left">{{ item.title }}</td>
+                            <td>
+                                <NTooltip trigger="hover" v-if="item.hasMaxInterval()">
+                                    <template #trigger>
+                                        <div class="w-full h-full">{{ item.getRefreshTimeText() }}</div>
+                                    </template>
+                                    <div>{{ item.getRefreshTimeText('plus') }}</div>
+                                </NTooltip>
+                                <template v-else>
+                                    {{ item.getRefreshTimeText() }}
+                                </template>
+                            </td>
+                            <td>
+                                <div class="flex flex-col">
+                                    <div>
+                                        {{ getRemainTimeText(item) }}
+                                    </div>
+                                    <div v-if="isItemHasLastCheck(item)" class="text-xs text-gray-400">
+                                        {{ getLastCheckText(item) }} 检查
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr
+                            v-if="item instanceof FixedRefreshConfig"
+                            class="hover:bg-trhoverbg cursor-pointer"
+                            :class="getNearClass(item)"
+                            @click="() => clickItem(item)"
+                        >
+                            <td>固定周期</td>
+                            <td class="text-left">{{ item.title }}</td>
+                            <td>{{ item.getRefreshTimeText() }}</td>
+                            <td>{{ getRemainTimeText(item) }}</td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+            <div
+                class="h-[360px] flex items-center justify-center"
+                v-if="nearDropConfigs.length === 0 && nerfJunkDropConfigs.length === 0"
+            >
                 <div class="text-center text-gray-400">暂无一天内会刷新的项目</div>
             </div>
         </div>
@@ -217,7 +291,7 @@ watch(
 const nearDropConfigs = computed<AbstractRecordConfig[]>(() => {
     const nearConfigs = [
         // 第一部分是有记录的drop record，并且临期了
-        ...dropConfigs.value.filter((config) => config.isNear() && !config.isHidden),
+        ...dropConfigs.value.filter((config) => config.isNear() && !config.isHidden && !config.isJunk),
         // 第二部分是检查所有固定项目，临期或是没记录的都要
         ...fixedConfigs.value.filter((config) => config.isNear()),
     ];
@@ -226,6 +300,14 @@ const nearDropConfigs = computed<AbstractRecordConfig[]>(() => {
         return a.getNextTargetTime() - b.getNextTargetTime();
     });
     return nearConfigs;
+});
+
+const nerfJunkDropConfigs = computed(() => {
+    const nearJunkConfigs = dropConfigs.value.filter((config) => config.isNear() && !config.isHidden && config.isJunk);
+    nearJunkConfigs.sort((a, b) => {
+        return a.getNextTargetTime() - b.getNextTargetTime();
+    });
+    return nearJunkConfigs;
 });
 
 const isShowItem = ref(false);

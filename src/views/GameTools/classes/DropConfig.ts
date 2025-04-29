@@ -42,6 +42,10 @@ export class DropConfig implements AbstractRecordConfig {
         return this.getRecordData()?.h ?? false;
     }
 
+    get isJunk() {
+        return this.data.is_junk === 1;
+    }
+
     get hasHidden() {
         return true;
     }

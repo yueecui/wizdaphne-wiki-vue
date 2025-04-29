@@ -6,6 +6,7 @@ export interface AbstractRecordConfig {
     refreshMilliseconds: number;
     isCountdown: boolean;
     isHidden: boolean;
+    isJunk: boolean;
     hasHidden: boolean;
     hasHistory: boolean;
     canCheck: boolean;
@@ -52,6 +53,7 @@ export interface IDropConfig {
     image?: string;
     min_interval: number;
     max_interval: number;
+    is_junk?: 1;
 }
 
 export interface IDropCategory {
