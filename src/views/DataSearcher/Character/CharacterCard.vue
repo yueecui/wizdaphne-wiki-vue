@@ -13,8 +13,8 @@
                             <th colspan="3">信息</th>
                         </tr>
                         <tr>
-                            <th class="w-1/3">风格</th>
-                            <td colspan="2" class="w-2/3">
+                            <th class="w-20 md:w-1/3">风格</th>
+                            <td colspan="2" class="md:w-2/3">
                                 {{ character.data.style ? character.data.style : '基本' }}
                             </td>
                         </tr>
@@ -35,13 +35,16 @@
                             <td colspan="2">{{ character.data.fate_type }}</td>
                         </tr>
                         <tr>
-                            <th class="w-1/3">特性</th>
-                            <th colspan="2" class="w-2/3">
+                            <th class="md:w-1/3">特性</th>
+                            <th colspan="2" class="md:w-2/3">
                                 <div class="flex gap-1 justify-center">
-                                    <div>1级数值</div>
+                                    <div>
+                                        1级
+                                        <span class="hidden md:inline!">数值</span>
+                                    </div>
                                     <NTooltip trigger="hover">
                                         <template #trigger>
-                                            <div class="flex items-center justify-center gap-1 leading-none">
+                                            <div class="hidden md:flex! items-center justify-center gap-1 leading-none">
                                                 <NIcon><QuestionIcon /></NIcon>
                                             </div>
                                         </template>
@@ -56,70 +59,70 @@
                             </th>
                         </tr>
                         <tr>
-                            <th class="w-1/3">职业</th>
-                            <th :class="hasSubClass ? 'w-1/3' : 'w-2/3'">{{ character.data.class[0] }}</th>
-                            <th class="w-1/3" v-if="hasSubClass">{{ character.data.class[1] }}</th>
+                            <th class="md:w-1/3">职业</th>
+                            <th :class="hasSubClass ? 'md:w-1/3' : 'md:w-2/3'">{{ character.data.class[0] }}</th>
+                            <th class="md:w-1/3" v-if="hasSubClass">{{ character.data.class[1] }}</th>
                         </tr>
                         <tr>
-                            <th class="w-1/3">力</th>
-                            <td :class="[hasSubClass ? 'w-1/3' : 'w-2/3', getStatBgColor(false, '力')]">
+                            <th class="md:w-1/3">力</th>
+                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '力')]">
                                 {{ character.stats.strength }}
                             </td>
-                            <td :class="['w-1/3', getStatBgColor(true, '力')]" v-if="character.subStats">
+                            <td :class="['md:w-1/3', getStatBgColor(true, '力')]" v-if="character.subStats">
                                 {{ character.subStats.strength }}
                             </td>
                         </tr>
                         <tr>
-                            <th class="w-1/3">智慧</th>
-                            <td :class="[hasSubClass ? 'w-1/3' : 'w-2/3', getStatBgColor(false, '智慧')]">
+                            <th class="md:w-1/3">智慧</th>
+                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '智慧')]">
                                 {{ character.stats.intelligence }}
                             </td>
-                            <td :class="['w-1/3', getStatBgColor(true, '智慧')]" v-if="character.subStats">
+                            <td :class="['md:w-1/3', getStatBgColor(true, '智慧')]" v-if="character.subStats">
                                 {{ character.subStats.intelligence }}
                             </td>
                         </tr>
                         <tr>
-                            <th class="w-1/3">信仰心</th>
-                            <td :class="[hasSubClass ? 'w-1/3' : 'w-2/3', getStatBgColor(false, '信仰心')]">
+                            <th class="md:w-1/3">信仰心</th>
+                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '信仰心')]">
                                 {{ character.stats.piety }}
                             </td>
-                            <td :class="['w-1/3', getStatBgColor(true, '信仰心')]" v-if="character.subStats">
+                            <td :class="['md:w-1/3', getStatBgColor(true, '信仰心')]" v-if="character.subStats">
                                 {{ character.subStats.piety }}
                             </td>
                         </tr>
                         <tr>
-                            <th class="w-1/3">生命力</th>
-                            <td :class="[hasSubClass ? 'w-1/3' : 'w-2/3', getStatBgColor(false, '生命力')]">
+                            <th class="md:w-1/3">生命力</th>
+                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '生命力')]">
                                 {{ character.stats.vitality }}
                             </td>
-                            <td :class="['w-1/3', getStatBgColor(true, '生命力')]" v-if="character.subStats">
+                            <td :class="['md:w-1/3', getStatBgColor(true, '生命力')]" v-if="character.subStats">
                                 {{ character.subStats.vitality }}
                             </td>
                         </tr>
                         <tr>
-                            <th class="w-1/3">灵巧</th>
-                            <td :class="[hasSubClass ? 'w-1/3' : 'w-2/3', getStatBgColor(false, '灵巧')]">
+                            <th class="md:w-1/3">灵巧</th>
+                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '灵巧')]">
                                 {{ character.stats.dexterity }}
                             </td>
-                            <td :class="['w-1/3', getStatBgColor(true, '灵巧')]" v-if="character.subStats">
+                            <td :class="['md:w-1/3', getStatBgColor(true, '灵巧')]" v-if="character.subStats">
                                 {{ character.subStats.dexterity }}
                             </td>
                         </tr>
                         <tr>
-                            <th class="w-1/3">敏捷</th>
-                            <td :class="[hasSubClass ? 'w-1/3' : 'w-2/3', getStatBgColor(false, '敏捷')]">
+                            <th class="md:w-1/3">敏捷</th>
+                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '敏捷')]">
                                 {{ character.stats.speed }}
                             </td>
-                            <td :class="['w-1/3', getStatBgColor(true, '敏捷')]" v-if="character.subStats">
+                            <td :class="['md:w-1/3', getStatBgColor(true, '敏捷')]" v-if="character.subStats">
                                 {{ character.subStats.speed }}
                             </td>
                         </tr>
                         <tr>
-                            <th class="w-1/3">运</th>
-                            <td :class="[hasSubClass ? 'w-1/3' : 'w-2/3', getStatBgColor(false, '运')]">
+                            <th class="md:w-1/3">运</th>
+                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '运')]">
                                 {{ character.stats.luck }}
                             </td>
-                            <td :class="['w-1/3', getStatBgColor(true, '运')]" v-if="character.subStats">
+                            <td :class="['md:w-1/3', getStatBgColor(true, '运')]" v-if="character.subStats">
                                 {{ character.subStats.luck }}
                             </td>
                         </tr>
@@ -205,7 +208,7 @@
                 </table>
             </div>
         </div>
-        <div class="flex justify-center mt-4 gap-4" v-if="onClose">
+        <div class="flex flex-wrap justify-center mt-4 gap-4" v-if="onClose">
             <NButton size="small" type="primary" @click="gotoDetail">查看详情页</NButton>
             <NButton size="small" type="warning" @click="() => startCalcCharacter(false)" v-if="startCalcStat">
                 计算属性({{ character.data.class[0] }})
