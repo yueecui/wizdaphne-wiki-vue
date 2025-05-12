@@ -18,7 +18,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
                 const levels = data.levels;
                 equipmentSkills.value = data.skill;
 
-                equipments.value = base.map((item) => new Equipment(item, levels[item.n] ?? []));
+                equipments.value = base.map((item) => new Equipment(item, levels[item.ba ?? item.n] ?? []));
                 isInit.value = true;
             });
         } else {

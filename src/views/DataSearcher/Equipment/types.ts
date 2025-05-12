@@ -15,6 +15,7 @@ export interface IEquipmentJson {
 export interface IEquipmentBase {
     n: string;
     njp: string;
+    ba?: string;
     cate: string;
     sub: string;
     t: number;
