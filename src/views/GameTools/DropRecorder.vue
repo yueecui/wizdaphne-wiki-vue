@@ -47,7 +47,17 @@
                             @click="() => clickItem(item)"
                         >
                             <td>{{ getDropCategoryText(item.category) }}</td>
-                            <td class="text-left">{{ item.title }}</td>
+                            <td class="text-left">
+                                <div class="flex justify-between">
+                                    <div>
+                                        {{ item.title }}
+                                    </div>
+                                    <div class="hidden md:block!">
+                                        <NButton size="tiny" @click.stop="() => saveNewRecord(item)">快速记录</NButton>
+                                    </div>
+                                </div>
+                            </td>
+
                             <td>
                                 <NTooltip trigger="hover" v-if="item.hasMaxInterval()">
                                     <template #trigger>
@@ -77,7 +87,16 @@
                             @click="() => clickItem(item)"
                         >
                             <td>固定周期</td>
-                            <td class="text-left">{{ item.title }}</td>
+                            <td class="text-left">
+                                <div class="flex justify-between">
+                                    <div>
+                                        {{ item.title }}
+                                    </div>
+                                    <div class="hidden md:block!">
+                                        <NButton size="tiny" @click.stop="() => saveNewRecord(item)">快速记录</NButton>
+                                    </div>
+                                </div>
+                            </td>
                             <td>{{ item.getRefreshTimeText() }}</td>
                             <td>{{ getRemainTimeText(item) }}</td>
                         </tr>
@@ -115,7 +134,16 @@
                             @click="() => clickItem(item)"
                         >
                             <td>{{ getDropCategoryText(item.category) }}</td>
-                            <td class="text-left">{{ item.title }}</td>
+                            <td class="text-left">
+                                <div class="flex justify-between">
+                                    <div>
+                                        {{ item.title }}
+                                    </div>
+                                    <div class="hidden md:block!">
+                                        <NButton size="tiny" @click.stop="() => saveNewRecord(item)">快速记录</NButton>
+                                    </div>
+                                </div>
+                            </td>
                             <td>
                                 <NTooltip trigger="hover" v-if="item.hasMaxInterval()">
                                     <template #trigger>
@@ -145,7 +173,16 @@
                             @click="() => clickItem(item)"
                         >
                             <td>固定周期</td>
-                            <td class="text-left">{{ item.title }}</td>
+                            <td class="text-left">
+                                <div class="flex justify-between">
+                                    <div>
+                                        {{ item.title }}
+                                    </div>
+                                    <div class="hidden md:block!">
+                                        <NButton size="tiny" @click.stop="() => saveNewRecord(item)">快速记录</NButton>
+                                    </div>
+                                </div>
+                            </td>
                             <td>{{ item.getRefreshTimeText() }}</td>
                             <td>{{ getRemainTimeText(item) }}</td>
                         </tr>
@@ -187,7 +224,16 @@
                         :class="getNearClass(item)"
                         @click="() => clickItem(item)"
                     >
-                        <td class="text-left">{{ item.data.title }}</td>
+                        <td class="text-left">
+                            <div class="flex justify-between">
+                                <div>
+                                    {{ item.data.title }}
+                                </div>
+                                <div class="hidden md:block!">
+                                    <NButton size="tiny" @click.stop="() => saveNewRecord(item)">快速记录</NButton>
+                                </div>
+                            </div>
+                        </td>
                         <td>{{ item.getRefreshTimeText() }}</td>
                         <td>{{ getRemainTimeText(item) }}</td>
                     </tr>
@@ -213,8 +259,15 @@
                         @click="() => clickItem(item)"
                     >
                         <td class="text-left">
-                            <template v-if="item.isHidden">【隐藏】</template>
-                            {{ item.data.title }}
+                            <div class="flex justify-between">
+                                <div>
+                                    <template v-if="item.isHidden">【隐藏】</template>
+                                    {{ item.data.title }}
+                                </div>
+                                <div class="hidden md:block!">
+                                    <NButton size="tiny" @click.stop="() => saveNewRecord(item)">快速记录</NButton>
+                                </div>
+                            </div>
                         </td>
                         <td>
                             <NTooltip trigger="hover" v-if="item.hasMaxInterval()">
@@ -359,5 +412,10 @@ const refreshText = () => {
             只有一个时间的也不表示到时肯定刷新，只是目前数据不足，实际应该也是一定时间范围内随机刷新
         </div>
     );
+};
+
+//
+const saveNewRecord = (item: AbstractRecordConfig) => {
+    item.addNewRecordTime();
 };
 </script>

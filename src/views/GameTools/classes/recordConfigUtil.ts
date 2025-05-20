@@ -23,8 +23,8 @@ export const updateLastRecordTime = (id: string, timestamp?: number) => {
     }
 };
 
-export const addNewRecordTime = (id: string, timestamp?: number) => {
-    timestamp = timestamp ?? useUtilStore().currentTime;
+export const addNewRecordTime = (id: string) => {
+    const timestamp = useUtilStore().currentTime;
     const { dropRecords } = toRefs(useDropRecordStore());
     const recordData = dropRecords.value.find((record) => record.id === id);
     if (recordData) {

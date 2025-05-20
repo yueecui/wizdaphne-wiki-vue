@@ -23,7 +23,7 @@ export interface AbstractRecordConfig {
     getLastCheckText: () => string;
     updateLastCheckTime: (timestamp?: number) => void;
     updateLastRecordTime: (timestamp?: number) => void;
-    addNewRecordTime: (timestamp?: number) => void;
+    addNewRecordTime: () => void;
     clearRecord: () => void;
     removeRecord: (index: number) => void;
     toggleHidden: () => void;

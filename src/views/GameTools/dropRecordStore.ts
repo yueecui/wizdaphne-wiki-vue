@@ -28,7 +28,7 @@ export const useDropRecordStore = defineStore('drop-record', () => {
             description: '每周可以登录官网商店领取50石，每周日23点刷新',
             refreshType: '每周日',
             refreshText: '每周日晚23点',
-            link: 'https://store.wizardry.info/ja-JP',
+            link: 'https://store.wizardry.info/zh-CN',
             linkText: '点击打开官网商店',
         }),
         new FixedRefreshConfig({

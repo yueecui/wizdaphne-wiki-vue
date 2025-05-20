@@ -216,7 +216,7 @@ const updateRecord = () => {
     isShowRecord.value = false;
 };
 const saveNewRecord = () => {
-    item.value?.addNewRecordTime(timestamp.value);
+    item.value?.addNewRecordTime();
     isShowRecord.value = false;
 };
 
