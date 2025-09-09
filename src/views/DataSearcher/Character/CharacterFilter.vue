@@ -121,7 +121,6 @@ import ElementIcon from '../../../components/ElementIcon.vue';
 
 import { computed } from 'vue';
 import {
-    COMMON_CLASS,
     DISCIPLINE_TAGS_LIST,
     ELEMENT_TYPE,
     FATE_TYPE,
@@ -129,6 +128,7 @@ import {
     PERSONALITY_TYPE,
     RACE_TYPE,
     RARITY_TYPE,
+    allStandardClass,
 } from '../data/enum';
 import { ICharacterFilter } from './types';
 
@@ -217,7 +217,7 @@ const fateOptions = [
 // class
 
 const classOptions = computed<SelectOption[]>(() => [
-    ...Object.values(COMMON_CLASS).map((r) => ({
+    ...Object.values(allStandardClass).map((r) => ({
         label: r,
         value: r,
         disabled: filter.value.class.length === 2 && filter.value.class.indexOf(r) === -1,
@@ -241,7 +241,7 @@ const onlyPrimaryClassOptions = [
         label: '全部',
         value: '',
     },
-    ...Object.values(COMMON_CLASS).map((r) => ({
+    ...Object.values(allStandardClass).map((r) => ({
         label: r,
         value: r,
     })),

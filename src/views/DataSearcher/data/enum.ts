@@ -1,3 +1,5 @@
+import { SearcherExposeData } from './SearcherExposeData';
+
 export enum ELEMENT_TYPE {
     '火' = '火',
     '水' = '水',
@@ -42,7 +44,7 @@ export enum FATE_TYPE {
     '待补充' = '待补充',
 }
 
-export const COMMON_CLASS = ['战士', '盗贼', '僧侣', '法师', '骑士', '忍者'];
+export const allStandardClass = SearcherExposeData.getInstance().getAllClass();
 
 export const DISCIPLINE_TAGS_LIST = [
     'HP',

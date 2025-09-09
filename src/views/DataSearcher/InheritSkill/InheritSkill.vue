@@ -44,7 +44,7 @@ import CharacterCard from '../Character/CharacterCard.vue';
 import { onMounted, ref, shallowRef } from 'vue';
 import { Character } from '../Character/Character';
 import { SearcherExposeData } from '../data/SearcherExposeData';
-import { COMMON_CLASS } from '../data/enum';
+import { allStandardClass } from '../data/enum';
 
 const characterList = shallowRef<Character[]>([]);
 
@@ -57,10 +57,10 @@ onMounted(() => {
             return b.rarityNumber - a.rarityNumber;
         }
         // 按职业顺位排
-        let aClassIndex = COMMON_CLASS.indexOf(a.data.class[0]);
-        let bClassIndex = COMMON_CLASS.indexOf(b.data.class[0]);
-        aClassIndex = aClassIndex === -1 ? COMMON_CLASS.length : aClassIndex;
-        bClassIndex = bClassIndex === -1 ? COMMON_CLASS.length : bClassIndex;
+        let aClassIndex = allStandardClass.indexOf(a.data.class[0]);
+        let bClassIndex = allStandardClass.indexOf(b.data.class[0]);
+        aClassIndex = aClassIndex === -1 ? allStandardClass.length : aClassIndex;
+        bClassIndex = bClassIndex === -1 ? allStandardClass.length : bClassIndex;
         if (aClassIndex !== bClassIndex) {
             return aClassIndex - bClassIndex;
         }

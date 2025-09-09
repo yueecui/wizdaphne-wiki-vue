@@ -1,4 +1,4 @@
-import { COMMON_CLASS } from '../data/enum';
+import { allStandardClass } from '../data/enum';
 import { SearcherExposeData } from '../data/SearcherExposeData';
 import type { ICharacter, ICharacterStats } from '../data/SearcherExposeData.types';
 import type { ICharacterFilter } from './types';
@@ -73,7 +73,7 @@ export class Character {
             if (filter.class[0] === '特殊') {
                 let found = false;
                 for (let i = 0; i < this.data.class.length; i++) {
-                    if (!COMMON_CLASS.includes(this.data.class[i])) {
+                    if (!allStandardClass.includes(this.data.class[i])) {
                         found = true;
                         break;
                     }
@@ -90,7 +90,7 @@ export class Character {
                 if (filter.class[i] === '特殊') {
                     let found = false;
                     for (let j = 0; j < this.data.class.length; j++) {
-                        if (!COMMON_CLASS.includes(this.data.class[j])) {
+                        if (!allStandardClass.includes(this.data.class[j])) {
                             found = true;
                             break;
                         }
