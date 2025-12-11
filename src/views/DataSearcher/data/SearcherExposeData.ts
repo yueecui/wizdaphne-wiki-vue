@@ -86,4 +86,8 @@ export class SearcherExposeData {
         }
         return classList;
     }
+
+    public getStandardClass() {
+        return this.data.standardClass;
+    }
 }

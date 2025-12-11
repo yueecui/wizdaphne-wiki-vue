@@ -44,7 +44,7 @@ export enum FATE_TYPE {
     '待补充' = '待补充',
 }
 
-export const allStandardClass = SearcherExposeData.getInstance().getAllClass();
+export const allStandardClass = SearcherExposeData.getInstance().getStandardClass();
 
 export const DISCIPLINE_TAGS_LIST = [
     'HP',
