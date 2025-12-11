@@ -98,6 +98,15 @@ export class FixedRefreshConfig implements AbstractRecordConfig {
             }
 
             return nextSaturday.getTime();
+        } else if (this.data.refreshType === '每周六') {
+            let nextSaturday = getNextTargetDay23(new Date(recordTime), 6);
+            // 如果不是UTC+8时区，则根据时区偏移量调整修正为UTC+8时区的时间
+            const offset = nextSaturday.getTimezoneOffset();
+            if (offset !== -480) {
+                const offset_minutes = -480 - offset;
+                nextSaturday = new Date(nextSaturday.getTime() + offset_minutes * 60 * 1000);
+            }
+            return nextSaturday.getTime();
         } else if (this.data.refreshType === '每周日') {
             let nextSunday = getNextTargetDay23(new Date(recordTime), 0);
             // 如果不是UTC+8时区，则根据时区偏移量调整修正为UTC+8时区的时间

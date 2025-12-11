@@ -65,8 +65,10 @@ export interface IFixedRefreshConfig {
     id: string;
     title: string;
     description: string;
-    refreshType: '双周六' | '每周日';
+    refreshType: '双周六' | '每周六' | '每周日';
     refreshText: string;
-    link?: string;
-    linkText?: string;
+    links?: {
+        url: string;
+        text: string;
+    }[];
 }

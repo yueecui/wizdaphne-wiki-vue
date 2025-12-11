@@ -24,12 +24,20 @@ export const useDropRecordStore = defineStore('drop-record', () => {
     const fixedConfigs: FixedRefreshConfig[] = [
         new FixedRefreshConfig({
             id: 'F1',
-            title: '每周官网商店领50石',
-            description: '每周可以登录官网商店领取50石，每周日23点刷新',
+            title: '每周官网商店领100石',
+            description: '每周可以登录2个官网商店各领取50石，每周日23点刷新',
             refreshType: '每周日',
             refreshText: '每周日晚23点',
-            link: 'https://store.wizardry.info/zh-CN',
-            linkText: '点击打开官网商店',
+            links: [
+                {
+                    url: 'https://store.wizardry.info/zh-CN',
+                    text: '点击打开官网商店1',
+                },
+                {
+                    url: 'https://webstore.wizardry.info/product',
+                    text: '点击打开官网商店2',
+                },
+            ],
         }),
         new FixedRefreshConfig({
             id: 'F2',

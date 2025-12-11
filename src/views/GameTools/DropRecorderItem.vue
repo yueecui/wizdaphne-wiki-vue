@@ -139,11 +139,13 @@
                                 <td colspan="2">
                                     <div class="p-2 flex flex-col gap-2">
                                         <div v-html="convertDescription(item.description ?? '')"></div>
-                                        <div v-if="item instanceof FixedRefreshConfig && item.data.link">
-                                            <a :href="item.data.link" target="_blank">
-                                                {{ item.data.linkText ?? item.data.link }}
-                                            </a>
-                                        </div>
+                                        <template v-if="item instanceof FixedRefreshConfig && item.data.links">
+                                            <div v-for="(link, index) in item.data.links" :key="index">
+                                                <a :href="link.url" target="_blank">
+                                                    {{ link.text }}
+                                                </a>
+                                            </div>
+                                        </template>
                                     </div>
                                 </td>
                             </tr>
