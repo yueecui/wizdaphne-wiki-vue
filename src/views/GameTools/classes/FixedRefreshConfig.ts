@@ -116,6 +116,20 @@ export class FixedRefreshConfig implements AbstractRecordConfig {
                 nextSunday = new Date(nextSunday.getTime() + offset_minutes * 60 * 1000);
             }
             return nextSunday.getTime();
+        } else if (this.data.refreshType === '双周日') {
+            let nextSunday = getNextTargetDay23(new Date(recordTime), 0);
+            const days = (nextSunday.getTime() - TEMPLE_REFRESH_TIME) / (1000 * 60 * 60 * 24);
+            if (days % 14 !== 0) {
+                // 如果不是双周日，则加上7天
+                nextSunday.setDate(nextSunday.getDate() + 7);
+            }
+            // 如果不是UTC+8时区，则根据时区偏移量调整修正为UTC+8时区的时间
+            const offset = nextSunday.getTimezoneOffset();
+            if (offset !== -480) {
+                const offset_minutes = -480 - offset;
+                nextSunday = new Date(nextSunday.getTime() + offset_minutes * 60 * 1000);
+            }
+            return nextSunday.getTime();
         }
         return 0;
     }

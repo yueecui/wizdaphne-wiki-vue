@@ -21,32 +21,8 @@ export const useDropRecordStore = defineStore('drop-record', () => {
     // 配置数据
     const dropConfigs = ref<DropConfig[]>([]);
     const dropCategorys = ref<IDropCategory[]>([]);
-    const fixedConfigs: FixedRefreshConfig[] = [
-        new FixedRefreshConfig({
-            id: 'F1',
-            title: '每周官网商店领100石',
-            description: '每周可以登录2个官网商店各领取50石，每周日23点刷新',
-            refreshType: '每周日',
-            refreshText: '每周日晚23点',
-            links: [
-                {
-                    url: 'https://store.wizardry.info/zh-CN',
-                    text: '点击打开官网商店1',
-                },
-                {
-                    url: 'https://webstore.wizardry.info/product',
-                    text: '点击打开官网商店2',
-                },
-            ],
-        }),
-        new FixedRefreshConfig({
-            id: 'F2',
-            title: '炉壶的灵庙刷新',
-            description: '每两周的周六晚23点，炉壶的灵庙会更新',
-            refreshType: '双周六',
-            refreshText: '双周六晚23点',
-        }),
-    ];
+    const fixedConfigs = ref<FixedRefreshConfig[]>([]);
+
     // 初始化
     const isInit = ref(false);
     fetch(IS_DEV ? '/dropconfig.json' : '/api.php?action=lua&module=Api/GetDropConfig&format=json&utf8=1').then(
@@ -55,6 +31,14 @@ export const useDropRecordStore = defineStore('drop-record', () => {
                 res.json().then((data: IDropConfigFile) => {
                     dropConfigs.value = data.drops.map((item) => new DropConfig(item));
                     dropCategorys.value = data.categorys;
+
+                    // 从API获取固定配置，如果没有则使用空数组
+                    if (data.fixed) {
+                        fixedConfigs.value = data.fixed.map((item) => new FixedRefreshConfig(item));
+                    } else {
+                        fixedConfigs.value = [];
+                    }
+
                     isInit.value = true;
                 });
             } else {

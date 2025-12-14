@@ -42,6 +42,7 @@ export interface IDropRecord {
 export interface IDropConfigFile {
     drops: IDropConfig[];
     categorys: IDropCategory[];
+    fixed?: IFixedRefreshConfig[];
 }
 
 export interface IDropConfig {
@@ -65,7 +66,7 @@ export interface IFixedRefreshConfig {
     id: string;
     title: string;
     description: string;
-    refreshType: '双周六' | '每周六' | '每周日';
+    refreshType: '双周六' | '每周六' | '每周日' | '双周日';
     refreshText: string;
     links?: {
         url: string;
