@@ -33,7 +33,7 @@ import StatCalculator from './StatCalculator/StatCalculator.vue';
 
 import { onMounted, provide, ref, watch } from 'vue';
 import { SimCharacterConfig } from './StatCalculator/types';
-import { SearcherExposeData } from './data/SearcherExposeData';
+import { useSearcherDataStore } from './data/searcherDataStore';
 
 defineOptions({
     name: '数据搜索器',
@@ -84,8 +84,8 @@ const tabs = [
 const calcStatCharacterConfig = ref<SimCharacterConfig | null>(null);
 
 const startCalcStat = (characterName: string, isSub: boolean) => {
-    const exposeData = SearcherExposeData.getInstance();
-    const data = exposeData.getCharacterData(characterName);
+    const store = useSearcherDataStore();
+    const data = store.getCharacterData(characterName);
     if (data) {
         calcStatCharacterConfig.value = {
             race: data.race,

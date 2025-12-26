@@ -34,8 +34,8 @@ import CharacterCard from './CharacterCard.vue';
 import CharacterFilter from './CharacterFilter.vue';
 import CharacterItem from './CharacterItem.vue';
 
-import { computed, onMounted, ref, shallowRef } from 'vue';
-import { SearcherExposeData } from '../data/SearcherExposeData';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useSearcherDataStore } from '../data/searcherDataStore';
 import { Character } from './Character';
 import { ICharacterFilter } from './types';
 
@@ -52,14 +52,13 @@ const filter = ref<ICharacterFilter>({
     discipline_tags: [],
 });
 
-const characterList = shallowRef<Character[]>([]);
+const store = useSearcherDataStore();
 
-const filteredCharacterList = computed(() => characterList.value.filter((char) => char.isMatch(filter.value)));
-
-onMounted(() => {
-    characterList.value = SearcherExposeData.getInstance().getCharacterList();
+// 使用computed属性获取角色列表，确保数据变化时自动更新
+const characterList = computed(() => {
+    const chars = store.getCharacterList;
     // 按发布时间倒序排列
-    characterList.value.sort((a, b) => {
+    return chars.sort((a, b) => {
         // 如果发布时间不同，晚发布的靠前
         if (a.releaseDate.getTime() !== b.releaseDate.getTime()) {
             return b.releaseDate.getTime() - a.releaseDate.getTime();
@@ -72,6 +71,25 @@ onMounted(() => {
         // 否则按中文名排序
         return a.data.name.localeCompare(b.data.name);
     });
+});
+
+const filteredCharacterList = computed(() => characterList.value.filter((char) => char.isMatch(filter.value)));
+
+onMounted(async () => {
+    // 监听数据加载完成事件，初始化每个角色的数据
+    watch(
+        () => store.isInit,
+        async (newVal) => {
+            if (newVal) {
+                // 数据加载完成后，初始化每个角色的数据
+                for (const char of characterList.value) {
+                    await char.initialize();
+                }
+            }
+        },
+        { immediate: true },
+    );
+
     // if (IS_DEV) {
     //     showDetailCharacter.value = characterList.value[0];
     //     isShowDetail.value = true;

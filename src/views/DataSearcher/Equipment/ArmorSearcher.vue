@@ -126,27 +126,27 @@ const filteredList = computed(() => {
             return a.getCategoryIndex() - b.getCategoryIndex();
         }
         if (a.data.t !== b.data.t) {
-            return a.data.t - b.data.t;
+            return b.data.t - a.data.t;
         }
         if (a.data.cate === '武器') {
             if (['单手杖', '双手杖'].includes(a.data.sub)) {
                 if (a.data.mag !== b.data.mag) {
-                    return a.data.mag - b.data.mag;
+                    return b.data.mag - a.data.mag;
                 }
                 if (a.data.div !== b.data.div) {
-                    return a.data.div - b.data.div;
+                    return b.data.div - a.data.div;
                 }
             } else {
                 if (a.data.atk !== b.data.atk) {
-                    return a.data.atk - b.data.atk;
+                    return b.data.atk - a.data.atk;
                 }
             }
         } else {
             if (a.data.def !== b.data.def) {
-                return a.data.def - b.data.def;
+                return b.data.def - a.data.def;
             }
             if (a.data.mdef !== b.data.mdef) {
-                return a.data.mdef - b.data.mdef;
+                return b.data.mdef - a.data.mdef;
             }
         }
         return 0;

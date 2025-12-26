@@ -36,11 +36,10 @@
 import { NButton, NPagination } from 'naive-ui';
 import SkillFilter from './SkillFilter.vue';
 
-import { computed, onMounted, ref, shallowRef, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { Character } from '../Character/Character';
-import { SearcherExposeData } from '../data/SearcherExposeData';
+import { useSearcherDataStore } from '../data/searcherDataStore';
 import { convertDescription } from '../util/convertDescription';
-import { Skill } from './Skill';
 import { ISkillFilter } from './types';
 
 const filter = ref<ISkillFilter>({
@@ -57,10 +56,16 @@ watch(
     { deep: true },
 );
 
-const skillList = shallowRef<Skill[]>([]);
+const store = useSearcherDataStore();
 
 const pageSize = ref(20);
 const pageIndex = ref(1);
+
+// 使用computed属性获取技能列表，确保数据变化时自动更新
+const skillList = computed(() => {
+    return store.getSkillList;
+});
+
 const pageCount = computed(() => Math.ceil(filteredSkillList.value.length / pageSize.value));
 
 const filteredSkillList = computed(() => {
@@ -70,9 +75,9 @@ const currentPageSkillList = computed(() => {
     return filteredSkillList.value.slice((pageIndex.value - 1) * pageSize.value, pageIndex.value * pageSize.value);
 });
 
-onMounted(() => {
+onMounted(async () => {
+    // 初始化数据
     onFilterReset();
-    skillList.value = SearcherExposeData.getInstance().getSkillList();
 });
 
 const showDetailCharacter = ref<Character | null>(null);

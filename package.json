@@ -11,12 +11,13 @@
         "build": "run-p type-check build-only",
         "preview": "vite preview --port 4173",
         "build-only": "vite build",
-        "type-check": "vue-tsc --noEmit",
+        "typecheck": "vue-tsc --noEmit",
         "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
         "format": "prettier --write \"src/**/*.ts\" \"src/**/*.vue\" \"src/**/*.css\"",
         "syncyarn": "npx syncyarnlock --save --keepPrefix",
         "打包上传程序": "tsc -p tsconfig.upload.json",
-        "上传到COS": "node ./local_scripts/dist/uploadToCos.js"
+        "上传到COS": "node ./local_scripts/dist/uploadToCos.js",
+        "scrape:data": "tsx ./local_scripts/src/scrapeApiData.ts"
     },
     "dependencies": {
         "@tailwindcss/vite": "^4.0.17",
@@ -42,6 +43,7 @@
         "@vue/eslint-config-prettier": "^10.2.0",
         "@vue/eslint-config-typescript": "^14.5.0",
         "@vue/tsconfig": "^0.7.0",
+        "axios": "^1.13.2",
         "cos-nodejs-sdk-v5": "^2.14.7",
         "eslint": "^9.23.0",
         "eslint-plugin-vue": "^10.0.0",
@@ -51,6 +53,7 @@
         "nodemw": "^0.24.0",
         "npm-run-all": "^4.1.5",
         "prettier": "^3.5.3",
+        "tsx": "^4.21.0",
         "typescript": "~5.8.2",
         "vite": "^6.2.4",
         "vite-plugin-vue-devtools": "^7.7.2",

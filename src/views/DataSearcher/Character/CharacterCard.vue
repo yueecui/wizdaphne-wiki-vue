@@ -66,7 +66,7 @@
                         <tr>
                             <th class="md:w-1/3">力</th>
                             <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '力')]">
-                                {{ character.stats.strength }}
+                                {{ character.stats?.strength || 0 }}
                             </td>
                             <td :class="['md:w-1/3', getStatBgColor(true, '力')]" v-if="character.subStats">
                                 {{ character.subStats.strength }}
@@ -75,7 +75,7 @@
                         <tr>
                             <th class="md:w-1/3">智慧</th>
                             <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '智慧')]">
-                                {{ character.stats.intelligence }}
+                                {{ character.stats?.intelligence || 0 }}
                             </td>
                             <td :class="['md:w-1/3', getStatBgColor(true, '智慧')]" v-if="character.subStats">
                                 {{ character.subStats.intelligence }}
@@ -84,7 +84,7 @@
                         <tr>
                             <th class="md:w-1/3">信仰心</th>
                             <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '信仰心')]">
-                                {{ character.stats.piety }}
+                                {{ character.stats?.piety || 0 }}
                             </td>
                             <td :class="['md:w-1/3', getStatBgColor(true, '信仰心')]" v-if="character.subStats">
                                 {{ character.subStats.piety }}
@@ -93,7 +93,7 @@
                         <tr>
                             <th class="md:w-1/3">生命力</th>
                             <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '生命力')]">
-                                {{ character.stats.vitality }}
+                                {{ character.stats?.vitality || 0 }}
                             </td>
                             <td :class="['md:w-1/3', getStatBgColor(true, '生命力')]" v-if="character.subStats">
                                 {{ character.subStats.vitality }}
@@ -102,7 +102,7 @@
                         <tr>
                             <th class="md:w-1/3">灵巧</th>
                             <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '灵巧')]">
-                                {{ character.stats.dexterity }}
+                                {{ character.stats?.dexterity || 0 }}
                             </td>
                             <td :class="['md:w-1/3', getStatBgColor(true, '灵巧')]" v-if="character.subStats">
                                 {{ character.subStats.dexterity }}
@@ -111,7 +111,7 @@
                         <tr>
                             <th class="md:w-1/3">敏捷</th>
                             <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '敏捷')]">
-                                {{ character.stats.speed }}
+                                {{ character.stats?.speed || 0 }}
                             </td>
                             <td :class="['md:w-1/3', getStatBgColor(true, '敏捷')]" v-if="character.subStats">
                                 {{ character.subStats.speed }}
@@ -120,7 +120,7 @@
                         <tr>
                             <th class="md:w-1/3">运</th>
                             <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '运')]">
-                                {{ character.stats.luck }}
+                                {{ character.stats?.luck || 0 }}
                             </td>
                             <td :class="['md:w-1/3', getStatBgColor(true, '运')]" v-if="character.subStats">
                                 {{ character.subStats.luck }}
@@ -234,7 +234,7 @@ import CharacterItem from './CharacterItem.vue';
 
 import { NButton } from 'naive-ui';
 import { computed, inject, ref } from 'vue';
-import { SearcherExposeData } from '../data/SearcherExposeData';
+import { useSearcherDataStore } from '../data/searcherDataStore';
 import { convertDescription } from '../util/convertDescription';
 import { Character } from './Character';
 
@@ -244,7 +244,8 @@ const props = defineProps<{
 }>();
 
 const getSkillDescription = (skillName: string) => {
-    const data = SearcherExposeData.getInstance().getSkillData(skillName);
+    const store = useSearcherDataStore();
+    const data = store.getSkillData(skillName);
     if (data) {
         return convertDescription(data.description);
     } else {

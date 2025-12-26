@@ -1,4 +1,4 @@
-import type { ISkill } from '../data/SearcherExposeData.types';
+import type { ISkill } from '../data/SearcherData.types';
 import type { ISkillFilter } from './types';
 
 export class Skill {

@@ -128,14 +128,17 @@ import {
     PERSONALITY_TYPE,
     RACE_TYPE,
     RARITY_TYPE,
-    allStandardClass,
 } from '../data/enum';
+import { useSearcherDataStore } from '../data/searcherDataStore';
 import { ICharacterFilter } from './types';
 
 const filter = defineModel<ICharacterFilter>('filter', {
     type: Object,
     required: true,
 });
+
+// 使用store中的职业数据
+const store = useSearcherDataStore();
 
 // 属性
 const elementList = Object.values(ELEMENT_TYPE);
@@ -217,7 +220,7 @@ const fateOptions = [
 // class
 
 const classOptions = computed<SelectOption[]>(() => [
-    ...Object.values(allStandardClass).map((r) => ({
+    ...store.allStandardClass.map((r) => ({
         label: r,
         value: r,
         disabled: filter.value.class.length === 2 && filter.value.class.indexOf(r) === -1,
@@ -236,12 +239,12 @@ const updateClass = (value: ICharacterFilter['class']) => {
     filter.value.class = value;
 };
 
-const onlyPrimaryClassOptions = [
+const onlyPrimaryClassOptions = computed(() => [
     {
         label: '全部',
         value: '',
     },
-    ...Object.values(allStandardClass).map((r) => ({
+    ...store.allStandardClass.map((r) => ({
         label: r,
         value: r,
     })),
@@ -249,7 +252,7 @@ const onlyPrimaryClassOptions = [
         label: '特殊',
         value: '特殊',
     },
-];
+]);
 const updateOnlyPrimary = (value: boolean) => {
     filter.value.onlyPrimary = value;
     if (value) {

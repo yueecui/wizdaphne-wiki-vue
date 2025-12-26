@@ -1,27 +1,33 @@
-import { allStandardClass } from '../data/enum';
-import { SearcherExposeData } from '../data/SearcherExposeData';
-import type { ICharacter, ICharacterStats } from '../data/SearcherExposeData.types';
+import { useSearcherDataStore } from '../data/searcherDataStore';
+import type { ICharacter, ICharacterStats } from '../data/SearcherData.types';
 import type { ICharacterFilter } from './types';
 
 export class Character {
-    stats: ICharacterStats; // 主职业的1级属性
+    stats: ICharacterStats | null = null; // 主职业的1级属性
     subStats?: ICharacterStats; // 副职业的1级属性
 
     constructor(public data: ICharacter) {
-        this.stats = SearcherExposeData.getInstance().calculateStats({
+        // 构造函数只初始化数据，不进行异步操作
+    }
+
+    // 异步初始化方法，用于计算属性
+    async initialize() {
+        const store = useSearcherDataStore();
+
+        this.stats = store.calculateStats({
             race: this.data.race,
             gender: this.data.gender,
             element: this.data.element,
             class: this.data.class[0],
-        });
+        }) as ICharacterStats;
 
         if (this.data.class.length > 1) {
-            this.subStats = SearcherExposeData.getInstance().calculateStats({
+            this.subStats = store.calculateStats({
                 race: this.data.race,
                 gender: this.data.gender,
                 element: this.data.element,
                 class: this.data.class[1],
-            });
+            }) as ICharacterStats;
         }
     }
 
@@ -72,8 +78,9 @@ export class Character {
         if (filter.onlyPrimary) {
             if (filter.class[0] === '特殊') {
                 let found = false;
+                const store = useSearcherDataStore();
                 for (let i = 0; i < this.data.class.length; i++) {
-                    if (!allStandardClass.includes(this.data.class[i])) {
+                    if (!store.allStandardClass.includes(this.data.class[i])) {
                         found = true;
                         break;
                     }
@@ -89,8 +96,9 @@ export class Character {
             for (let i = 0; i < filter.class.length; i++) {
                 if (filter.class[i] === '特殊') {
                     let found = false;
+                    const store = useSearcherDataStore();
                     for (let j = 0; j < this.data.class.length; j++) {
-                        if (!allStandardClass.includes(this.data.class[j])) {
+                        if (!store.allStandardClass.includes(this.data.class[j])) {
                             found = true;
                             break;
                         }

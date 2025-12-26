@@ -41,26 +41,26 @@ import WikiImg from '@/components/huiji/WikiImg.vue';
 import { NModal } from 'naive-ui';
 import CharacterCard from '../Character/CharacterCard.vue';
 
-import { onMounted, ref, shallowRef } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { Character } from '../Character/Character';
-import { SearcherExposeData } from '../data/SearcherExposeData';
-import { allStandardClass } from '../data/enum';
+import { useSearcherDataStore } from '../data/searcherDataStore';
 
-const characterList = shallowRef<Character[]>([]);
+const store = useSearcherDataStore();
 
-onMounted(() => {
-    characterList.value = SearcherExposeData.getInstance().getCharacterList();
+// 使用computed属性响应store数据变化
+const characterList = computed(() => {
+    const chars = store.getCharacterList;
     // 按发布时间倒序排列
-    characterList.value.sort((a, b) => {
+    return [...chars].sort((a, b) => {
         // 如果稀有度不同，稀有度高的靠前
         if (a.rarityNumber !== b.rarityNumber) {
             return b.rarityNumber - a.rarityNumber;
         }
         // 按职业顺位排
-        let aClassIndex = allStandardClass.indexOf(a.data.class[0]);
-        let bClassIndex = allStandardClass.indexOf(b.data.class[0]);
-        aClassIndex = aClassIndex === -1 ? allStandardClass.length : aClassIndex;
-        bClassIndex = bClassIndex === -1 ? allStandardClass.length : bClassIndex;
+        let aClassIndex = store.allStandardClass.indexOf(a.data.class[0]);
+        let bClassIndex = store.allStandardClass.indexOf(b.data.class[0]);
+        aClassIndex = aClassIndex === -1 ? store.allStandardClass.length : aClassIndex;
+        bClassIndex = bClassIndex === -1 ? store.allStandardClass.length : bClassIndex;
         if (aClassIndex !== bClassIndex) {
             return aClassIndex - bClassIndex;
         }
@@ -73,6 +73,24 @@ onMounted(() => {
         return a.data.name.localeCompare(b.data.name);
     });
 });
+
+onMounted(async () => {
+    // 无需手动初始化，store会自动加载数据
+});
+
+// 监听store初始化完成，然后初始化所有角色
+watch(
+    () => store.isInit,
+    async (newVal) => {
+        if (newVal) {
+            // 初始化所有角色
+            for (const character of characterList.value) {
+                await character.initialize();
+            }
+        }
+    },
+    { immediate: true },
+);
 
 const showDetailCharacter = ref<Character | null>(null);
 const showDetail = (character: Character) => {

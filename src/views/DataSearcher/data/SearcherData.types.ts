@@ -8,7 +8,7 @@ export interface ISearcherExposeData {
         GENDER_STAT_CONFIG: Record<GENDER_TYPE, Partial<ICharacterStats>>;
         RACE_STAT_CONFIG: Record<RACE_TYPE, Partial<ICharacterStats>>;
     };
-    class: IClass[];
+    // class: IClass[];
     skill: ISkill[];
     standardClass: string[];
 }

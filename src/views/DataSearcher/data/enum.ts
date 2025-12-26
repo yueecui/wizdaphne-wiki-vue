@@ -1,5 +1,3 @@
-import { SearcherExposeData } from './SearcherExposeData';
-
 export enum ELEMENT_TYPE {
     '火' = '火',
     '水' = '水',
@@ -44,8 +42,6 @@ export enum FATE_TYPE {
     '待补充' = '待补充',
 }
 
-export const allStandardClass = SearcherExposeData.getInstance().getStandardClass();
-
 export const DISCIPLINE_TAGS_LIST = [
     'HP',
     'MP',
@@ -71,7 +67,7 @@ export const DISCIPLINE_TAGS_LIST = [
     '封魔耐性',
     '混乱耐性',
     '魅惑耐性',
-    '石化耐心',
+    '石化耐性',
     '即死耐性',
     '恐惧耐性',
     '暴击耐性',

@@ -93,7 +93,7 @@
                         <th colspan="8"></th>
                     </tr>
                     <tr
-                        v-for="(className, i) in exposeData.getAllClass()"
+                        v-for="(className, i) in store.getAllClass"
                         :key="i"
                         :class="
                             className === simCharacterConfig.class
@@ -408,18 +408,26 @@ import { NButton, NInputNumber, NSelect } from 'naive-ui';
 
 import { computed, onMounted, ref } from 'vue';
 import { ELEMENT_TYPE, GENDER_TYPE, RACE_TYPE } from '../data/enum';
-import { SearcherExposeData } from '../data/SearcherExposeData';
-import { ICharacterStats } from '../data/SearcherExposeData.types';
+import { ICharacterStats } from '../data/SearcherData.types';
+import { useSearcherDataStore } from '../data/searcherDataStore';
 import { SimCharacterConfig } from './types';
 
 const character = defineModel<SimCharacterConfig | null>('character', {
     default: null,
 });
 
-const exposeData = SearcherExposeData.getInstance();
+const store = useSearcherDataStore();
+
+// 初始化数据
+onMounted(async () => {
+    if (character.value) {
+        simCharacterConfig.value = character.value;
+        character.value = null;
+    }
+});
 
 const getStatSet = (kind: string, key: string, stat: string) => {
-    const data = exposeData.getStatSet(kind);
+    const data = store.getStatSet(kind);
     if (data) {
         if (data[key]) {
             return data[key][stat] ?? 0;
@@ -463,7 +471,18 @@ const updateTier = (tier: number) => {
 };
 
 const characterLevel1Stats = computed(() => {
-    const params = exposeData.calculateStats(simCharacterConfig.value);
+    const params = store.calculateStats(simCharacterConfig.value);
+    if (!params) {
+        return {
+            strength: 10,
+            intelligence: 10,
+            piety: 10,
+            vitality: 10,
+            dexterity: 10,
+            speed: 10,
+            luck: 10,
+        };
+    }
     for (const key in params) {
         params[key] = params[key] + simCharacterConfig.value.tier;
     }
@@ -574,13 +593,6 @@ const characterTotalStats = computed(() => {
         totalStats,
         totalGrowthRate,
     };
-});
-
-onMounted(() => {
-    if (character.value) {
-        simCharacterConfig.value = character.value;
-        character.value = null;
-    }
 });
 
 const copyToExcelHeader = () => {
