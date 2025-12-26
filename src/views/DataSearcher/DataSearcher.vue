@@ -17,6 +17,7 @@
             <StatCalculator v-if="activeKey == 'StatCalculator'" v-model:character="calcStatCharacterConfig" />
             <WeaponSearcher v-if="activeKey == 'Weapon'" />
             <ArmorSearcher v-if="activeKey == 'Armor'" />
+            <JunkSearcher v-if="activeKey == 'Junk'" />
         </div>
     </ThemeConfigProvider>
 </template>
@@ -28,16 +29,20 @@ import CharacterSearcher from './Character/CharacterSearcher.vue';
 import ArmorSearcher from './Equipment/ArmorSearcher.vue';
 import WeaponSearcher from './Equipment/WeaponSearcher.vue';
 import InheritSkill from './InheritSkill/InheritSkill.vue';
+import JunkSearcher from './Junk/JunkSearcher.vue';
 import SkillSearcher from './Skill/SkillSearcher.vue';
 import StatCalculator from './StatCalculator/StatCalculator.vue';
 
 import { onMounted, provide, ref, watch } from 'vue';
-import { SimCharacterConfig } from './StatCalculator/types';
 import { useSearcherDataStore } from './data/searcherDataStore';
+import { useJunkStore } from './Junk/junkStore';
+import { SimCharacterConfig } from './StatCalculator/types';
 
 defineOptions({
     name: '数据搜索器',
 });
+
+const junkStore = useJunkStore();
 
 onMounted(() => {
     // 隐藏#firstHeading
@@ -74,6 +79,10 @@ const tabs = [
     {
         key: 'Armor',
         label: '防具',
+    },
+    {
+        key: 'Junk',
+        label: '杂物',
     },
     {
         key: 'StatCalculator',

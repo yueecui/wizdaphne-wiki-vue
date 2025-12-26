@@ -111,7 +111,7 @@ watch(
 
 const { equipments } = toRefs(useEquipmentStore());
 
-const pageSize = ref(50);
+const pageSize = ref(20);
 const pageIndex = ref(1);
 const pageCount = computed(() => Math.ceil(filteredList.value.length / pageSize.value));
 

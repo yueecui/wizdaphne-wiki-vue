@@ -8,7 +8,7 @@
     "type": "module",
     "scripts": {
         "dev": "vite --host",
-        "build": "run-p type-check build-only",
+        "build": "run-p typecheck build-only",
         "preview": "vite preview --port 4173",
         "build-only": "vite build",
         "typecheck": "vue-tsc --noEmit",

@@ -33,3 +33,7 @@ coverage
 # 抓取生成的数据文件
 /public/junkrates.json
 /public/junkrates_full.json
+/public/junkdata.json
+/public/equipment.json
+/public/data.json
+/public/dropconfig.json

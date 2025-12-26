@@ -1,10 +1,13 @@
 import type { IEquipmentBase, IEquipmentFilter, IEquipmentStat, IEquipmentStatLevel } from './types';
 
 export class Equipment {
+    public sort: number;
     constructor(
         public data: IEquipmentBase,
         public levels: IEquipmentStatLevel[],
-    ) {}
+    ) {
+        this.sort = EQUIPMENT_CATEGORY_SOFT_INDEX_MAP[this.data.sub] ?? 9999;
+    }
 
     isMatch(filter: IEquipmentFilter): boolean {
         if (filter.searchText) {
