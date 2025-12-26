@@ -29,3 +29,7 @@ coverage
 
 *secret*
 .env*
+
+# 抓取生成的数据文件
+/public/junkrates.json
+/public/junkrates_full.json

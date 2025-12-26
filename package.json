@@ -17,6 +17,7 @@
         "syncyarn": "npx syncyarnlock --save --keepPrefix",
         "打包上传程序": "tsc -p tsconfig.upload.json",
         "上传到COS": "node ./local_scripts/dist/uploadToCos.js",
+        "scrape:junk": "tsx ./local_scripts/src/scrapeJunkRates.ts",
         "scrape:data": "tsx ./local_scripts/src/scrapeApiData.ts"
     },
     "dependencies": {
@@ -44,6 +45,7 @@
         "@vue/eslint-config-typescript": "^14.5.0",
         "@vue/tsconfig": "^0.7.0",
         "axios": "^1.13.2",
+        "cheerio": "^1.1.2",
         "cos-nodejs-sdk-v5": "^2.14.7",
         "eslint": "^9.23.0",
         "eslint-plugin-vue": "^10.0.0",
@@ -59,5 +61,5 @@
         "vite-plugin-vue-devtools": "^7.7.2",
         "vue-tsc": "^2.2.8"
     },
-    "packageManager": "yarn@4.8.1"
+    "packageManager": "yarn@4.12.0"
 }
