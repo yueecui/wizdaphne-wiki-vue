@@ -1,8 +1,23 @@
 <template>
     <div class="p-4 bg-[#312721]! border! border-[#463d38]! rounded flex flex-col gap-4">
         <div>
-            <div class="text-2xl text-light font-bold mt-4">{{ junkItem.name }}</div>
+            <div class="text-2xl text-light font-bold mt-4">
+                {{ junkItem.name }}
+                <span v-if="junkItem.notObt" class="text-sm ml-1 text-red-400">无法获取</span>
+            </div>
             <div class="text-sm text-gray-400" v-if="junkItem.data.name != junkItem.name">{{ junkItem.data.name }}</div>
+            <div class="text-sm text-gray-400" v-if="isSystemAdmin">Unique Code: {{ junkItem.uniqueCode }}</div>
+            <div class="mt-2 p-3 bg-gray-800/50 rounded" v-if="junkItem.description">
+                <div class="text-sm text-gray-300">{{ junkItem.description }}</div>
+            </div>
+            <div class="mt-4 flex gap-2">
+                <NButton v-if="isSystemAdmin" size="small" type="error" class="mt-2" @click="openRawDataTable">
+                    查看原始数据
+                </NButton>
+                <NButton v-if="isSystemAdmin" size="small" type="error" class="mt-2" @click="openEditModal">
+                    编辑补充数据
+                </NButton>
+            </div>
         </div>
 
         <!-- 标签页 -->
@@ -422,6 +437,32 @@
             </div>
         </template>
     </NModal>
+
+    <!-- 原始数据表格模态框 -->
+    <NModal
+        v-model:show="isShowRawData"
+        size="huge"
+        class="huiji-css-hook bg-transparent!"
+        :mask-closable="true"
+        :closable="true"
+    >
+        <div class="w-[95%] h-[90vh] m-auto huiji-css-hook bg-transparent!">
+            <RawDataTable :junkItem="junkItem" :onClose="closeRawDataTable" />
+        </div>
+    </NModal>
+
+    <!-- 补充数据编辑模态框 -->
+    <NModal
+        v-model:show="isShowEditModal"
+        size="large"
+        class="huiji-css-hook bg-transparent!"
+        :mask-closable="true"
+        :closable="true"
+    >
+        <div class="w-[90%] md:w-[600px] m-auto huiji-css-hook bg-transparent!">
+            <JunkSupplementaryEditor :junkItem="junkItem" @cancel="closeEditModal" @submit="onEditSubmit" />
+        </div>
+    </NModal>
 </template>
 
 <script setup lang="ts">
@@ -433,11 +474,20 @@ import { useEquipmentStore } from '../Equipment/equipmentStore';
 import { getGradeColorClass, getQualityDisplay, getTierDisplayName, getTierTableDisplayName } from './constants';
 import { JunkItem } from './JunkItem';
 import type { IJunkItemData } from './types';
+// 导入原始数据表格组件
+import { MwConfig } from '../../../huiji/MwConfig';
+import RawDataTable from './RawDataTable.vue';
+// 导入补充数据编辑器组件
+import { useJunkStore } from './junkStore';
+import JunkSupplementaryEditor from './JunkSupplementaryEditor.vue';
 
 const props = defineProps<{
     junkItem: JunkItem;
     onClose?: () => void;
 }>();
+
+// 获取杂物store
+const junkStore = useJunkStore();
 
 // 当前选中的物品名称
 const selectedItemName = ref<string | null>(null);
@@ -888,6 +938,19 @@ const isShowDetail = ref(false);
 const showDetailEquipment = ref<Equipment | null>(null);
 const { equipments } = toRefs(useEquipmentStore());
 
+// 原始数据表格相关状态
+const isShowRawData = ref(false);
+
+// 显示原始数据表格
+const openRawDataTable = () => {
+    isShowRawData.value = true;
+};
+
+// 关闭原始数据表格
+const closeRawDataTable = () => {
+    isShowRawData.value = false;
+};
+
 // 显示装备详情
 const showEquipmentDetail = () => {
     if (!selectedItemName.value) return;
@@ -905,5 +968,35 @@ const showEquipmentDetail = () => {
 const closeDetail = () => {
     isShowDetail.value = false;
     showDetailEquipment.value = null;
+};
+
+// 检查用户是否为系统管理员
+const isSystemAdmin = computed(() => {
+    // 使用 MwConfig 类检查用户是否为系统管理员
+    return MwConfig.getInstance().isSystemAdmin;
+});
+
+// 补充数据编辑模态框相关状态
+const isShowEditModal = ref(false);
+
+// 打开补充数据编辑模态框
+const openEditModal = () => {
+    isShowEditModal.value = true;
+};
+
+// 关闭补充数据编辑模态框
+const closeEditModal = () => {
+    isShowEditModal.value = false;
+};
+
+// 提交补充数据编辑
+const onEditSubmit = () => {
+    // 关闭模态框
+    isShowEditModal.value = false;
+    // 刷新当前杂物的补充数据
+    if (junkStore.junkItems.length > 0) {
+        // 重新加载数据以更新显示
+        junkStore.loadJunkData();
+    }
 };
 </script>

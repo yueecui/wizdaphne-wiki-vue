@@ -153,11 +153,19 @@
                                 </tr>
                                 <tr
                                     v-for="junk in filteredJunkItems"
-                                    :key="junk.name"
+                                    :key="junk.junkItem.name"
                                     class="cursor-pointer hover:bg-[#3a312a]!"
-                                    @click="handleJunkClick(junk)"
+                                    @click="handleJunkClick(junk.junkItem)"
                                 >
-                                    <td class="text-left">{{ junk.name }}</td>
+                                    <td class="text-left">
+                                        <span
+                                            :class="{ 'text-gray-500': junk.junkItem.notObt }"
+                                            :style="{ opacity: junk.junkItem.notObt ? '0.6 !important' : 1 }"
+                                        >
+                                            {{ junk.junkItem.name }}
+                                            <span v-if="junk.junkItem.notObt" class="text-xs ml-1">(无法获取)</span>
+                                        </span>
+                                    </td>
                                     <td>{{ junk.maxGrade }}</td>
                                     <td :class="getGradeColorClass(junk.maxQuality)">{{ junk.maxQuality }}</td>
                                     <td>{{ (junk.totalRate * 100).toFixed(4) }}%</td>
@@ -170,8 +178,11 @@
             </NTabPane>
 
             <!-- 动态标签页：选中杂物的物品几率 -->
-            <NTabPane v-if="selectedJunkItem" name="junk-detail" :tab="selectedJunkItem.name">
+            <NTabPane v-if="selectedJunkItem" name="junk-detail" :tab="renderJunkTabTitle">
                 <div class="mt-2">
+                    <div class="text-sm text-gray-400" v-if="isSystemAdmin">
+                        Unique Code: {{ selectedJunkItem.uniqueCode }}
+                    </div>
                     <div class="text-md text-light font-semibold bg-black/50 px-2 py-1 mt-4">
                         「{{ equipment.data.n }}」出现几率
                     </div>
@@ -268,6 +279,30 @@ const handleJunkClick = (junk: JunkItem) => {
     activeTab.value = 'junk-detail';
 };
 
+// 渲染杂物标签页标题
+const renderJunkTabTitle = () => {
+    if (!selectedJunkItem.value) return '';
+
+    return h(
+        'span',
+        {
+            class: { 'text-gray-500': selectedJunkItem.value.notObt },
+        },
+        [
+            selectedJunkItem.value.name,
+            selectedJunkItem.value.notObt
+                ? h(
+                      'span',
+                      {
+                          class: 'text-sm ml-1',
+                      },
+                      '(无法获取)',
+                  )
+                : null,
+        ],
+    );
+};
+
 // 筛选能出当前装备的杂物并排序
 const filteredJunkItems = computed(() => {
     if (!isJunkInit.value) return [];
@@ -292,11 +327,12 @@ const filteredJunkItems = computed(() => {
             const maxQuality = currentEquipmentItems.reduce((max, item) => Math.max(max, item.quality), 0);
             const maxGrade = currentEquipmentItems.reduce((max, item) => Math.max(max, item.grade), 0);
 
+            // 返回包含原始junkItem和计算属性的对象
             return {
-                ...junkItem,
+                junkItem, // 保留原始实例
                 totalRate: maxRate,
-                maxQuality, // 覆盖原有的maxQuality
-                maxGrade, // 覆盖原有的maxGrade
+                maxQuality, // 针对当前装备的最高星级
+                maxGrade, // 针对当前装备的最高颜色
                 averageCount: maxRate > 0 ? 1 / maxRate : 0,
             };
         })

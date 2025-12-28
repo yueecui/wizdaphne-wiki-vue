@@ -1,25 +1,59 @@
 import { useEquipmentStore } from '../Equipment/equipmentStore';
-import type { CompactJunkData, IJunkData, IJunkItemData } from './types';
+import type { IJunkData, IJunkItemData, IJunkSupplementary } from './types';
+
+// 简单的字符串哈希算法，生成相对唯一的哈希值
+const hashString = (str: string): string => {
+    let hash = 107;
+    let i = str.length;
+
+    while (i--) {
+        hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
+    }
+
+    return (hash >>> 0).toString(16);
+};
 
 // 初始化垃圾装备数据
-const InitJunkData = (raw: CompactJunkData['data'][0], strMap: Map<number, string>): [IJunkData, IJunkItemData[]] => {
+// 注意：raw参数是经过预处理的，其中categoryIndex和itemNameIndex已经替换为对应的字符串名称
+const InitJunkData = (
+    raw: [string, Array<[number, Array<[string, number, number[], number[]]>]>],
+): [IJunkData, IJunkItemData[]] => {
     const equipmentStore = useEquipmentStore();
 
     // 从raw中解析IJunkData
-    const [categoryIndex, groups] = raw;
-    const categoryName = strMap.get(categoryIndex) || `未知分类${categoryIndex}`;
+    const [categoryName, groups] = raw;
+
+    // 目前没有中文名的日文名记录
+    const MissingJunkNames = new Set<string>();
+
+    // 缓存装备查找结果，避免重复查找
+    const equipmentCache = new Map<string, ReturnType<typeof equipmentStore.getEquipmentByNJP>>();
 
     // 转换为IJunkData格式
     const junkData: IJunkData = {
         name: categoryName,
         groups: groups.map(([groupWeight, items]) => ({
             weight: groupWeight,
-            items: items.map(([itemNameIndex, itemWeight, qualityWeights, gradeWeights]) => ({
-                name: strMap.get(itemNameIndex) || `未知物品${itemNameIndex}`,
-                weight: itemWeight,
-                qualityWeights,
-                gradeWeights,
-            })),
+            items: items.map(([itemName, itemWeight, qualityWeights, gradeWeights]) => {
+                // 查找装备信息获取中文名
+                let equipment = equipmentCache.get(itemName);
+                if (equipment === undefined) {
+                    equipment = equipmentStore.getEquipmentByNJP(itemName);
+                    equipmentCache.set(itemName, equipment);
+                    if (!equipment && !MissingJunkNames.has(itemName)) {
+                        MissingJunkNames.add(itemName);
+                        console.log(`未找到装备: ${itemName}`);
+                    }
+                }
+
+                return {
+                    name: itemName,
+                    name_cn: equipment ? equipment.data.n : undefined,
+                    weight: itemWeight,
+                    qualityWeights,
+                    gradeWeights,
+                };
+            }),
         })),
     };
 
@@ -28,12 +62,6 @@ const InitJunkData = (raw: CompactJunkData['data'][0], strMap: Map<number, strin
 
     // 计算总权重用于归一化
     const totalGroupWeight = junkData.groups.reduce((sum, group) => sum + group.weight, 0);
-
-    // 目前没有中文名的日文名记录
-    const MissingJunkNames = new Set<string>();
-
-    // 缓存装备查找结果，避免重复查找
-    const equipmentCache = new Map<string, ReturnType<typeof equipmentStore.getEquipmentByNJP>>();
 
     junkData.groups.forEach((group) => {
         // 计算组内物品的总权重
@@ -113,13 +141,21 @@ export class JunkItem {
     public maxQuality: number;
     public maxGrade: number;
     public maxTier: number;
+    public index: number;
+    public uniqueCode: string;
+    public supplementary?: IJunkSupplementary;
 
+    // raw参数是经过预处理的，其中categoryIndex和itemNameIndex已经替换为对应的字符串名称
     constructor(
-        raw: CompactJunkData['data'][0],
-        { strMap, nameMap }: { strMap: Map<number, string>; nameMap: Map<string, string> },
+        public raw: [string, Array<[number, Array<[string, number, number[], number[]]>]>],
+        { nameMap, index }: { nameMap: Map<string, string>; index: number },
     ) {
-        [this.data, this.items] = InitJunkData(raw, strMap);
+        [this.data, this.items] = InitJunkData(raw);
         this.name = nameMap.get(this.data.name) || this.data.name; // 如果有中文名就获取，否则就是用日文名
+        this.index = index;
+
+        // 使用raw数据的哈希值作为唯一码，不依赖index
+        this.uniqueCode = hashString(JSON.stringify(raw));
 
         // 初始化时计算并存储最高品质、最高星级和最高阶级
         this.maxQuality = 0;
@@ -205,5 +241,19 @@ export class JunkItem {
         });
 
         return grouped;
+    }
+
+    /**
+     * 获取是否无法获取该杂物项
+     */
+    get notObt(): boolean {
+        return this.supplementary?.not_obt === 1;
+    }
+
+    /**
+     * 获取杂物项的额外描述
+     */
+    get description(): string | undefined {
+        return this.supplementary?.desc;
     }
 }

@@ -26,6 +26,7 @@ export interface IJunkData {
         weight: number;
         items: {
             name: string;
+            name_cn?: string;
             weight: number;
             qualityWeights: number[];
             gradeWeights: number[];
@@ -33,9 +34,17 @@ export interface IJunkData {
     }[];
 }
 
+export interface IJunkSupplementary {
+    id: string;
+    desc: string;
+    not_obt: number; // 1表示无法获取 0表示可以获取
+    name: string; // 用来识别的备注名称
+}
+
 // 从wiki获取的原数据格式
 export interface IJunkJson {
     junkData: CompactJunkData;
+    supplementary: IJunkSupplementary[];
     junkNameMap: [string, string][];
 }
 

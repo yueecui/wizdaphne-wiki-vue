@@ -22,7 +22,7 @@
                 <table class="wikitable w-full text-center">
                     <thead>
                         <tr>
-                            <th>杂物分类名称</th>
+                            <th>杂物名称</th>
                             <th>包含物品数量</th>
                             <th>最高星级</th>
                             <th>最高颜色</th>
@@ -36,7 +36,15 @@
                             class="cursor-pointer hover:bg-[#3a312a]!"
                             @click="showDetail(item)"
                         >
-                            <td class="text-left">{{ item.name }}</td>
+                            <td class="text-left">
+                                <span
+                                    :class="{ 'text-gray-500': item.notObt }"
+                                    :style="{ opacity: item.notObt ? '0.6 !important' : 1 }"
+                                >
+                                    {{ item.name }}
+                                    <span v-if="item.notObt" class="text-sm ml-1">(无法获取)</span>
+                                </span>
+                            </td>
                             <td>{{ item.getRatesGroupedByName().size }}</td>
                             <td>{{ item.maxQuality }}</td>
                             <td :class="getGradeColorClass(item.maxGrade)">{{ item.maxGrade }}</td>
