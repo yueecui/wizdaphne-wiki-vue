@@ -147,6 +147,9 @@
                 </tbody>
             </table>
         </div>
+        <div class="flex gap-4">
+            <NButton type="error" @click="resetCharacterConfig">重置角色配置</NButton>
+        </div>
         <div class="bg-[#312721]">
             <table class="wiztable text-center text-sm w-[50em] md:w-auto">
                 <thead>
@@ -397,6 +400,7 @@
             </table>
         </div>
         <div class="flex gap-4">
+            <NButton type="error" @click="resetStatCalculation">重置计算表格</NButton>
             <NButton type="primary" @click="copyToExcelHeader">复制 Excel 表头</NButton>
             <NButton type="primary" @click="copyToExcelRow">复制 Excel 行</NButton>
         </div>
@@ -406,10 +410,10 @@
 <script setup lang="ts">
 import { NButton, NInputNumber, NSelect } from 'naive-ui';
 
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, toRefs } from 'vue';
 import { ELEMENT_TYPE, GENDER_TYPE, RACE_TYPE } from '../data/enum';
 import { ICharacterStats } from '../data/SearcherData.types';
-import { useSearcherDataStore } from '../data/searcherDataStore';
+import { DEFAULT_SETTINGS, useSearcherDataStore } from '../data/searcherDataStore';
 import { SimCharacterConfig } from './types';
 
 const character = defineModel<SimCharacterConfig | null>('character', {
@@ -418,10 +422,15 @@ const character = defineModel<SimCharacterConfig | null>('character', {
 
 const store = useSearcherDataStore();
 
+// 使用searcherDataStore的settings
+const { settings } = toRefs(useSearcherDataStore());
+
 // 初始化数据
 onMounted(async () => {
     if (character.value) {
+        // 使用传入的角色配置并保存到统一存储
         simCharacterConfig.value = character.value;
+        settings.value.statCalculator.characterConfig = character.value;
         character.value = null;
     }
 });
@@ -435,12 +444,10 @@ const getStatSet = (kind: string, key: string, stat: string) => {
     }
 };
 
-const simCharacterConfig = ref<SimCharacterConfig>({
-    race: '人类',
-    gender: '男',
-    element: '火',
-    class: '战士',
-    tier: 0,
+// 使用计算属性获取和设置角色配置
+const simCharacterConfig = computed({
+    get: () => settings.value.statCalculator.characterConfig,
+    set: (value) => (settings.value.statCalculator.characterConfig = value),
 });
 
 const tierOptions = ref([
@@ -489,24 +496,16 @@ const characterLevel1Stats = computed(() => {
     return params;
 });
 
-const simCharacterBonus = ref<ICharacterStats>({
-    strength: 0,
-    intelligence: 0,
-    piety: 0,
-    vitality: 0,
-    dexterity: 0,
-    speed: 0,
-    luck: 0,
+// 使用计算属性获取和设置属性加成
+const simCharacterBonus = computed({
+    get: () => settings.value.statCalculator.bonusStats,
+    set: (value) => (settings.value.statCalculator.bonusStats = value),
 });
 
-const simCharacterFateLevel = ref<ICharacterStats>({
-    strength: 0,
-    intelligence: 0,
-    piety: 0,
-    vitality: 0,
-    dexterity: 0,
-    speed: 0,
-    luck: 0,
+// 使用计算属性获取和设置才能缘等级
+const simCharacterFateLevel = computed({
+    get: () => settings.value.statCalculator.fateLevel,
+    set: (value) => (settings.value.statCalculator.fateLevel = value),
 });
 const simCharacterFateBonus = computed<ICharacterStats>(() => {
     const params = {
@@ -524,15 +523,16 @@ const simCharacterFateBonus = computed<ICharacterStats>(() => {
     return params;
 });
 
-const simCharacterLevel = ref(1);
-const simCharacterCurrentStats = ref<ICharacterStats>({
-    strength: 0,
-    intelligence: 0,
-    piety: 0,
-    vitality: 0,
-    dexterity: 0,
-    speed: 0,
-    luck: 0,
+// 使用计算属性获取和设置角色等级
+const simCharacterLevel = computed({
+    get: () => settings.value.statCalculator.characterLevel,
+    set: (value) => (settings.value.statCalculator.characterLevel = value),
+});
+
+// 使用计算属性获取和设置当前属性值
+const simCharacterCurrentStats = computed({
+    get: () => settings.value.statCalculator.currentStats,
+    set: (value) => (settings.value.statCalculator.currentStats = value),
 });
 
 // 刨除缘的干扰因素的最终属性
@@ -623,5 +623,18 @@ const copyToExcelRow = () => {
                 window.wiz.$message.error('复制 Excel行 失败');
             },
         );
+};
+
+// 重置角色配置
+const resetCharacterConfig = () => {
+    settings.value.statCalculator.characterConfig = { ...DEFAULT_SETTINGS.statCalculator.characterConfig };
+};
+
+// 重置详细计算表格
+const resetStatCalculation = () => {
+    settings.value.statCalculator.bonusStats = { ...DEFAULT_SETTINGS.statCalculator.bonusStats };
+    settings.value.statCalculator.fateLevel = { ...DEFAULT_SETTINGS.statCalculator.fateLevel };
+    settings.value.statCalculator.characterLevel = DEFAULT_SETTINGS.statCalculator.characterLevel;
+    settings.value.statCalculator.currentStats = { ...DEFAULT_SETTINGS.statCalculator.currentStats };
 };
 </script>

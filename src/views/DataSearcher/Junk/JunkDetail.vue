@@ -1,17 +1,15 @@
 <template>
     <div class="p-4 bg-[#312721]! border! border-[#463d38]! rounded flex flex-col gap-4">
         <div>
-            <h2 class="text-xl text-light font-bold mb-4">{{ junkItem.name }}</h2>
-            <p class="text-sm text-gray-400" v-if="junkItem.data.name != junkItem.name">{{ junkItem.data.name }}</p>
+            <div class="text-2xl text-light font-bold mt-4">{{ junkItem.name }}</div>
+            <div class="text-sm text-gray-400" v-if="junkItem.data.name != junkItem.name">{{ junkItem.data.name }}</div>
         </div>
 
         <!-- 标签页 -->
         <NTabs type="card" size="small" v-model:value="activeTab">
             <!-- 第一页：物品列表 -->
             <NTabPane name="items" tab="物品列表">
-                <h3 class="text-lg text-light font-semibold mb-2">物品列表</h3>
-                <p class="pt-2">点击可查看单个物品几率</p>
-                <table class="wikitable w-full text-center">
+                <table class="wikitable w-full text-center mt-2!">
                     <thead>
                         <tr>
                             <th>物品名称</th>
@@ -23,7 +21,7 @@
                     </thead>
                     <tbody>
                         <tr
-                            v-for="item in itemData"
+                            v-for="item in itemData.filter((item) => item.totalRate > 0)"
                             :key="item.name"
                             class="cursor-pointer hover:bg-[#3a312a]!"
                             @click="handleItemClick(item.name)"
@@ -36,47 +34,45 @@
                         </tr>
                     </tbody>
                 </table>
+                <p class="text-gray-400">※ 点击可查看单个物品几率</p>
             </NTabPane>
 
             <!-- 第二页：按阶级 -->
             <NTabPane name="tier" tab="按阶级">
-                <h3 class="text-lg text-light font-semibold mb-2">按阶级</h3>
-                <table class="wikitable w-full text-center">
-                    <thead>
-                        <tr>
-                            <th>阶级</th>
-                            <th>数量</th>
-                            <th>最高星级</th>
-                            <th>最高颜色</th>
-                            <th>出现几率</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="item in tierData" :key="item.tier">
-                            <td>{{ getTierTableDisplayName(item.tier) }}</td>
-                            <td>{{ item.itemCount }}</td>
-                            <td>{{ item.maxQuality }}</td>
-                            <td :class="getGradeColorClass(item.maxGrade)">{{ item.maxGrade }}</td>
-                            <td>{{ (item.totalRate * 100).toFixed(4) }}%</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="flex flex-col gap-2 mt-2">
+                    <div class="text-md text-light font-semibold bg-black/50 px-2 py-1">综合</div>
+                    <table class="wikitable w-full text-center m-0!">
+                        <thead>
+                            <tr>
+                                <th>阶级</th>
+                                <th>数量</th>
+                                <th>最高星级</th>
+                                <th>最高颜色</th>
+                                <th>出现几率</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="item in tierData.filter((item) => item.totalRate > 0)" :key="item.tier">
+                                <td>{{ getTierTableDisplayName(item.tier) }}</td>
+                                <td>{{ item.itemCount }}</td>
+                                <td>{{ item.maxQuality }}</td>
+                                <td :class="getGradeColorClass(item.maxGrade)">{{ item.maxGrade }}</td>
+                                <td>{{ (item.totalRate * 100).toFixed(4) }}%</td>
+                            </tr>
+                        </tbody>
+                    </table>
 
-                <!-- 各阶级详细信息 -->
-                <div class="mt-8">
-                    <h3 class="text-lg text-light font-semibold mb-4">各阶级详细信息</h3>
-
-                    <div v-for="tierDetail in detailedTierData" :key="tierDetail.tier" class="mb-8">
-                        <h4 class="text-md text-light font-medium mb-3">
+                    <!-- 各阶级详细信息 -->
+                    <template v-for="tierDetail in detailedTierData" :key="tierDetail.tier">
+                        <div class="text-md text-light font-semibold bg-black/50 px-2 py-1 mt-4">
                             阶级 {{ getTierDisplayName(tierDetail.tier) }}
-                        </h4>
+                        </div>
 
                         <!-- 质量和等级几率表（并排显示） -->
-                        <div class="flex flex-col md:flex-row gap-4 mb-4">
+                        <div class="flex flex-col md:flex-row gap-2">
                             <!-- 质量几率表 -->
                             <div class="flex-1">
-                                <h5 class="text-sm text-light font-medium mb-2">星级分布</h5>
-                                <table class="wikitable w-full text-center">
+                                <table class="wikitable w-full text-center m-0!">
                                     <thead>
                                         <tr>
                                             <th>星级</th>
@@ -85,7 +81,10 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="item in tierDetail.qualityRatesArray" :key="item.quality">
+                                        <tr
+                                            v-for="item in tierDetail.qualityRatesArray.filter((item) => item.rate > 0)"
+                                            :key="item.quality"
+                                        >
                                             <td>{{ item.quality }}</td>
                                             <td>{{ ((item.rate / tierDetail.totalRate) * 100).toFixed(4) }}%</td>
                                             <td>{{ (item.rate * 100).toFixed(4) }}%</td>
@@ -96,8 +95,7 @@
 
                             <!-- 等级几率表 -->
                             <div class="flex-1">
-                                <h5 class="text-sm text-light font-medium mb-2">颜色分布</h5>
-                                <table class="wikitable w-full text-center">
+                                <table class="wikitable w-full text-center m-0!">
                                     <thead>
                                         <tr>
                                             <th>颜色</th>
@@ -106,7 +104,10 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="item in tierDetail.gradeRatesArray" :key="item.grade">
+                                        <tr
+                                            v-for="item in tierDetail.gradeRatesArray.filter((item) => item.rate > 0)"
+                                            :key="item.grade"
+                                        >
                                             <td :class="getGradeColorClass(item.grade)">{{ item.grade }}</td>
                                             <td>{{ ((item.rate / tierDetail.totalRate) * 100).toFixed(4) }}%</td>
                                             <td>{{ (item.rate * 100).toFixed(4) }}%</td>
@@ -118,8 +119,7 @@
 
                         <!-- 高星级高颜色组合几率表（质量 >=3 且 等级 >=3） -->
                         <div v-if="tierDetail.comboRatesArray.length > 0">
-                            <h5 class="text-sm text-light font-medium mb-2">优秀组合几率</h5>
-                            <table class="wikitable w-full text-center">
+                            <table class="wikitable w-full text-center m-0!">
                                 <thead>
                                     <tr>
                                         <th>品质</th>
@@ -130,7 +130,7 @@
                                 </thead>
                                 <tbody>
                                     <tr
-                                        v-for="item in tierDetail.comboRatesArray"
+                                        v-for="item in tierDetail.comboRatesArray.filter((item) => item.rate > 0)"
                                         :key="`${item.quality}-${item.grade}`"
                                     >
                                         <td :class="getGradeColorClass(item.grade)">
@@ -143,47 +143,46 @@
                                 </tbody>
                             </table>
                         </div>
-                    </div>
+                    </template>
                 </div>
             </NTabPane>
 
             <!-- 第二页：按星级 -->
             <NTabPane name="quality" tab="按星级">
-                <h3 class="text-lg text-light font-semibold mb-2">按星级</h3>
-                <table class="wikitable w-full text-center">
-                    <thead>
-                        <tr>
-                            <th>星级</th>
-                            <th>数量</th>
-                            <th>最高颜色</th>
-                            <th>最高阶级</th>
-                            <th>出现几率</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="item in qualityData" :key="item.quality">
-                            <td>{{ item.quality }}</td>
-                            <td>{{ item.itemCount }}</td>
-                            <td :class="getGradeColorClass(item.maxGrade)">{{ item.maxGrade }}</td>
-                            <td>{{ item.maxTier }}</td>
-                            <td>{{ (item.totalRate * 100).toFixed(4) }}%</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="flex flex-col gap-2 pt-2">
+                    <div class="text-md text-light font-semibold bg-black/50 px-2 py-1">按星级</div>
+                    <table class="wikitable w-full text-center m-0!">
+                        <thead>
+                            <tr>
+                                <th>星级</th>
+                                <th>数量</th>
+                                <th>最高颜色</th>
+                                <th>最高阶级</th>
+                                <th>出现几率</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="item in qualityData.filter((item) => item.totalRate > 0)" :key="item.quality">
+                                <td>{{ item.quality }}</td>
+                                <td>{{ item.itemCount }}</td>
+                                <td :class="getGradeColorClass(item.maxGrade)">{{ item.maxGrade }}</td>
+                                <td>{{ item.maxTier }}</td>
+                                <td>{{ (item.totalRate * 100).toFixed(4) }}%</td>
+                            </tr>
+                        </tbody>
+                    </table>
 
-                <!-- 各星级详细信息 -->
-                <div class="mt-8">
-                    <h3 class="text-lg text-light font-semibold mb-4">各星级详细信息</h3>
-
-                    <div v-for="qualityDetail in detailedQualityData" :key="qualityDetail.quality" class="mb-8">
-                        <h4 class="text-md text-light font-medium mb-3">星级 {{ qualityDetail.quality }}</h4>
+                    <!-- 各星级详细信息 -->
+                    <template v-for="qualityDetail in detailedQualityData" :key="qualityDetail.quality">
+                        <div class="text-md text-light font-semibold bg-black/50 px-2 py-1 mt-4">
+                            {{ getQualityDisplay(qualityDetail.quality, 1) }}
+                        </div>
 
                         <!-- 颜色和阶级几率表（并排显示） -->
-                        <div class="flex flex-col md:flex-row gap-4 mb-4">
+                        <div class="flex flex-col md:flex-row gap-2">
                             <!-- 颜色几率表 -->
                             <div class="flex-1">
-                                <h5 class="text-sm text-light font-medium mb-2">颜色分布</h5>
-                                <table class="wikitable w-full text-center">
+                                <table class="wikitable w-full text-center m-0!">
                                     <thead>
                                         <tr>
                                             <th>颜色</th>
@@ -192,7 +191,12 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="item in qualityDetail.gradeRatesArray" :key="item.grade">
+                                        <tr
+                                            v-for="item in qualityDetail.gradeRatesArray.filter(
+                                                (item) => item.rate > 0,
+                                            )"
+                                            :key="item.grade"
+                                        >
                                             <td :class="getGradeColorClass(item.grade)">{{ item.grade }}</td>
                                             <td>{{ ((item.rate / qualityDetail.totalRate) * 100).toFixed(4) }}%</td>
                                             <td>{{ (item.rate * 100).toFixed(4) }}%</td>
@@ -203,8 +207,7 @@
 
                             <!-- 阶级几率表 -->
                             <div class="flex-1">
-                                <h5 class="text-sm text-light font-medium mb-2">阶级分布</h5>
-                                <table class="wikitable w-full text-center">
+                                <table class="wikitable w-full text-center m-0!">
                                     <thead>
                                         <tr>
                                             <th>阶级</th>
@@ -213,7 +216,10 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="item in qualityDetail.tierRatesArray" :key="item.tier">
+                                        <tr
+                                            v-for="item in qualityDetail.tierRatesArray.filter((item) => item.rate > 0)"
+                                            :key="item.tier"
+                                        >
                                             <td>{{ getTierTableDisplayName(item.tier) }}</td>
                                             <td>{{ ((item.rate / qualityDetail.totalRate) * 100).toFixed(4) }}%</td>
                                             <td>{{ (item.rate * 100).toFixed(4) }}%</td>
@@ -225,8 +231,7 @@
 
                         <!-- 高颜色高阶级组合几率表（颜色 >=3 且 阶级 >=3） -->
                         <div v-if="qualityDetail.comboRatesArray.length > 0">
-                            <h5 class="text-sm text-light font-medium mb-2">优秀组合几率</h5>
-                            <table class="wikitable w-full text-center">
+                            <table class="wikitable w-full text-center m-0!">
                                 <thead>
                                     <tr>
                                         <th>品质</th>
@@ -237,7 +242,7 @@
                                 </thead>
                                 <tbody>
                                     <tr
-                                        v-for="item in qualityDetail.comboRatesArray"
+                                        v-for="item in qualityDetail.comboRatesArray.filter((item) => item.rate > 0)"
                                         :key="`${item.grade}-${item.tier}`"
                                     >
                                         <td :class="getGradeColorClass(item.grade)">
@@ -250,49 +255,49 @@
                                 </tbody>
                             </table>
                         </div>
-                    </div>
+                    </template>
                 </div>
             </NTabPane>
 
             <!-- 第三页：按颜色 -->
             <NTabPane name="grade" tab="按颜色">
-                <h3 class="text-lg text-light font-semibold mb-2">按颜色</h3>
-                <table class="wikitable w-full text-center">
-                    <thead>
-                        <tr>
-                            <th>颜色</th>
-                            <th>数量</th>
-                            <th>最高星级</th>
-                            <th>最高阶级</th>
-                            <th>出现几率</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="item in gradeData" :key="item.grade">
-                            <td :class="getGradeColorClass(item.grade)">{{ item.grade }}</td>
-                            <td>{{ item.itemCount }}</td>
-                            <td>{{ item.maxQuality }}</td>
-                            <td>{{ item.maxTier }}</td>
-                            <td>{{ (item.totalRate * 100).toFixed(4) }}%</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="flex flex-col gap-2 pt-2">
+                    <div class="text-md text-light font-semibold bg-black/50 px-2 py-1">按颜色</div>
+                    <table class="wikitable w-full text-center m-0!">
+                        <thead>
+                            <tr>
+                                <th>颜色</th>
+                                <th>数量</th>
+                                <th>最高星级</th>
+                                <th>最高阶级</th>
+                                <th>出现几率</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="item in gradeData.filter((item) => item.totalRate > 0)" :key="item.grade">
+                                <td :class="getGradeColorClass(item.grade)">{{ item.grade }}</td>
+                                <td>{{ item.itemCount }}</td>
+                                <td>{{ item.maxQuality }}</td>
+                                <td>{{ item.maxTier }}</td>
+                                <td>{{ (item.totalRate * 100).toFixed(4) }}%</td>
+                            </tr>
+                        </tbody>
+                    </table>
 
-                <!-- 各颜色详细信息 -->
-                <div class="mt-8">
-                    <h3 class="text-lg text-light font-semibold mb-4">各颜色详细信息</h3>
-
-                    <div v-for="gradeDetail in detailedGradeData" :key="gradeDetail.grade" class="mb-8">
-                        <h4 class="text-md text-light font-medium mb-3" :class="getGradeColorClass(gradeDetail.grade)">
+                    <!-- 各颜色详细信息 -->
+                    <template v-for="gradeDetail in detailedGradeData" :key="gradeDetail.grade">
+                        <div
+                            class="text-md font-semibold bg-black/50 px-2 py-1 mt-4"
+                            :class="getGradeColorClass(gradeDetail.grade)"
+                        >
                             颜色 {{ gradeDetail.grade }}
-                        </h4>
+                        </div>
 
                         <!-- 星级和阶级几率表（并排显示） -->
-                        <div class="flex flex-col md:flex-row gap-4 mb-4">
+                        <div class="flex flex-col md:flex-row gap-2">
                             <!-- 星级几率表 -->
                             <div class="flex-1">
-                                <h5 class="text-sm text-light font-medium mb-2">星级分布</h5>
-                                <table class="wikitable w-full text-center">
+                                <table class="wikitable w-full text-center m-0!">
                                     <thead>
                                         <tr>
                                             <th>星级</th>
@@ -301,7 +306,12 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="item in gradeDetail.qualityRatesArray" :key="item.quality">
+                                        <tr
+                                            v-for="item in gradeDetail.qualityRatesArray.filter(
+                                                (item) => item.rate > 0,
+                                            )"
+                                            :key="item.quality"
+                                        >
                                             <td>{{ item.quality }}</td>
                                             <td>{{ ((item.rate / gradeDetail.totalRate) * 100).toFixed(4) }}%</td>
                                             <td>{{ (item.rate * 100).toFixed(4) }}%</td>
@@ -312,8 +322,7 @@
 
                             <!-- 阶级几率表 -->
                             <div class="flex-1">
-                                <h5 class="text-sm text-light font-medium mb-2">阶级分布</h5>
-                                <table class="wikitable w-full text-center">
+                                <table class="wikitable w-full text-center m-0!">
                                     <thead>
                                         <tr>
                                             <th>阶级</th>
@@ -322,7 +331,10 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="item in gradeDetail.tierRatesArray" :key="item.tier">
+                                        <tr
+                                            v-for="item in gradeDetail.tierRatesArray.filter((item) => item.rate > 0)"
+                                            :key="item.tier"
+                                        >
                                             <td>{{ getTierTableDisplayName(item.tier) }}</td>
                                             <td>{{ ((item.rate / gradeDetail.totalRate) * 100).toFixed(4) }}%</td>
                                             <td>{{ (item.rate * 100).toFixed(4) }}%</td>
@@ -334,8 +346,7 @@
 
                         <!-- 高星级高阶级组合几率表（星级 >=3 且 阶级 >=3） -->
                         <div v-if="gradeDetail.comboRatesArray.length > 0">
-                            <h5 class="text-sm text-light font-medium mb-2">优秀组合几率</h5>
-                            <table class="wikitable w-full text-center">
+                            <table class="wikitable w-full text-center m-0!">
                                 <thead>
                                     <tr>
                                         <th>品质</th>
@@ -346,7 +357,7 @@
                                 </thead>
                                 <tbody>
                                     <tr
-                                        v-for="item in gradeDetail.comboRatesArray"
+                                        v-for="item in gradeDetail.comboRatesArray.filter((item) => item.rate > 0)"
                                         :key="`${item.quality}-${item.tier}`"
                                     >
                                         <td :class="getGradeColorClass(gradeDetail.grade)">
@@ -359,13 +370,19 @@
                                 </tbody>
                             </table>
                         </div>
-                    </div>
+                    </template>
                 </div>
             </NTabPane>
 
             <!-- 动态标签页：选中物品的品质几率 -->
             <NTabPane v-if="selectedItemName" name="item-detail" :tab="selectedItemDisplayName">
-                <h3 class="text-lg text-light font-semibold mb-2">{{ selectedItemDisplayName }} 品质几率</h3>
+                <div
+                    class="text-md text-light font-semibold bg-black/50 px-2 py-1 mt-4 flex items-center justify-between"
+                >
+                    「{{ selectedItemDisplayName }}」出现几率
+                    <NButton size="tiny" type="primary" class="ml-2" @click="showEquipmentDetail">查看装备</NButton>
+                </div>
+
                 <table class="wikitable w-full text-center">
                     <thead>
                         <tr>
@@ -376,7 +393,10 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="item in selectedItemQualityData" :key="`${item.quality}-${item.grade}`">
+                        <tr
+                            v-for="item in selectedItemQualityData.filter((item) => item.junkInnerRate > 0)"
+                            :key="`${item.quality}-${item.grade}`"
+                        >
                             <td :class="getGradeColorClass(item.grade)">
                                 {{ getQualityDisplay(item.quality, item.grade) }}
                             </td>
@@ -393,11 +413,23 @@
             <NButton size="small" type="warning" @click="onClose">关闭</NButton>
         </div>
     </div>
+
+    <!-- 装备详情模态框 -->
+    <NModal v-model:show="isShowDetail">
+        <template v-if="showDetailEquipment">
+            <div class="w-[90%] md:h-auto md:w-[600px] m-auto huiji-css-hook bg-transparent!">
+                <EquipmentCard v-if="showDetailEquipment" :equipment="showDetailEquipment" :onClose="closeDetail" />
+            </div>
+        </template>
+    </NModal>
 </template>
 
 <script setup lang="ts">
-import { NButton, NTabPane, NTabs } from 'naive-ui';
-import { computed, ref, watch } from 'vue';
+import { NButton, NModal, NTabPane, NTabs } from 'naive-ui';
+import { computed, ref, toRefs, watch } from 'vue';
+import type { Equipment } from '../Equipment/Equipment';
+import EquipmentCard from '../Equipment/EquipmentCard.vue';
+import { useEquipmentStore } from '../Equipment/equipmentStore';
 import { getGradeColorClass, getQualityDisplay, getTierDisplayName, getTierTableDisplayName } from './constants';
 import { JunkItem } from './JunkItem';
 import type { IJunkItemData } from './types';
@@ -850,4 +882,28 @@ const selectedItemDisplayName = computed(() => {
     const item = itemData.value.find((i) => i.name === selectedItemName.value);
     return item ? item.displayName : selectedItemName.value;
 });
+
+// 装备详情模态框相关状态
+const isShowDetail = ref(false);
+const showDetailEquipment = ref<Equipment | null>(null);
+const { equipments } = toRefs(useEquipmentStore());
+
+// 显示装备详情
+const showEquipmentDetail = () => {
+    if (!selectedItemName.value) return;
+    // 根据选中的物品名称查找对应的装备
+    const equipment = equipments.value.find((eq) => eq.data.njp === selectedItemName.value);
+    if (equipment) {
+        showDetailEquipment.value = equipment;
+        isShowDetail.value = true;
+    } else {
+        console.warn(`未找到装备: ${selectedItemName.value}`);
+    }
+};
+
+// 关闭装备详情
+const closeDetail = () => {
+    isShowDetail.value = false;
+    showDetailEquipment.value = null;
+};
 </script>

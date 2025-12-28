@@ -33,10 +33,13 @@ import JunkSearcher from './Junk/JunkSearcher.vue';
 import SkillSearcher from './Skill/SkillSearcher.vue';
 import StatCalculator from './StatCalculator/StatCalculator.vue';
 
-import { onMounted, provide, ref, watch } from 'vue';
+import { computed, onMounted, provide, ref, toRefs } from 'vue';
 import { useSearcherDataStore } from './data/searcherDataStore';
 import { useJunkStore } from './Junk/junkStore';
 import { SimCharacterConfig } from './StatCalculator/types';
+
+// 使用searcherDataStore的settings
+const { settings } = toRefs(useSearcherDataStore());
 
 defineOptions({
     name: '数据搜索器',
@@ -49,13 +52,6 @@ onMounted(() => {
     const firstHeading = document.getElementById('firstHeading');
     if (firstHeading) {
         firstHeading.style.display = 'none';
-    }
-
-    const searcherActiveKey = localStorage.getItem('searcherActiveKey');
-    if (searcherActiveKey) {
-        activeKey.value = searcherActiveKey;
-    } else {
-        activeKey.value = 'Character';
     }
 });
 
@@ -100,22 +96,17 @@ const startCalcStat = (characterName: string, isSub: boolean) => {
             race: data.race,
             gender: data.gender,
             element: data.element,
-            class: isSub && data.class.length > 1 ? data.class[1] : data.class[0],
-            tier: 0,
+            class: Array.isArray(data.class) ? data.class[0] : data.class,
+            tier: 0, // 角色数据中没有tier属性，使用默认值0
         };
     }
-    activeKey.value = 'StatCalculator';
+    settings.value.activeTab = 'StatCalculator';
 };
 provide('startCalcStat', startCalcStat);
 
-const activeKey = ref<string>('');
-watch(
-    activeKey,
-    (newKey) => {
-        if (newKey) {
-            localStorage.setItem('searcherActiveKey', newKey);
-        }
-    },
-    { immediate: true },
-);
+// 使用计算属性获取和设置活跃标签
+const activeKey = computed({
+    get: () => settings.value.activeTab,
+    set: (newKey) => (settings.value.activeTab = newKey),
+});
 </script>

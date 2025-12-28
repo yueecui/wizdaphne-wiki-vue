@@ -50,6 +50,17 @@ export class Equipment {
             }
         }
 
+        // 特典过滤
+        if (filter.soucateFilter === 'show') {
+            if (this.data.soucate !== 1) {
+                return false;
+            }
+        } else if (filter.soucateFilter === 'hide') {
+            if (this.data.soucate === 1) {
+                return false;
+            }
+        }
+
         return true;
     }
 

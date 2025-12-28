@@ -89,18 +89,27 @@ import ArmorFilter from './ArmorFilter.vue';
 import EquipmentCard from './EquipmentCard.vue';
 
 import { computed, onMounted, ref, toRefs, watch } from 'vue';
-import { convertDescription } from '../util/convertDescription';
+import { DEFAULT_SETTINGS, useSearcherDataStore } from '../data/searcherDataStore';
+import { convertDescription } from '../utils/convertDescription';
+import { Equipment } from './Equipment';
 import { useEquipmentStore } from './equipmentStore';
-import { Equipment } from './Equpment';
-import { IEquipmentFilter } from './types';
 
-const filter = ref<IEquipmentFilter>({
-    searchText: '',
-    category: '',
-    skill: '',
-    showMaxLv: false,
+// 使用searcherDataStore的settings
+const { settings } = toRefs(useSearcherDataStore());
+
+// 使用计算属性获取和设置防具过滤器
+const filter = computed({
+    get: () => settings.value.armorFilter,
+    set: (newFilter) => {
+        settings.value.armorFilter = newFilter;
+        // 同步特典过滤规则到全局设置
+        if (newFilter.soucateFilter) {
+            settings.value.soucateFilter = newFilter.soucateFilter;
+        }
+    },
 });
 
+// 监听过滤器变化
 watch(
     () => filter.value,
     (newFilter) => {
@@ -158,7 +167,7 @@ const currentPageList = computed(() => {
 });
 
 onMounted(() => {
-    onFilterReset();
+    // 移除默认重置，确保从settings加载保存的过滤器
 });
 
 const getTd = (item: Equipment, key: string) => {
@@ -187,10 +196,8 @@ const getTd = (item: Equipment, key: string) => {
 
 const onFilterReset = () => {
     filter.value = {
-        searchText: '',
-        category: '',
-        skill: '',
-        showMaxLv: false,
+        ...DEFAULT_SETTINGS.armorFilter,
+        soucateFilter: filter.value.soucateFilter // 保留特典过滤
     };
 };
 

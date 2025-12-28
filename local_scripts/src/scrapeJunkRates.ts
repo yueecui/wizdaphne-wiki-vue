@@ -7,19 +7,19 @@ import { WIKI_AUTHKEY, WIKI_PASSWORD, WIKI_PREFIX, WIKI_USERNAME } from './confi
 interface QualityRate {
     quality: number;
     rate: string;
-    weight: number;
+    weight: string;
 }
 
 interface GradeRate {
     grade: number;
     rate: string;
-    weight: number;
+    weight: string;
 }
 
 interface GachaItem {
     name: string;
     itemRate: string;
-    itemWeight: number;
+    itemWeight: string;
     qualityRates: QualityRate[];
     gradeRates: GradeRate[];
 }
@@ -27,7 +27,7 @@ interface GachaItem {
 interface GachaGroup {
     groupId: string;
     groupRate: string;
-    groupWeight: number;
+    groupWeight: string;
     items: GachaItem[];
 }
 
@@ -59,76 +59,6 @@ const calculateWeights = (rates: { [key: string]: string }): Array<{ value: numb
     return parsedRates;
 };
 
-// 辅助函数：计算最大公约数
-const gcd = (a: number, b: number): number => {
-    return b === 0 ? a : gcd(b, a % b);
-};
-
-// 辅助函数：计算数组的最大公约数
-const gcdArray = (arr: number[]): number => {
-    return arr.reduce((acc, val) => gcd(acc, val), arr[0]);
-};
-
-// 辅助函数：将一组权重转换为最小整数比例
-const convertToMinimalIntegers = (weights: number[]): number[] => {
-    // 移除0值
-    const nonZeroWeights = weights.filter((w) => w > 0);
-    if (nonZeroWeights.length === 0) return weights;
-
-    // 找到最小的非零权重
-    const minWeight = Math.min(...nonZeroWeights);
-
-    // 将所有权重转换为相对于最小权重的比例
-    const ratios = weights.map((w) => {
-        if (w === 0) return 0;
-        return Math.round(w / minWeight);
-    });
-
-    // 计算最大公约数
-    const nonZeroRatios = ratios.filter((r) => r > 0);
-    if (nonZeroRatios.length === 0) return ratios;
-
-    const commonDivisor = gcdArray(nonZeroRatios);
-
-    // 除以最大公约数得到最小整数比例
-    return ratios.map((r) => (r === 0 ? 0 : Math.round(r / commonDivisor)));
-};
-
-// 辅助函数：转换完整记录的权重为最小整数
-const convertRecordWeightsToMinimalIntegers = (record: any): void => {
-    // 处理组权重
-    const groupWeights = record.groups.map((group: any) => group.groupWeight);
-    const minimalGroupWeights = convertToMinimalIntegers(groupWeights);
-
-    record.groups.forEach((group: any, index: number) => {
-        group.groupWeight = minimalGroupWeights[index];
-
-        // 处理物品权重
-        const itemWeights = group.items.map((item: any) => item.itemWeight);
-        const minimalItemWeights = convertToMinimalIntegers(itemWeights);
-
-        group.items.forEach((item: any, itemIndex: number) => {
-            item.itemWeight = minimalItemWeights[itemIndex];
-
-            // 处理品质权重
-            const qualityWeights = item.qualityRates.map((qr: any) => qr.weight);
-            const minimalQualityWeights = convertToMinimalIntegers(qualityWeights);
-
-            item.qualityRates.forEach((qr: any, qrIndex: number) => {
-                qr.weight = minimalQualityWeights[qrIndex];
-            });
-
-            // 处理等级权重
-            const gradeWeights = item.gradeRates.map((gr: any) => gr.weight);
-            const minimalGradeWeights = convertToMinimalIntegers(gradeWeights);
-
-            item.gradeRates.forEach((gr: any, grIndex: number) => {
-                gr.weight = minimalGradeWeights[grIndex];
-            });
-        });
-    });
-};
-
 // 辅助函数：将数据上传到 HuijiWiki
 async function uploadToWiki(records: any[]) {
     console.log('正在准备上传数据到 wiki...');
@@ -148,17 +78,17 @@ async function uploadToWiki(records: any[]) {
 
         // 获取现有 Data:JunkNameMap.tabx 页面
         const existingPage = await bot.getPageRawTextByTitle('Data:JunkNameMap.tabx');
-        console.log('现有页面:', existingPage);
-        console.log('现有页面内容:', existingPage?.content);
+        // console.log('现有页面:', existingPage);
+        // console.log('现有页面内容:', existingPage?.content);
 
         let existingTabx: any = null;
         if (existingPage && existingPage.content) {
             try {
                 existingTabx = JSON.parse(existingPage.content);
-                console.log('成功解析现有 tabx 数据');
-                console.log('现有 tabx 对象结构:', Object.keys(existingTabx));
-                console.log('现有 tabx schema:', existingTabx?.schema);
-                console.log('现有 tabx data:', existingTabx?.data);
+                // console.log('成功解析现有 tabx 数据');
+                // console.log('现有 tabx 对象结构:', Object.keys(existingTabx));
+                // console.log('现有 tabx schema:', existingTabx?.schema);
+                // console.log('现有 tabx data:', existingTabx?.data);
             } catch (error) {
                 console.error('解析现有 tabx 数据失败:', error);
                 existingTabx = null;
@@ -189,13 +119,13 @@ async function uploadToWiki(records: any[]) {
         // 处理现有数据
         let existingNameJpSet = new Set<string>();
         if (existingTabx) {
-            console.log('处理现有数据...');
+            // console.log('处理现有数据...');
             try {
                 // 手动转换现有数据，避免使用可能失败的 convertTabxRawToData 方法
                 if (existingTabx.data && existingTabx.schema && existingTabx.schema.fields) {
-                    console.log('手动转换现有 tabx 数据');
-                    console.log('现有 tabx 数据长度:', existingTabx.data.length);
-                    console.log('现有 tabx 字段:', existingTabx.schema.fields);
+                    // console.log('手动转换现有 tabx 数据');
+                    // console.log('现有 tabx 数据长度:', existingTabx.data.length);
+                    // console.log('现有 tabx 字段:', existingTabx.schema.fields);
 
                     // 手动转换为对象数组
                     const existingData = existingTabx.data.map((row: any) => {
@@ -206,7 +136,7 @@ async function uploadToWiki(records: any[]) {
                         return obj;
                     });
 
-                    console.log('转换后的现有数据:', existingData);
+                    // console.log('转换后的现有数据:', existingData);
                     existingNameJpSet = new Set(existingData.map((item: any) => item.name_jp));
 
                     // 将现有数据添加到 tabxRaw.data
@@ -235,22 +165,22 @@ async function uploadToWiki(records: any[]) {
             console.log('没有新杂物名称需要添加');
         } else {
             console.log(`共添加 ${newCount} 条杂物名称记录`);
-        }
 
-        // 调用 API 编辑页面
-        const editSummary = '更新杂物物品名称映射数据：添加新杂物名称';
+            // 调用 API 编辑页面
+            const editSummary = '更新杂物物品名称映射数据：添加新杂物名称';
 
-        console.log('正在编辑 wiki 页面...');
+            console.log('正在编辑 wiki 页面...');
 
-        const result = await bot.editPage('Data:JunkNameMap.tabx', JSON.stringify(tabxRaw, null, 2), {
-            summary: editSummary,
-        });
+            const result = await bot.editPage('Data:JunkNameMap.tabx', JSON.stringify(tabxRaw, null, 2), {
+                summary: editSummary,
+            });
 
-        console.log('编辑结果:', result);
-        if (result.error) {
-            console.error('编辑失败:', result.error);
-        } else {
-            console.log(`编辑完成，成功更新 [[Data:JunkNameMap.tabx]] 页面`);
+            console.log('编辑结果:', result);
+            if (result.error) {
+                console.error('编辑失败:', result.error);
+            } else {
+                console.log(`编辑完成，成功更新 [[Data:JunkNameMap.tabx]] 页面`);
+            }
         }
     } catch (error) {
         console.error('上传 wiki 时发生错误:', error);
@@ -353,7 +283,7 @@ const scrapeGachaRates = async () => {
                             0,
                         );
                         currentGroup.items.forEach((item) => {
-                            item.itemWeight = parsePercentage(item.itemRate);
+                            item.itemWeight = item.itemRate;
                         });
 
                         groups.push(currentGroup);
@@ -363,32 +293,32 @@ const scrapeGachaRates = async () => {
                     currentGroup = {
                         groupId: cellTexts[0],
                         groupRate: cellTexts[1],
-                        groupWeight: parsePercentage(cellTexts[1]),
+                        groupWeight: cellTexts[1],
                         items: [],
                     };
 
                     // 解析当前行的装备数据
                     if (cellTexts.length >= 12) {
                         const qualityRates: QualityRate[] = [
-                            { quality: 1, rate: cellTexts[4], weight: parsePercentage(cellTexts[4]) },
-                            { quality: 2, rate: cellTexts[5], weight: parsePercentage(cellTexts[5]) },
-                            { quality: 3, rate: cellTexts[6], weight: parsePercentage(cellTexts[6]) },
-                            { quality: 4, rate: cellTexts[7] || '-', weight: parsePercentage(cellTexts[7] || '-') },
-                            { quality: 5, rate: cellTexts[8] || '-', weight: parsePercentage(cellTexts[8] || '-') },
+                            { quality: 1, rate: cellTexts[4], weight: cellTexts[4] },
+                            { quality: 2, rate: cellTexts[5], weight: cellTexts[5] },
+                            { quality: 3, rate: cellTexts[6], weight: cellTexts[6] },
+                            { quality: 4, rate: cellTexts[7] || '-', weight: cellTexts[7] || '-' },
+                            { quality: 5, rate: cellTexts[8] || '-', weight: cellTexts[8] || '-' },
                         ];
 
                         const gradeRates: GradeRate[] = [
-                            { grade: 1, rate: cellTexts[9], weight: parsePercentage(cellTexts[9]) },
-                            { grade: 2, rate: cellTexts[10], weight: parsePercentage(cellTexts[10]) },
-                            { grade: 3, rate: cellTexts[11], weight: parsePercentage(cellTexts[11]) },
-                            { grade: 4, rate: cellTexts[12] || '-', weight: parsePercentage(cellTexts[12] || '-') },
-                            { grade: 5, rate: cellTexts[13] || '-', weight: parsePercentage(cellTexts[13] || '-') },
+                            { grade: 1, rate: cellTexts[9], weight: cellTexts[9] },
+                            { grade: 2, rate: cellTexts[10], weight: cellTexts[10] },
+                            { grade: 3, rate: cellTexts[11], weight: cellTexts[11] },
+                            { grade: 4, rate: cellTexts[12] || '-', weight: cellTexts[12] || '-' },
+                            { grade: 5, rate: cellTexts[13] || '-', weight: cellTexts[13] || '-' },
                         ];
 
                         const item: GachaItem = {
                             name: cellTexts[2],
                             itemRate: cellTexts[3],
-                            itemWeight: parsePercentage(cellTexts[3]),
+                            itemWeight: cellTexts[3],
                             qualityRates: qualityRates.filter((qr) => qr.rate !== '-'),
                             gradeRates: gradeRates.filter((gr) => gr.rate !== '-'),
                         };
@@ -399,25 +329,25 @@ const scrapeGachaRates = async () => {
                 // 否则是同一组的其他装备
                 else if (currentGroup && cellTexts.length >= 10) {
                     const qualityRates: QualityRate[] = [
-                        { quality: 1, rate: cellTexts[2], weight: parsePercentage(cellTexts[2]) },
-                        { quality: 2, rate: cellTexts[3], weight: parsePercentage(cellTexts[3]) },
-                        { quality: 3, rate: cellTexts[4], weight: parsePercentage(cellTexts[4]) },
-                        { quality: 4, rate: cellTexts[5] || '-', weight: parsePercentage(cellTexts[5] || '-') },
-                        { quality: 5, rate: cellTexts[6] || '-', weight: parsePercentage(cellTexts[6] || '-') },
+                        { quality: 1, rate: cellTexts[2], weight: cellTexts[2] },
+                        { quality: 2, rate: cellTexts[3], weight: cellTexts[3] },
+                        { quality: 3, rate: cellTexts[4], weight: cellTexts[4] },
+                        { quality: 4, rate: cellTexts[5] || '-', weight: cellTexts[5] || '-' },
+                        { quality: 5, rate: cellTexts[6] || '-', weight: cellTexts[6] || '-' },
                     ];
 
                     const gradeRates: GradeRate[] = [
-                        { grade: 1, rate: cellTexts[7], weight: parsePercentage(cellTexts[7]) },
-                        { grade: 2, rate: cellTexts[8], weight: parsePercentage(cellTexts[8]) },
-                        { grade: 3, rate: cellTexts[9], weight: parsePercentage(cellTexts[9]) },
-                        { grade: 4, rate: cellTexts[10] || '-', weight: parsePercentage(cellTexts[10] || '-') },
-                        { grade: 5, rate: cellTexts[11] || '-', weight: parsePercentage(cellTexts[11] || '-') },
+                        { grade: 1, rate: cellTexts[7], weight: cellTexts[7] },
+                        { grade: 2, rate: cellTexts[8], weight: cellTexts[8] },
+                        { grade: 3, rate: cellTexts[9], weight: cellTexts[9] },
+                        { grade: 4, rate: cellTexts[10] || '-', weight: cellTexts[10] || '-' },
+                        { grade: 5, rate: cellTexts[11] || '-', weight: cellTexts[11] || '-' },
                     ];
 
                     const item: GachaItem = {
                         name: cellTexts[0],
                         itemRate: cellTexts[1],
-                        itemWeight: parsePercentage(cellTexts[1]),
+                        itemWeight: cellTexts[1],
                         qualityRates: qualityRates.filter((qr) => qr.rate !== '-'),
                         gradeRates: gradeRates.filter((gr) => gr.rate !== '-'),
                     };
@@ -428,10 +358,9 @@ const scrapeGachaRates = async () => {
 
             // 保存最后一个组
             if (currentGroup) {
-                // 计算组内物品的权重
-                const totalItemRate = currentGroup.items.reduce((sum, item) => sum + parsePercentage(item.itemRate), 0);
+                // 直接使用原始字符串作为物品权重
                 currentGroup.items.forEach((item) => {
-                    item.itemWeight = parsePercentage(item.itemRate);
+                    item.itemWeight = item.itemRate;
                 });
 
                 groups.push(currentGroup);
@@ -439,19 +368,15 @@ const scrapeGachaRates = async () => {
 
             // 只有当表格有数据时才保存
             if (groups.length > 0) {
-                // 计算所有组的权重
-                const totalGroupRate = groups.reduce((sum, group) => sum + parsePercentage(group.groupRate), 0);
+                // 直接使用原始字符串作为组权重
                 groups.forEach((group) => {
-                    group.groupWeight = parsePercentage(group.groupRate);
+                    group.groupWeight = group.groupRate;
                 });
 
                 const record: GachaRecord = {
                     category: category,
                     groups: groups,
                 };
-
-                // 将权重转换为最小整数
-                convertRecordWeightsToMinimalIntegers(record);
 
                 gachaData.data.push(record);
             }
@@ -495,18 +420,18 @@ const scrapeGachaRates = async () => {
                 const compactGroups: any[] = [];
 
                 record.groups.forEach((group: any) => {
-                    const groupWeight = group.groupWeight;
+                    const groupWeight = parsePercentage(group.groupWeight);
                     const compactItems: any[] = [];
 
                     group.items.forEach((item: any) => {
                         const itemNameIndex = getStringIndex(item.name);
-                        const itemWeight = item.itemWeight;
+                        const itemWeight = parsePercentage(item.itemWeight);
 
                         // 构建品质权重数组 [q1, q2, q3, q4, q5]
                         const qualityWeights: number[] = [0, 0, 0, 0, 0];
                         item.qualityRates.forEach((qr: any) => {
                             if (qr.quality >= 1 && qr.quality <= 5) {
-                                qualityWeights[qr.quality - 1] = qr.weight;
+                                qualityWeights[qr.quality - 1] = parsePercentage(qr.weight);
                             }
                         });
                         const trimmedQuality = trimTrailingZeros(qualityWeights);
@@ -515,7 +440,7 @@ const scrapeGachaRates = async () => {
                         const gradeWeights: number[] = [0, 0, 0, 0, 0];
                         item.gradeRates.forEach((gr: any) => {
                             if (gr.grade >= 1 && gr.grade <= 5) {
-                                gradeWeights[gr.grade - 1] = gr.weight;
+                                gradeWeights[gr.grade - 1] = parsePercentage(gr.weight);
                             }
                         });
                         const trimmedGrade = trimTrailingZeros(gradeWeights);

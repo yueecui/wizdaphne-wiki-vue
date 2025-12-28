@@ -235,7 +235,7 @@ import CharacterItem from './CharacterItem.vue';
 import { NButton } from 'naive-ui';
 import { computed, inject, ref } from 'vue';
 import { useSearcherDataStore } from '../data/searcherDataStore';
-import { convertDescription } from '../util/convertDescription';
+import { convertDescription } from '../utils/convertDescription';
 import { Character } from './Character';
 
 const props = defineProps<{

@@ -24,7 +24,6 @@ const InitJunkData = (raw: CompactJunkData['data'][0], strMap: Map<number, strin
     };
 
     // 计算每个物品、品质、星级的获得几率
-    const junkItems: IJunkItemData[] = [];
     const existingItemsMap = new Map<string, IJunkItemData>();
 
     // 计算总权重用于归一化
@@ -32,6 +31,9 @@ const InitJunkData = (raw: CompactJunkData['data'][0], strMap: Map<number, strin
 
     // 目前没有中文名的日文名记录
     const MissingJunkNames = new Set<string>();
+
+    // 缓存装备查找结果，避免重复查找
+    const equipmentCache = new Map<string, ReturnType<typeof equipmentStore.getEquipmentByNJP>>();
 
     junkData.groups.forEach((group) => {
         // 计算组内物品的总权重
@@ -48,26 +50,34 @@ const InitJunkData = (raw: CompactJunkData['data'][0], strMap: Map<number, strin
             // 计算星级总权重
             const gradeTotalWeight = item.gradeWeights.reduce((sum, weight) => sum + weight, 0);
 
+            // 缓存当前物品的装备信息，避免在品质和星级循环中重复查找
+            let equipment = equipmentCache.get(item.name);
+            if (equipment === undefined) {
+                equipment = equipmentStore.getEquipmentByNJP(item.name);
+                equipmentCache.set(item.name, equipment);
+                if (!equipment && !MissingJunkNames.has(item.name)) {
+                    MissingJunkNames.add(item.name);
+                    console.log(`未找到装备: ${item.name}`);
+                }
+            }
+
+            // 预先获取装备相关属性
+            const equipmentNameCn = equipment ? equipment.data.n : '';
+            const equipmentTier = equipment ? equipment.data.t : 0;
+            const equipmentSort = equipment ? equipment.sort : 0;
+
             // 生成所有品质和星级的组合
             item.qualityWeights.forEach((qualityWeight, quality) => {
-                item.gradeWeights.forEach((gradeWeight, grade) => {
-                    const qualityRatio = qualityWeight / qualityTotalWeight;
-                    const gradeRatio = gradeWeight / gradeTotalWeight;
-                    const totalRate = groupWeightRatio * itemWeightRatio * qualityRatio * gradeRatio;
+                const qualityRatio = qualityWeight / qualityTotalWeight;
+                const actualQuality = quality + 1;
 
-                    // 数组第一个位置的是1级而不是0级，所以需要+1
-                    const actualQuality = quality + 1;
+                item.gradeWeights.forEach((gradeWeight, grade) => {
+                    const gradeRatio = gradeWeight / gradeTotalWeight;
                     const actualGrade = grade + 1;
+                    const totalRate = groupWeightRatio * itemWeightRatio * qualityRatio * gradeRatio;
 
                     // 生成唯一键用于检查是否已存在相同的项
                     const key = `${item.name}|${actualQuality}|${actualGrade}`;
-
-                    // 查找装备信息
-                    const equipment = equipmentStore.getEquipmentByNJP(item.name);
-                    if (!equipment && !MissingJunkNames.has(item.name)) {
-                        MissingJunkNames.add(item.name);
-                        console.log(`未找到装备: ${item.name}`);
-                    }
 
                     if (existingItemsMap.has(key)) {
                         // 如果已存在相同项，累加rates
@@ -80,9 +90,9 @@ const InitJunkData = (raw: CompactJunkData['data'][0], strMap: Map<number, strin
                             quality: actualQuality,
                             grade: actualGrade,
                             rates: totalRate,
-                            name_cn: equipment ? equipment.data.n : '',
-                            tier: equipment ? equipment.data.t : 0,
-                            sort: equipment ? equipment.sort : 0,
+                            name_cn: equipmentNameCn,
+                            tier: equipmentTier,
+                            sort: equipmentSort,
                         };
 
                         existingItemsMap.set(key, newItem);
@@ -92,12 +102,8 @@ const InitJunkData = (raw: CompactJunkData['data'][0], strMap: Map<number, strin
         });
     });
 
-    // 将map中的值转换为数组
-    existingItemsMap.forEach((item) => {
-        junkItems.push(item);
-    });
-
-    return [junkData, junkItems];
+    // 直接返回Map的值数组，避免额外的forEach循环
+    return [junkData, Array.from(existingItemsMap.values())];
 };
 
 export class JunkItem {

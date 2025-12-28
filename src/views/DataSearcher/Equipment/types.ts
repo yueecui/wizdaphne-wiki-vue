@@ -3,6 +3,7 @@ export interface IEquipmentFilter {
     category: string;
     skill: string;
     showMaxLv: boolean;
+    soucateFilter?: 'all' | 'show' | 'hide';
 }
 
 // 配置文件
@@ -34,6 +35,7 @@ export interface IEquipmentBase {
     csk?: string[];
     desc?: string;
     req?: string;
+    soucate: number;
     sou?: string[];
 }
 

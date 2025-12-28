@@ -34,22 +34,17 @@ import CharacterCard from './CharacterCard.vue';
 import CharacterFilter from './CharacterFilter.vue';
 import CharacterItem from './CharacterItem.vue';
 
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, toRefs, watch } from 'vue';
 import { useSearcherDataStore } from '../data/searcherDataStore';
 import { Character } from './Character';
-import { ICharacterFilter } from './types';
 
-const filter = ref<ICharacterFilter>({
-    searchText: '',
-    element: '',
-    race: '',
-    gender: '',
-    personality: '',
-    rarity: '',
-    fate: '',
-    class: [''],
-    onlyPrimary: true,
-    discipline_tags: [],
+// 使用searcherDataStore的settings
+const { settings } = toRefs(useSearcherDataStore());
+
+// 使用计算属性获取和设置角色过滤器
+const filter = computed({
+    get: () => settings.value.characterFilter,
+    set: (newFilter) => (settings.value.characterFilter = newFilter),
 });
 
 const store = useSearcherDataStore();

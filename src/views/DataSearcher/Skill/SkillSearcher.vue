@@ -36,16 +36,18 @@
 import { NButton, NPagination } from 'naive-ui';
 import SkillFilter from './SkillFilter.vue';
 
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, toRefs, watch } from 'vue';
 import { Character } from '../Character/Character';
 import { useSearcherDataStore } from '../data/searcherDataStore';
-import { convertDescription } from '../util/convertDescription';
-import { ISkillFilter } from './types';
+import { convertDescription } from '../utils/convertDescription';
 
-const filter = ref<ISkillFilter>({
-    searchText: '',
-    category: '',
-    type: '',
+// 使用searcherDataStore的settings
+const { settings } = toRefs(useSearcherDataStore());
+
+// 使用计算属性获取和设置技能过滤器
+const filter = computed({
+    get: () => settings.value.skillFilter,
+    set: (newFilter) => (settings.value.skillFilter = newFilter),
 });
 
 watch(
@@ -57,6 +59,9 @@ watch(
 );
 
 const store = useSearcherDataStore();
+
+// 使用searcherDataStore的settings
+// const settings = computed(() => store.settings); // 已移至顶部使用toRefs
 
 const pageSize = ref(20);
 const pageIndex = ref(1);
@@ -76,8 +81,7 @@ const currentPageSkillList = computed(() => {
 });
 
 onMounted(async () => {
-    // 初始化数据
-    onFilterReset();
+    // 组件挂载时不再重置过滤器，保持之前保存的设置
 });
 
 const showDetailCharacter = ref<Character | null>(null);
@@ -91,7 +95,7 @@ const closeDetail = () => {
 };
 
 const onFilterReset = () => {
-    filter.value = {
+    settings.value.skillFilter = {
         searchText: '',
         category: '',
         type: '',

@@ -45,6 +45,22 @@
         </div>
         <div class="flex flex-col">
             <div class="flex justify-between items-center h-6">
+                <label class="text-sm">特典</label>
+            </div>
+            <div class="flex flex-row gap-2 items-center h-12">
+                <NSelect
+                    v-model:value="filter.soucateFilter"
+                    :options="[
+                        { label: '全部显示', value: 'all' },
+                        { label: '只显示特典', value: 'show' },
+                        { label: '不显示特典', value: 'hide' }
+                    ]"
+                    class="w-40!"
+                ></NSelect>
+            </div>
+        </div>
+        <div class="flex flex-col">
+            <div class="flex justify-between items-center h-6">
                 <label class="text-sm">&nbsp;</label>
             </div>
             <div class="flex flex-row gap-2 items-center h-12">
@@ -58,8 +74,8 @@
 import { NButton, NCheckbox, NInput, NSelect, SelectOption } from 'naive-ui';
 
 import { computed, toRefs } from 'vue';
+import { ARMOR_SORT_ORDER } from './Equipment';
 import { useEquipmentStore } from './equipmentStore';
-import { ARMOR_SORT_ORDER } from './Equpment';
 import { IEquipmentFilter } from './types';
 
 const filter = defineModel<IEquipmentFilter>('filter', {

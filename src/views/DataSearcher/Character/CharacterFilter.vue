@@ -31,6 +31,7 @@
                     :options="onlyPrimaryClassOptions"
                     v-model:value="filter.class[0]"
                     class="w-48!"
+                    placeholder="全部"
                 ></NSelect>
                 <NSelect
                     v-else
@@ -259,7 +260,8 @@ const updateOnlyPrimary = (value: boolean) => {
         if (filter.value.class.length > 1) {
             filter.value.class = filter.value.class.slice(0, 1);
         } else if (filter.value.class.length === 0) {
-            filter.value.class = [''];
+            // 当切换到仅初始职业且class为空时，保持为空数组，不添加空选项
+            filter.value.class = [];
         }
     } else {
         filter.value.class = filter.value.class.filter((c) => c !== '');

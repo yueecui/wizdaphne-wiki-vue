@@ -45,6 +45,8 @@ export interface IJunkFilter {
     maxQuality: number | null;
     maxGrade: number | null;
     maxTier: number | null;
+    // 杂物自动加载开关
+    junkAutoLoad: boolean;
 }
 
 // 定义junkrates.json的原始数据结构

@@ -1,13 +1,153 @@
+import { useStorage } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { IS_DEV } from '../../../util';
 import { Character } from '../Character/Character';
+import type { ICharacterFilter } from '../Character/types';
+import type { IEquipmentFilter } from '../Equipment/types';
+import type { IJunkFilter } from '../Junk/types';
 import { Skill } from '../Skill/Skill';
+import type { ISkillFilter } from '../Skill/types';
+import type { SimCharacterConfig } from '../StatCalculator/types';
 import type { ICharacterStats, ISearcherExposeData } from './SearcherData.types';
+
+// 统一存储键名
+export const DATA_SEARCHER_STORAGE_KEY = 'dataSearcherSettings';
+
+// 存储结构定义
+export interface DataSearcherSettings {
+    // 最后一次打开的标签
+    activeTab: string;
+    // 特典装备显示规则 (all/show/hide)
+    soucateFilter: 'all' | 'show' | 'hide';
+
+    // 角色过滤器
+    characterFilter: ICharacterFilter;
+    // 技能过滤器
+    skillFilter: ISkillFilter;
+    // 武器过滤器
+    weaponFilter: IEquipmentFilter;
+    // 防具过滤器
+    armorFilter: IEquipmentFilter;
+    // 杂物过滤器
+    junkFilter: IJunkFilter;
+
+    // 特性值配置
+    statCalculator: {
+        // 角色配置
+        characterConfig: SimCharacterConfig;
+        // 属性加成
+        bonusStats: ICharacterStats;
+        // 才能缘等级
+        fateLevel: ICharacterStats;
+        // 角色等级
+        characterLevel: number;
+        // 当前属性值
+        currentStats: ICharacterStats;
+    };
+}
+
+// 默认设置
+export const DEFAULT_SETTINGS: DataSearcherSettings = {
+    activeTab: 'Character',
+    soucateFilter: 'all',
+
+    // 角色过滤器默认值
+    characterFilter: {
+        searchText: '',
+        element: '',
+        race: '',
+        gender: '',
+        personality: '',
+        rarity: '',
+        fate: '',
+        class: [],
+        onlyPrimary: true,
+        discipline_tags: [],
+    },
+
+    // 技能过滤器默认值
+    skillFilter: {
+        searchText: '',
+        category: '',
+        type: '',
+    },
+
+    // 武器过滤器默认值
+    weaponFilter: {
+        searchText: '',
+        category: '',
+        skill: '',
+        showMaxLv: false,
+        soucateFilter: 'all',
+    },
+
+    // 防具过滤器默认值
+    armorFilter: {
+        searchText: '',
+        category: '',
+        skill: '',
+        showMaxLv: false,
+        soucateFilter: 'all',
+    },
+
+    // 杂物过滤器默认值
+    junkFilter: {
+        searchText: '',
+        maxQuality: null,
+        maxGrade: null,
+        maxTier: null,
+        junkAutoLoad: false,
+    },
+
+    // 特性值配置默认值
+    statCalculator: {
+        characterConfig: {
+            race: '人类',
+            gender: '男',
+            element: '火',
+            class: '战士',
+            tier: 0,
+        },
+        bonusStats: {
+            strength: 0,
+            intelligence: 0,
+            piety: 0,
+            vitality: 0,
+            dexterity: 0,
+            speed: 0,
+            luck: 0,
+        },
+        fateLevel: {
+            strength: 0,
+            intelligence: 0,
+            piety: 0,
+            vitality: 0,
+            dexterity: 0,
+            speed: 0,
+            luck: 0,
+        },
+        characterLevel: 20,
+        currentStats: {
+            strength: 0,
+            intelligence: 0,
+            piety: 0,
+            vitality: 0,
+            dexterity: 0,
+            speed: 0,
+            luck: 0,
+        },
+    },
+};
 
 export const useSearcherDataStore = defineStore('searcherData', () => {
     // 配置数据
     const data = ref<ISearcherExposeData | null>(null);
+
+    // 使用VueUse的useStorage创建响应式存储
+    const settings = useStorage<DataSearcherSettings>(DATA_SEARCHER_STORAGE_KEY, DEFAULT_SETTINGS, localStorage, {
+        mergeDefaults: true,
+    });
 
     // 初始化状态
     const isInit = ref(false);
@@ -155,5 +295,7 @@ export const useSearcherDataStore = defineStore('searcherData', () => {
         getStatSet,
         getAllClass: allClass,
         allStandardClass,
+        // 响应式设置存储
+        settings,
     };
 });

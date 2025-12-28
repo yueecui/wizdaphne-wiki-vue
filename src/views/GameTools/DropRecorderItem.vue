@@ -183,7 +183,7 @@ import { NButton, NDatePicker, NModal, NTooltip } from 'naive-ui';
 import WikiNImage from '../../components/huiji/WikiNImage.vue';
 
 import { computed, ref, toRefs } from 'vue';
-import { convertDescription } from '../DataSearcher/util/convertDescription';
+import { convertDescription } from '../DataSearcher/utils/convertDescription';
 import { DropConfig } from './classes/DropConfig';
 import { FixedRefreshConfig } from './classes/FixedRefreshConfig';
 import { AbstractRecordConfig } from './type';
