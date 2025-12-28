@@ -2,7 +2,7 @@
     <div class="p-4 bg-[#312721]! border! border-[#463d38]! rounded flex flex-col gap-4">
         <!-- 标题部分 -->
         <div>
-            <h2 class="text-xl text-light font-bold mb-4">{{ equipment.data.n }} - 属性编辑器</h2>
+            <h2 class="text-xl text-light font-bold mb-4">{{ equipment.data.n }} - 强化属性编辑器</h2>
         </div>
 
         <!-- 属性值编辑表格 -->

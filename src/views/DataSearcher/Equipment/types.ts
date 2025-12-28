@@ -11,6 +11,7 @@ export interface IEquipmentJson {
     equipments: IEquipmentBase[];
     levels: Record<string, IEquipmentStatLevel[]>;
     skill: IEquipmentSkill[];
+    bonus: Array<[name: string, rates: Array<Array<number>>]>;
 }
 
 export interface IEquipmentBase {

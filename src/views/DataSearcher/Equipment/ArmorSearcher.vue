@@ -75,7 +75,7 @@
         </div>
         <NModal v-model:show="isShowDetail">
             <template v-if="showDetailEquipment">
-                <div class="w-[90%] md:h-auto md:w-[600px] m-auto huiji-css-hook bg-transparent!">
+                <div class="w-[90%] md:h-auto md:w-[700px] m-auto huiji-css-hook bg-transparent!">
                     <EquipmentCard :equipment="showDetailEquipment" :onClose="closeDetail" />
                 </div>
             </template>
@@ -197,7 +197,7 @@ const getTd = (item: Equipment, key: string) => {
 const onFilterReset = () => {
     filter.value = {
         ...DEFAULT_SETTINGS.armorFilter,
-        soucateFilter: filter.value.soucateFilter // 保留特典过滤
+        soucateFilter: filter.value.soucateFilter, // 保留特典过滤
     };
 };
 

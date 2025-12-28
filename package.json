@@ -17,7 +17,8 @@
         "syncyarn": "npx syncyarnlock --save --keepPrefix",
         "打包上传程序": "tsc -p tsconfig.upload.json",
         "上传到COS": "node ./local_scripts/dist/uploadToCos.js",
-        "scrape:junk": "tsx ./local_scripts/src/scrapeJunkRates.ts",
+        "update:junk": "tsx ./local_scripts/src/scrapeJunkRates.ts",
+        "update:equipment-bonus": "tsx ./local_scripts/src/updateEquipmentBonusRates.ts",
         "scrape:data": "tsx ./local_scripts/src/scrapeApiData.ts"
     },
     "dependencies": {

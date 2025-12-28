@@ -22,7 +22,23 @@ export const useEquipmentStore = defineStore('equipment', () => {
                         const levels = data.levels;
                         equipmentSkills.value = data.skill;
 
-                        equipments.value = base.map((item) => new Equipment(item, levels[item.ba ?? item.n] ?? []));
+                        // 处理bonus数据，创建装备名称到bonus数据的映射
+                        const bonusMap = new Map<string, Array<Array<number>>>();
+                        if (data.bonus) {
+                            data.bonus.forEach(([name, rates]) => {
+                                bonusMap.set(name, rates);
+                            });
+                        }
+
+                        // 创建装备对象并设置bonus数据
+                        equipments.value = base.map((item) => {
+                            const equipment = new Equipment(item, levels[item.ba ?? item.n] ?? []);
+                            // 根据njp查找对应的bonus数据
+                            const bonusData = bonusMap.get(item.njp) ?? null;
+                            equipment.setBonusData(bonusData);
+                            return equipment;
+                        });
+
                         isInit.value = true;
                         resolve();
                     });

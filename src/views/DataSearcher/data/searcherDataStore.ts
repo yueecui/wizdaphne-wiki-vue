@@ -6,10 +6,10 @@ import { Character } from '../Character/Character';
 import type { ICharacterFilter } from '../Character/types';
 import type { IEquipmentFilter } from '../Equipment/types';
 import type { IJunkFilter } from '../Junk/types';
-import { Skill } from '../Skill/Skill';
 import type { ISkillFilter } from '../Skill/types';
 import type { SimCharacterConfig } from '../StatCalculator/types';
 import type { ICharacterStats, ISearcherExposeData } from './SearcherData.types';
+import { Skill } from '../Skill/Skill';
 
 // 统一存储键名
 export const DATA_SEARCHER_STORAGE_KEY = 'dataSearcherSettings';
@@ -20,6 +20,8 @@ export interface DataSearcherSettings {
     activeTab: string;
     // 特典装备显示规则 (all/show/hide)
     soucateFilter: 'all' | 'show' | 'hide';
+    // 装备加护排序方式 (attribute/probability)
+    equipmentBonusOrder: 'attribute' | 'probability';
 
     // 角色过滤器
     characterFilter: ICharacterFilter;
@@ -51,6 +53,7 @@ export interface DataSearcherSettings {
 export const DEFAULT_SETTINGS: DataSearcherSettings = {
     activeTab: 'Character',
     soucateFilter: 'all',
+    equipmentBonusOrder: 'attribute',
 
     // 角色过滤器默认值
     characterFilter: {
@@ -139,7 +142,6 @@ export const DEFAULT_SETTINGS: DataSearcherSettings = {
         },
     },
 };
-
 export const useSearcherDataStore = defineStore('searcherData', () => {
     // 配置数据
     const data = ref<ISearcherExposeData | null>(null);
@@ -148,7 +150,6 @@ export const useSearcherDataStore = defineStore('searcherData', () => {
     const settings = useStorage<DataSearcherSettings>(DATA_SEARCHER_STORAGE_KEY, DEFAULT_SETTINGS, localStorage, {
         mergeDefaults: true,
     });
-
     // 初始化状态
     const isInit = ref(false);
 

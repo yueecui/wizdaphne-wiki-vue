@@ -59,7 +59,13 @@
             <!-- 杂物分类列表 -->
         </div>
     </NSpin>
-
+    <div class="text-sm text-gray-400">
+        <span>
+            <span>※ 数据来自</span>
+            <a href="https://wizardry.info/daphne/gacha_rates/ja/equipments.html" target="_blank">官方提供的数据</a>
+            <span>。</span>
+        </span>
+    </div>
     <!-- 详情模态框 -->
     <NModal v-model:show="isShowDetail">
         <template v-if="selectedItem">

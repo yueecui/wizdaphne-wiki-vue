@@ -2,11 +2,16 @@ import type { IEquipmentBase, IEquipmentFilter, IEquipmentStat, IEquipmentStatLe
 
 export class Equipment {
     public sort: number;
+    public bonus: Array<Array<number>> | null = null;
     constructor(
         public data: IEquipmentBase,
         public levels: IEquipmentStatLevel[],
     ) {
         this.sort = EQUIPMENT_CATEGORY_SOFT_INDEX_MAP[this.data.sub] ?? 9999;
+    }
+
+    setBonusData(bonusData: Array<Array<number>> | null) {
+        this.bonus = bonusData;
     }
 
     isMatch(filter: IEquipmentFilter): boolean {

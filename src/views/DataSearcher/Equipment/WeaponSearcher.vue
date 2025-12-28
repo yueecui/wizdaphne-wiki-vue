@@ -77,7 +77,7 @@
         </div>
         <NModal v-model:show="isShowDetail">
             <template v-if="showDetailEquipment">
-                <div class="w-[90%] md:h-auto md:w-[600px] m-auto huiji-css-hook bg-transparent!">
+                <div class="w-[90%] md:h-auto md:w-[800px] m-auto huiji-css-hook bg-transparent!">
                     <EquipmentCard :equipment="showDetailEquipment" :onClose="closeDetail" />
                 </div>
             </template>
