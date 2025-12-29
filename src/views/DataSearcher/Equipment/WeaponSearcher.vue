@@ -24,7 +24,7 @@
                         <th class="hidden md:table-cell! md:w-[2em]">会心</th>
                         <th class="hidden md:table-cell! md:w-[2em]">回避</th>
                         <th class="hidden md:table-cell! md:w-[2em]">抵抗</th>
-                        <th class="hidden md:table-cell!">非武器类型特性</th>
+                        <th class="hidden md:table-cell!">非装备类型特性</th>
                         <th class="xl:w-[20em] hidden md:table-cell!">其他</th>
                     </tr>
                 </thead>
@@ -37,7 +37,11 @@
                     >
                         <td>
                             <div class="flex justify-between items-center">
-                                <div>{{ item.data.n }}</div>
+                                <div>
+                                    <span :class="{ 'text-blue-300': item.data.soucate === 1 }">
+                                        {{ item.data.n }}
+                                    </span>
+                                </div>
                             </div>
                         </td>
 
@@ -133,34 +137,29 @@ const allWeapon = computed(() => {
 const filteredList = computed(() => {
     const filteredData = allWeapon.value.filter((equipment) => equipment.isMatch(filter.value));
     filteredData.sort((a, b) => {
-        if (a.getCategoryIndex() !== b.getCategoryIndex()) {
-            return a.getCategoryIndex() - b.getCategoryIndex();
-        }
+        // 1. 优先t值，t越高越靠前
         if (a.data.t !== b.data.t) {
             return b.data.t - a.data.t;
         }
-        if (a.data.cate === '武器') {
-            if (['单手杖', '双手杖'].includes(a.data.sub)) {
-                if (a.data.mag !== b.data.mag) {
-                    return b.data.mag - a.data.mag;
-                }
-                if (a.data.div !== b.data.div) {
-                    return b.data.div - a.data.div;
-                }
-            } else {
-                if (a.data.atk !== b.data.atk) {
-                    return b.data.atk - a.data.atk;
-                }
-            }
-        } else {
-            if (a.data.def !== b.data.def) {
-                return b.data.def - a.data.def;
-            }
-            if (a.data.mdef !== b.data.mdef) {
-                return b.data.mdef - a.data.mdef;
-            }
+
+        // 2. 特典优先 (soucate === 1)
+        const aIsSpecial = a.data.soucate === 1;
+        const bIsSpecial = b.data.soucate === 1;
+        if (aIsSpecial !== bIsSpecial) {
+            return aIsSpecial ? -1 : 1;
         }
-        return 0;
+
+        // 3. id = 0的最靠前，>0的倒序排列
+        const aId = a.data.id || 0;
+        const bId = b.data.id || 0;
+        if (aId === 0 && bId !== 0) {
+            return -1;
+        }
+        if (aId !== 0 && bId === 0) {
+            return 1;
+        }
+        // 都是0或都不是0，倒序排列
+        return bId - aId;
     });
     return filteredData;
 });

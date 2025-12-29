@@ -1,7 +1,7 @@
 <template>
     <div class="p-4 bg-[#312721]! border! border-[#463d38]! rounded flex flex-col gap-4">
         <div class="sticky top-0 bg-[#312721] z-10 py-2">
-            <div class="text-2xl text-light font-bold">
+            <div class="text-3xl text-light font-bold flex items-baseline gap-4">
                 {{ junkItem.name }}
                 <span v-if="junkItem.notObt" class="text-sm ml-1 text-red-400">无法获取</span>
             </div>

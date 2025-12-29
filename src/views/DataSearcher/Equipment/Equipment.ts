@@ -23,6 +23,14 @@ export class Equipment {
             if (this.data.njp && this.data.njp.includes(filter.searchText)) {
                 found = true;
             }
+            // 添加ID搜索功能，ID必须>0且<8000
+            const searchId = parseInt(filter.searchText);
+            if (!isNaN(searchId) && searchId > 0 && searchId < 8000) {
+                // 检查id字段是否存在且匹配
+                if (this.data.id !== undefined && this.data.id === searchId) {
+                    found = true;
+                }
+            }
             if (!found) {
                 return false;
             }

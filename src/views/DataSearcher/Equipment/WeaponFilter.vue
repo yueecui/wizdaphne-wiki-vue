@@ -25,7 +25,7 @@
                 <label class="text-sm">搜索词</label>
             </div>
             <div class="flex items-center h-12">
-                <NInput v-model:value="filter.searchText" placeholder="支持中日名字"></NInput>
+                <NInput v-model:value="filter.searchText" placeholder="支持中日名字、ID"></NInput>
             </div>
         </div>
         <div class="flex flex-col">
@@ -53,7 +53,7 @@
                     :options="[
                         { label: '全部显示', value: 'all' },
                         { label: '只显示特典', value: 'show' },
-                        { label: '不显示特典', value: 'hide' }
+                        { label: '不显示特典', value: 'hide' },
                     ]"
                     class="w-40!"
                 ></NSelect>

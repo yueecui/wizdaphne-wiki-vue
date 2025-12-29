@@ -2,7 +2,15 @@
     <div class="p-4 bg-[#312721]! border! border-[#463d38]! rounded flex flex-col gap-4">
         <!-- 标题部分 -->
         <div class="sticky top-0 bg-[#312721] z-10 py-2">
-            <div class="text-3xl text-light font-bold">{{ equipment.data.n }}</div>
+            <div class="text-sm text-light">
+                <template v-if="equipment.data.id === 0">Ex</template>
+                <template v-else-if="equipment.data.id > 8000">No. ???</template>
+                <template v-else>No. {{ equipment.data.id }}</template>
+            </div>
+            <div class="text-3xl text-light font-bold flex items-baseline gap-4">
+                <span>{{ equipment.data.n }}</span>
+                <span v-if="equipment.data.soucate === 1" class="text-sm text-blue-300">特典</span>
+            </div>
             <div class="text-sm text-gray-400" v-if="equipment.data.njp">
                 {{ equipment.data.njp }}
             </div>
