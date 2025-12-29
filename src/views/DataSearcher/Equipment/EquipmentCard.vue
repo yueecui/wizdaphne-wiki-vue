@@ -1,8 +1,8 @@
 <template>
     <div class="p-4 bg-[#312721]! border! border-[#463d38]! rounded flex flex-col gap-4">
         <!-- 标题部分 -->
-        <div>
-            <div class="text-3xl text-light font-bold mt-2">{{ equipment.data.n }}</div>
+        <div class="sticky top-0 bg-[#312721] z-10 py-2">
+            <div class="text-3xl text-light font-bold">{{ equipment.data.n }}</div>
             <div class="text-sm text-gray-400" v-if="equipment.data.njp">
                 {{ equipment.data.njp }}
             </div>
@@ -82,7 +82,7 @@
             </div>
         </div>
         <!-- 分页组件 -->
-        <NTabs type="card" size="small" v-model="activeTab">
+        <NTabs type="card" size="small" v-model:value="activeTab">
             <!-- 第一页：属性值表格 -->
             <NTabPane name="attributes" tab="属性值">
                 <div class="mt-2">
@@ -229,7 +229,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
                         <!-- 加护槽1 -->
                         <div v-if="equipment.bonus[0]" class="flex flex-col gap-2">
-                            <div class="text-center font-bold">加护 1</div>
+                            <div class="text-center text-md text-light font-semibold bg-black/50 px-2 py-1">加护 1</div>
                             <!-- 下拉框 -->
                             <div class="flex justify-center">
                                 <n-select
@@ -266,7 +266,7 @@
 
                         <!-- 加护槽2 -->
                         <div v-if="equipment.bonus[1]" class="flex flex-col gap-2">
-                            <div class="text-center font-bold">加护 2</div>
+                            <div class="text-center text-md text-light font-semibold bg-black/50 px-2 py-1">加护 2</div>
                             <!-- 下拉框 -->
                             <div class="flex justify-center">
                                 <n-select
@@ -303,7 +303,7 @@
 
                         <!-- 加护槽3 -->
                         <div v-if="equipment.bonus[2]" class="flex flex-col gap-2">
-                            <div class="text-center font-bold">加护 3</div>
+                            <div class="text-center text-md text-light font-semibold bg-black/50 px-2 py-1">加护 3</div>
                             <!-- 下拉框 -->
                             <div class="flex justify-center">
                                 <n-select
@@ -340,7 +340,7 @@
 
                         <!-- 加护槽4 -->
                         <div v-if="equipment.bonus[3]" class="flex flex-col gap-2">
-                            <div class="text-center font-bold">加护 4</div>
+                            <div class="text-center text-md text-light font-semibold bg-black/50 px-2 py-1">加护 4</div>
                             <!-- 下拉框 -->
                             <div class="flex justify-center">
                                 <n-select
@@ -370,6 +370,50 @@
                                     </template>
                                     <tr v-if="getNonZeroCount(sortedBonuses[3]) === 0">
                                         <td colspan="2" class="text-center text-gray-400">无属性</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 加护组合概率计算结果 -->
+                    <div v-if="bonusCombinationProbabilities.length > 0" class="mt-8">
+                        <div class="text-xl text-light font-bold bg-[#2c231d] px-3 py-2 rounded mb-4">
+                            初始加护组合生成概率
+                        </div>
+
+                        <div v-for="result in bonusCombinationProbabilities" :key="result.totalSlots" class="mb-6">
+                            <div class="text-md text-light font-semibold bg-black/50 px-2 py-1 mb-2">
+                                初始拥有
+                                <span :class="getGradeColorClass(result.totalSlots + 1)">
+                                    {{ result.totalSlots }}
+                                </span>
+                                条加护
+                            </div>
+                            <div class="mb-2 text-gray-300">总概率: {{ result.totalProbability.toFixed(4) }}%</div>
+
+                            <table class="wikitable w-full text-center">
+                                <thead>
+                                    <tr>
+                                        <th>组合位置</th>
+                                        <th class="md:w-[10em]">概率</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(comb, index) in result.combinations" :key="index">
+                                        <td>
+                                            <div class="flex flex-wrap gap-2 justify-center">
+                                                <span
+                                                    v-for="(attr, pos) in comb.attributeNames"
+                                                    :key="pos"
+                                                    class="px-2 py-1 bg-[#3a312a]! rounded"
+                                                    :class="{ 'text-gray-400': attr === '其他' }"
+                                                >
+                                                    {{ attr }}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td>{{ comb.probability.toFixed(4) }}%</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -411,8 +455,9 @@
 
 <script setup lang="ts">
 import { NButton, NModal, NRadio, NRadioGroup, NSelect, NTabPane, NTabs } from 'naive-ui';
-import { computed, h, ref, toRefs } from 'vue';
+import { computed, h, nextTick, ref, toRefs } from 'vue';
 import { MwConfig } from '../../../huiji/MwConfig';
+import { useSearcherDataStore } from '../data/searcherDataStore';
 import { getGradeColorClass, getQualityDisplay } from '../Junk/constants';
 import type { JunkItem } from '../Junk/JunkItem';
 import { useJunkStore } from '../Junk/junkStore';
@@ -420,7 +465,6 @@ import { convertDescription } from '../utils/convertDescription';
 import { Equipment } from './Equipment';
 import EquipmentEditor from './EquipmentEditor.vue';
 import { useEquipmentStore } from './equipmentStore';
-import { useSearcherDataStore } from '../data/searcherDataStore';
 
 const props = defineProps<{
     equipment: Equipment;
@@ -458,7 +502,10 @@ const junkSourcesTabTitle = computed(() => {
 // 点击杂物行时触发
 const handleJunkClick = (junk: JunkItem) => {
     selectedJunkItem.value = junk;
-    activeTab.value = 'junk-detail';
+    // 使用nextTick确保junk-detail标签页渲染后再切换
+    nextTick(() => {
+        activeTab.value = 'junk-detail';
+    });
 };
 
 // 渲染杂物标签页标题
@@ -668,6 +715,25 @@ const selectedJunkItemQualityData = computed(() => {
         });
 });
 
+// 生成下拉框选项数据
+const attributeOptions = computed(() => {
+    return attributeNames.map((name, index) => ({
+        label: name,
+        value: index,
+    }));
+});
+
+// 计算数组中非零值的数量
+const getNonZeroCount = (array: number[]): number => {
+    return array.filter((value) => Math.abs(value) > 0.0001).length;
+};
+
+// 每个加护槽的选择状态
+const selectedAttributes = ref<(number | null)[]>([null, null, null, null]);
+
+// 引入数据搜索器存储
+const searcherDataStore = useSearcherDataStore();
+
 // 属性名称映射，与updateEquipmentBonusRates.ts中的attributeOrder对应
 const attributeNames = [
     '攻击力%', // 攻撃力上昇（％）
@@ -690,25 +756,6 @@ const attributeNames = [
     '会心', // 会心上昇（固定）
     '速度', // 行動速度上昇（固定）
 ];
-
-// 生成下拉框选项数据
-const attributeOptions = computed(() => {
-    return attributeNames.map((name, index) => ({
-        label: name,
-        value: index,
-    }));
-});
-
-// 计算数组中非零值的数量
-const getNonZeroCount = (array: number[]): number => {
-    return array.filter((value) => Math.abs(value) > 0.0001).length;
-};
-
-// 每个加护槽的选择状态
-const selectedAttributes = ref<(number | null)[]>([null, null, null, null]);
-
-// 引入数据搜索器存储
-const searcherDataStore = useSearcherDataStore();
 
 // 排序方式：'attribute'表示属性顺序，'probability'表示概率顺序
 const orderType = computed({
@@ -858,6 +905,171 @@ const handleAttributeSelect = (slot: number, value: number | null) => {
             selectedAttributes.value[i] = null;
         }
     }
+};
+
+// 生成所选属性的所有排列
+const getPermutations = (arr: number[]): number[][] => {
+    if (arr.length === 0) return [[]];
+    const result: number[][] = [];
+    for (let i = 0; i < arr.length; i++) {
+        const current = arr[i];
+        const remaining = arr.slice(0, i).concat(arr.slice(i + 1));
+        const remainingPermutations = getPermutations(remaining);
+        for (const permutation of remainingPermutations) {
+            result.push([current, ...permutation]);
+        }
+    }
+    return result;
+};
+
+// 计算加护组合的概率
+const bonusCombinationProbabilities = computed(() => {
+    // 获取用户选择的加护属性（过滤null，保留顺序，忽略重复）
+    const selectedAttrs: number[] = [];
+    const usedAttrs = new Set<number>();
+    for (const attr of selectedAttributes.value) {
+        if (attr !== null && !usedAttrs.has(attr)) {
+            selectedAttrs.push(attr);
+            usedAttrs.add(attr);
+        }
+    }
+    if (selectedAttrs.length === 0) return [];
+
+    const results: Array<{
+        totalSlots: number;
+        combinations: Array<{
+            positions: number[];
+            probability: number;
+            attributeNames: string[];
+        }>;
+        totalProbability: number;
+    }> = [];
+
+    // 对于每种可能的总加护数量（从用户选择的数量到4）
+    for (let totalSlots = selectedAttrs.length; totalSlots <= 4; totalSlots++) {
+        if (totalSlots === 0) continue;
+
+        // 生成所有可能的位置组合（从totalSlots个位置中选择selectedAttrs.length个位置）
+        const positionCombinations = getPositionCombinations(totalSlots, selectedAttrs.length);
+
+        // 计算每种位置组合和属性排列的概率
+        const combinations: Array<{ positions: number[]; probability: number; attributeNames: string[] }> = [];
+
+        // 生成位置组合
+        for (const positions of positionCombinations) {
+            // 生成属性排列
+            const attributePermutations = getPermutations(selectedAttrs);
+
+            // 对于每种属性排列，计算概率
+            for (const permutedAttrs of attributePermutations) {
+                // 计算该位置组合和属性排列的概率
+                const probability = calculateCombinationProbability(positions, permutedAttrs, totalSlots);
+
+                // 获取属性名称：按位置顺序分配排列后的属性
+                const attrNames = new Array(totalSlots).fill('其他');
+                positions.forEach((pos, index) => {
+                    attrNames[pos] = attributeNames[permutedAttrs[index]];
+                });
+
+                combinations.push({
+                    positions,
+                    probability,
+                    attributeNames: attrNames,
+                });
+            }
+        }
+
+        // 过滤掉概率为0的组合
+        const validCombinations = combinations.filter((comb) => comb.probability > 0.0001);
+
+        // 计算总概率
+        const totalProbability = validCombinations.reduce((sum, comb) => sum + comb.probability, 0);
+
+        if (validCombinations.length > 0) {
+            results.push({
+                totalSlots,
+                combinations: validCombinations,
+                totalProbability,
+            });
+        }
+    }
+
+    return results;
+});
+
+// 生成位置组合（从n个位置中选择k个位置的所有组合）
+const getPositionCombinations = (n: number, k: number): number[][] => {
+    const result: number[][] = [];
+    const temp: number[] = [];
+
+    const backtrack = (start: number) => {
+        if (temp.length === k) {
+            result.push([...temp]);
+            return;
+        }
+
+        for (let i = start; i < n; i++) {
+            temp.push(i);
+            backtrack(i + 1);
+            temp.pop();
+        }
+    };
+
+    backtrack(0);
+    return result;
+};
+
+// 计算特定位置组合的概率
+const calculateCombinationProbability = (positions: number[], selectedAttrs: number[], totalSlots: number): number => {
+    let probability = 1.0;
+    const usedAttrs = new Set<number>();
+
+    // 遍历每个槽位
+    for (let slot = 0; slot < totalSlots; slot++) {
+        const slotIndex = slot;
+        const slotData = props.equipment.bonus?.[slotIndex];
+        if (!slotData) return 0;
+
+        // 检查当前槽位是否在选择的位置中
+        const positionIndex = positions.indexOf(slot);
+        let targetAttr: number | null = null;
+
+        if (positionIndex !== -1) {
+            // 如果是选择的位置，获取对应的属性
+            targetAttr = selectedAttrs[positionIndex];
+        }
+
+        // 计算当前槽位的可用属性权重
+        let availableWeight = 0;
+        for (let attr = 0; attr < slotData.length; attr++) {
+            if (!usedAttrs.has(attr)) {
+                availableWeight += slotData[attr];
+            }
+        }
+
+        if (availableWeight <= 0.0001) {
+            // 如果没有可用权重，概率为0
+            return 0;
+        }
+
+        if (targetAttr !== null) {
+            // 如果当前槽位是选择的位置，计算该属性的概率
+            probability *= slotData[targetAttr] / availableWeight;
+            usedAttrs.add(targetAttr);
+        } else {
+            // 如果当前槽位不是选择的位置，计算非选择属性的总概率
+            let otherWeight = 0;
+            for (let attr = 0; attr < slotData.length; attr++) {
+                if (!usedAttrs.has(attr) && !selectedAttrs.includes(attr)) {
+                    otherWeight += slotData[attr];
+                }
+            }
+            probability *= otherWeight / availableWeight;
+        }
+    }
+
+    // 将概率转换为百分比
+    return probability * 100;
 };
 
 // 计算下拉框的禁用状态

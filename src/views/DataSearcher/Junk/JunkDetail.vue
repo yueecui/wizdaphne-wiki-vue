@@ -1,7 +1,7 @@
 <template>
     <div class="p-4 bg-[#312721]! border! border-[#463d38]! rounded flex flex-col gap-4">
-        <div>
-            <div class="text-2xl text-light font-bold mt-4">
+        <div class="sticky top-0 bg-[#312721] z-10 py-2">
+            <div class="text-2xl text-light font-bold">
                 {{ junkItem.name }}
                 <span v-if="junkItem.notObt" class="text-sm ml-1 text-red-400">无法获取</span>
             </div>
@@ -10,16 +10,15 @@
             <div class="mt-2 p-3 bg-gray-800/50 rounded" v-if="junkItem.description">
                 <div class="text-sm text-gray-300">{{ junkItem.description }}</div>
             </div>
-            <div class="mt-4 flex gap-2">
-                <NButton v-if="isSystemAdmin" size="small" type="error" class="mt-2" @click="openRawDataTable">
-                    查看原始数据
-                </NButton>
-                <NButton v-if="isSystemAdmin" size="small" type="error" class="mt-2" @click="openEditModal">
-                    编辑补充数据
-                </NButton>
-            </div>
         </div>
-
+        <div class="flex gap-2 -mt-2">
+            <NButton v-if="isSystemAdmin" size="small" type="error" class="mt-2" @click="openRawDataTable">
+                查看原始数据
+            </NButton>
+            <NButton v-if="isSystemAdmin" size="small" type="error" class="mt-2" @click="openEditModal">
+                编辑补充数据
+            </NButton>
+        </div>
         <!-- 标签页 -->
         <NTabs type="card" size="small" v-model:value="activeTab">
             <!-- 第一页：物品列表 -->
