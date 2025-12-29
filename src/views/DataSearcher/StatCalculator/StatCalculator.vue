@@ -471,6 +471,10 @@ const tierOptions = ref([
         label: '钢阶(60)',
         value: 4,
     },
+    {
+        label: '青铜阶(70)',
+        value: 5,
+    },
 ]);
 const updateTier = (tier: number) => {
     simCharacterConfig.value.tier = tier;
