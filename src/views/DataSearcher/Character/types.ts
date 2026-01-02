@@ -11,4 +11,5 @@ export interface ICharacterFilter {
     class: (string | '特殊' | '')[];
     onlyPrimary: boolean; // 只检查主职业
     discipline_tags: string[];
+    spFilter: 'all' | 'show' | 'hide'; // SP角色过滤器：全部、仅显示SP、不显示SP
 }

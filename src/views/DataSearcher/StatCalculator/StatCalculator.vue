@@ -473,7 +473,7 @@ const tierOptions = ref([
     },
     {
         label: '青铜阶(70)',
-        value: 5,
+        value: 6,
     },
 ]);
 const updateTier = (tier: number) => {

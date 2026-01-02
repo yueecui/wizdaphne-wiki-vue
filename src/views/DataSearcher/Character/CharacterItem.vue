@@ -2,11 +2,19 @@
     <div>
         <div class="relative">
             <WikiImg :imageName="iconImgName" class="w-full"></WikiImg>
-            <div
-                class="absolute right-1 top-1 text-xs text-light bg-black/70 border! border-solid rounded-sm px-1 py-0.5 shadow"
-                v-if="character.data.rarity === RARITY_TYPE.传说"
-            >
-                传说
+            <div class="absolute right-1 top-1 flex gap-1">
+                <div
+                    class="text-xs text-blue-300 bg-black/70 border! border-solid rounded-sm px-1 py-0.5 shadow"
+                    v-if="character.data.style"
+                >
+                    SP
+                </div>
+                <div
+                    class="text-xs text-light bg-black/70 border! border-solid rounded-sm px-1 py-0.5 shadow"
+                    v-if="character.data.rarity === RARITY_TYPE.传说"
+                >
+                    传说
+                </div>
             </div>
             <div class="absolute left-1 bottom-1">
                 <ElementIcon :element="character.data.element"></ElementIcon>

@@ -67,6 +67,7 @@ export const DEFAULT_SETTINGS: DataSearcherSettings = {
         class: [],
         onlyPrimary: true,
         discipline_tags: [],
+        spFilter: 'all',
     },
 
     // 技能过滤器默认值

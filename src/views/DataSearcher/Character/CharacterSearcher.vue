@@ -113,6 +113,7 @@ const onFilterReset = () => {
         class: [''],
         onlyPrimary: true,
         discipline_tags: [],
+        spFilter: 'all',
     };
 };
 </script>

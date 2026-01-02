@@ -18,6 +18,14 @@
         </div>
         <div class="flex flex-col">
             <div class="flex justify-between items-center h-6">
+                <label class="text-sm">SP</label>
+            </div>
+            <div class="flex flex-row gap-2 items-center h-12">
+                <NSelect :options="spFilterOptions" v-model:value="filter.spFilter" class="w-24!"></NSelect>
+            </div>
+        </div>
+        <div class="flex flex-col">
+            <div class="flex justify-between items-center h-6">
                 <label class="text-sm">职业</label>
                 <div>
                     <NCheckbox size="small" :checked="filter.onlyPrimary" v-on:update:checked="updateOnlyPrimary">
@@ -275,4 +283,20 @@ const statOptions = computed<SelectOption[]>(() => [
         disabled: filter.value.class.length === 2 && filter.value.class.indexOf(r) === -1,
     })),
 ]);
+
+// SP过滤器选项
+const spFilterOptions = [
+    {
+        label: '全部',
+        value: 'all',
+    },
+    {
+        label: 'SP',
+        value: 'show',
+    },
+    {
+        label: '非SP',
+        value: 'hide',
+    },
+];
 </script>

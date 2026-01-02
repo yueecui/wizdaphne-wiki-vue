@@ -1,5 +1,5 @@
-import { useSearcherDataStore } from '../data/searcherDataStore';
 import type { ICharacter, ICharacterStats } from '../data/SearcherData.types';
+import { useSearcherDataStore } from '../data/searcherDataStore';
 import type { ICharacterFilter } from './types';
 
 export class Character {
@@ -123,6 +123,16 @@ export class Character {
                 }
             }
             if (matchCount !== filter.discipline_tags.length) {
+                return false;
+            }
+        }
+        // SP角色过滤：当角色的style不为空时，角色为SP角色
+        if (filter.spFilter === 'show') {
+            if (!this.data.style) {
+                return false;
+            }
+        } else if (filter.spFilter === 'hide') {
+            if (this.data.style) {
                 return false;
             }
         }
