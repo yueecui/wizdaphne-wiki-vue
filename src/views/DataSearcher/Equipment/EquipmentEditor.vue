@@ -309,7 +309,7 @@ const fetchWikiData = async () => {
             return await response.json();
         } else {
             // 生产环境：使用getPageRawByTitle获取Data:EquipmentEnhanced.tabx的数据
-            const data = await getPageRawByTitle<any>('Data:EquipmentEnhanced.tabx');
+            const data = await getPageRawByTitle<any>('Data:EquipmentEnhanced.tabx', true);
             return data;
         }
     } catch (error) {
