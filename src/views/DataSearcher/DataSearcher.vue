@@ -14,6 +14,7 @@
             <CharacterSearcher v-if="activeKey == 'Character'" />
             <SkillSearcher v-if="activeKey == 'Skill'" />
             <InheritSkill v-if="activeKey == 'InheritSkill'" />
+            <AbilityCalculator v-if="activeKey == 'AbilityCalculator'" />
             <StatCalculator v-if="activeKey == 'StatCalculator'" v-model:character="calcStatCharacterConfig" />
             <WeaponSearcher v-if="activeKey == 'Weapon'" />
             <ArmorSearcher v-if="activeKey == 'Armor'" />
@@ -25,6 +26,7 @@
 <script setup lang="ts">
 import { NButton } from 'naive-ui';
 import ThemeConfigProvider from '../../layout/ThemeConfigProvider.vue';
+import AbilityCalculator from './AbilityCalculator/AbilityCalculator.vue';
 import CharacterSearcher from './Character/CharacterSearcher.vue';
 import ArmorSearcher from './Equipment/ArmorSearcher.vue';
 import WeaponSearcher from './Equipment/WeaponSearcher.vue';
@@ -83,6 +85,10 @@ const tabs = [
     {
         key: 'StatCalculator',
         label: '特性值计算',
+    },
+    {
+        key: 'AbilityCalculator',
+        label: '能力值计算',
     },
 ];
 

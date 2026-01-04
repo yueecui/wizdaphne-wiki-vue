@@ -11,6 +11,24 @@ export interface ISearcherExposeData {
     // class: IClass[];
     skill: ISkill[];
     standardClass: string[];
+    jobMultiplier: IJobMultiplier[];
+}
+
+export interface IJobMultiplier {
+    job: string; // 职业名
+    atk: number; // 攻击力
+    mag: number; // 魔力
+    div: number; // 神力
+    acc: number; // 命中
+    sur: number; // 会心
+    def: number; // 防御力
+    mdef: number; // 法术防御力
+    eva: number; // 回避
+    res: number; // 抵抗
+    det: number; // 探知
+    dtrap: number; // 陷阱解除
+    etrap: number; // 陷阱回避
+    speed: number; // 行动速度
 }
 
 export interface ICharacterStats {

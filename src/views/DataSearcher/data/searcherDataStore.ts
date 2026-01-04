@@ -6,10 +6,10 @@ import { Character } from '../Character/Character';
 import type { ICharacterFilter } from '../Character/types';
 import type { IEquipmentFilter } from '../Equipment/types';
 import type { IJunkFilter } from '../Junk/types';
+import { Skill } from '../Skill/Skill';
 import type { ISkillFilter } from '../Skill/types';
 import type { SimCharacterConfig } from '../StatCalculator/types';
 import type { ICharacterStats, ISearcherExposeData } from './SearcherData.types';
-import { Skill } from '../Skill/Skill';
 
 // 统一存储键名
 export const DATA_SEARCHER_STORAGE_KEY = 'dataSearcherSettings';
@@ -46,6 +46,14 @@ export interface DataSearcherSettings {
         characterLevel: number;
         // 当前属性值
         currentStats: ICharacterStats;
+    };
+
+    // 能力值计算器配置
+    abilityCalculator: {
+        // 基础数值
+        baseStats: ICharacterStats;
+        // 选择的职业
+        selectedJob: string;
     };
 }
 
@@ -141,6 +149,20 @@ export const DEFAULT_SETTINGS: DataSearcherSettings = {
             speed: 0,
             luck: 0,
         },
+    },
+
+    // 能力值计算器默认值
+    abilityCalculator: {
+        baseStats: {
+            strength: 0,
+            intelligence: 0,
+            piety: 0,
+            vitality: 0,
+            dexterity: 0,
+            speed: 0,
+            luck: 0,
+        },
+        selectedJob: '战士',
     },
 };
 export const useSearcherDataStore = defineStore('searcherData', () => {
