@@ -32,3 +32,4 @@ coverage
 
 # 抓取生成的数据文件
 /public/*.json
+/public/*.xlsx
