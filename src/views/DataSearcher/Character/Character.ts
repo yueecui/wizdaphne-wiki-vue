@@ -1,4 +1,4 @@
-import type { ICharacter, ICharacterStats } from '../data/SearcherData.types';
+import type { ICharacter, ICharacterRate, ICharacterStats } from '../data/SearcherData.types';
 import { useSearcherDataStore } from '../data/searcherDataStore';
 import type { ICharacterFilter } from './types';
 
@@ -6,7 +6,10 @@ export class Character {
     stats: ICharacterStats | null = null; // 主职业的1级属性
     subStats?: ICharacterStats; // 副职业的1级属性
 
-    constructor(public data: ICharacter) {
+    constructor(
+        public data: ICharacter,
+        public characterRates?: ICharacterRate,
+    ) {
         // 构造函数只初始化数据，不进行异步操作
     }
 

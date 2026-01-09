@@ -236,7 +236,11 @@ export const useSearcherDataStore = defineStore('searcherData', () => {
         if (!data.value) {
             return [];
         }
-        return data.value.character.map((character) => new Character(character));
+
+        return data.value.character.map((character) => {
+            const characterRates = data.value!.characterRates.find((rate) => rate.name === character.name_jp);
+            return new Character(character, characterRates);
+        });
     });
 
     // 获取角色数据

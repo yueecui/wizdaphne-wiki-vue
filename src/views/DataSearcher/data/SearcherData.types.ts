@@ -12,6 +12,26 @@ export interface ISearcherExposeData {
     skill: ISkill[];
     standardClass: string[];
     jobMultiplier: IJobMultiplier[];
+    characterRates: ICharacterRate[];
+}
+
+export interface ICharacterRate {
+    name: string;
+    str: number;
+    iq: number;
+    pie: number;
+    vit: number;
+    spe: number;
+    dex: number;
+    luck: number;
+    rstr: number;
+    riq: number;
+    rpie: number;
+    rvit: number;
+    rspe: number;
+    rdex: number;
+    rluck: number;
+    rbase: number;
 }
 
 export interface IJobMultiplier {

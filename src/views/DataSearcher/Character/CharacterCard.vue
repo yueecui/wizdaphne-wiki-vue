@@ -50,7 +50,25 @@
                                         </template>
                                         1级基准特性值是用来对比检查角色的个体情况
                                         <br />
-                                        红色背景为该职业的该属性可能无法在1级看到个体奖励的1点特性值
+                                        <span>
+                                            <span class="bg-red-800/70 font-bold">亮红色背景</span>
+                                            为根据官方数据，该特性个体，确定无法在1级看出
+                                        </span>
+                                        <br />
+                                        <span>
+                                            <span class="bg-violet-800/70 font-bold">亮紫色背景</span>
+                                            为根据官方数据，该特性个体，有一部分无法在1级时看出
+                                        </span>
+                                        <br />
+                                        <span>
+                                            <span class="bg-red-800/30 font-bold">暗红色背景</span>
+                                            为根据其他数据推断，该特性个体，可能无法在1级看出
+                                        </span>
+                                        <br />
+                                        <span>
+                                            <span class="bg-violet-800/30 font-bold">暗紫色背景</span>
+                                            为根据其他数据推断，该特性个体，有一部分可能无法在1级看出
+                                        </span>
                                         <br />
                                         具体可参考
                                         <a href="/wiki/能力值#无法识别的个体" target="_blank">这里</a>
@@ -65,7 +83,7 @@
                         </tr>
                         <tr>
                             <th class="md:w-1/3">力</th>
-                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '力')]">
+                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getMainBgColor(false, '力')]">
                                 {{ character.stats?.strength || 0 }}
                             </td>
                             <td :class="['md:w-1/3', getStatBgColor(true, '力')]" v-if="character.subStats">
@@ -74,7 +92,7 @@
                         </tr>
                         <tr>
                             <th class="md:w-1/3">智慧</th>
-                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '智慧')]">
+                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getMainBgColor(false, '智慧')]">
                                 {{ character.stats?.intelligence || 0 }}
                             </td>
                             <td :class="['md:w-1/3', getStatBgColor(true, '智慧')]" v-if="character.subStats">
@@ -83,7 +101,7 @@
                         </tr>
                         <tr>
                             <th class="md:w-1/3">信仰心</th>
-                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '信仰心')]">
+                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getMainBgColor(false, '信仰心')]">
                                 {{ character.stats?.piety || 0 }}
                             </td>
                             <td :class="['md:w-1/3', getStatBgColor(true, '信仰心')]" v-if="character.subStats">
@@ -92,7 +110,7 @@
                         </tr>
                         <tr>
                             <th class="md:w-1/3">生命力</th>
-                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '生命力')]">
+                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getMainBgColor(false, '生命力')]">
                                 {{ character.stats?.vitality || 0 }}
                             </td>
                             <td :class="['md:w-1/3', getStatBgColor(true, '生命力')]" v-if="character.subStats">
@@ -101,7 +119,7 @@
                         </tr>
                         <tr>
                             <th class="md:w-1/3">灵巧</th>
-                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '灵巧')]">
+                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getMainBgColor(false, '灵巧')]">
                                 {{ character.stats?.dexterity || 0 }}
                             </td>
                             <td :class="['md:w-1/3', getStatBgColor(true, '灵巧')]" v-if="character.subStats">
@@ -110,7 +128,7 @@
                         </tr>
                         <tr>
                             <th class="md:w-1/3">敏捷</th>
-                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '敏捷')]">
+                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getMainBgColor(false, '敏捷')]">
                                 {{ character.stats?.speed || 0 }}
                             </td>
                             <td :class="['md:w-1/3', getStatBgColor(true, '敏捷')]" v-if="character.subStats">
@@ -119,7 +137,7 @@
                         </tr>
                         <tr>
                             <th class="md:w-1/3">运</th>
-                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getStatBgColor(false, '运')]">
+                            <td :class="[hasSubClass ? 'md:w-1/3' : 'md:w-2/3', getMainBgColor(false, '运')]">
                                 {{ character.stats?.luck || 0 }}
                             </td>
                             <td :class="['md:w-1/3', getStatBgColor(true, '运')]" v-if="character.subStats">
@@ -128,6 +146,9 @@
                         </tr>
                     </tbody>
                 </table>
+                <div class="mt-2 flex items-center justify-center" v-if="showRateButton">
+                    <NButton size="tiny" @click="openModal">查看个体概率</NButton>
+                </div>
             </div>
             <div class="row-span-2 md:col-auto">
                 <table class="wikitable my-0! w-full">
@@ -223,13 +244,54 @@
             </NButton>
             <NButton size="small" type="warning" @click="onClose">关闭</NButton>
         </div>
+
+        <!-- 概率查看模态框 -->
+        <NModal v-model:show="showModal">
+            <div class="w-[90%] md:h-auto md:w-[400px] m-auto huiji-css-hook bg-transparent!">
+                <div class="p-4 bg-[#312721]! border! border-[#463d38]! rounded flex flex-col gap-4">
+                    <div class="flex justify-between items-center">
+                        <div class="text-xl text-light font-bold">角色个体出现几率</div>
+                    </div>
+                    <p>该角色的个体抽出概率不是均等，具体参考下表</p>
+                    <table class="wikitable w-full text-center border-collapse m-0!">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="p-2 text-left pl-4">属性</th>
+                                <th class="p-2 text-left">几率 (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="row in rateData" :key="row.key" class="border-b">
+                                <td class="p-2 pl-4">{{ row.name }}</td>
+                                <td class="p-2">
+                                    <div
+                                        :class="
+                                            row.value > 12.5
+                                                ? 'text-green-500 font-bold'
+                                                : row.value < 12.5
+                                                  ? 'text-red-500 font-bold'
+                                                  : ''
+                                        "
+                                    >
+                                        {{ row.value }}%
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="flex justify-center">
+                        <NButton size="tiny" type="warning" @click="showModal = false" class="mt-0">关闭</NButton>
+                    </div>
+                </div>
+            </div>
+        </NModal>
     </div>
 </template>
 
 <script setup lang="ts">
 import WikiImg from '@/components/huiji/WikiImg.vue';
 import { QuestionCircle as QuestionIcon } from '@vicons/fa';
-import { NIcon, NTooltip } from 'naive-ui';
+import { NIcon, NModal, NTooltip } from 'naive-ui';
 import CharacterItem from './CharacterItem.vue';
 
 import { NButton } from 'naive-ui';
@@ -242,6 +304,45 @@ const props = defineProps<{
     character: Character;
     onClose?: () => void;
 }>();
+
+// 模态框相关
+const showModal = ref(false);
+
+// 格式化概率数据
+const rateData = computed(() => {
+    if (!props.character.characterRates) return [];
+
+    const { rstr, riq, rpie, rvit, rspe, rdex, rluck, rbase } = props.character.characterRates;
+
+    return [
+        { name: '力', value: rstr, key: 'rstr' },
+        { name: '智慧', value: riq, key: 'riq' },
+        { name: '信仰心', value: rpie, key: 'rpie' },
+        { name: '生命力', value: rvit, key: 'rvit' },
+        { name: '敏捷', value: rspe, key: 'rspe' },
+        { name: '灵巧', value: rdex, key: 'rdex' },
+        { name: '运', value: rluck, key: 'rluck' },
+        { name: '无', value: rbase, key: 'rbase' },
+    ];
+});
+
+// 打开模态框
+const openModal = () => {
+    showModal.value = true;
+};
+
+// 是否显示概率按钮
+const showRateButton = computed(() => {
+    if (!props.character.characterRates) return false;
+
+    const { rstr, riq, rpie, rvit, rspe, rdex, rluck, rbase } = props.character.characterRates;
+    const rates = [rstr, riq, rpie, rvit, rspe, rdex, rluck, rbase];
+
+    // 检查是否所有值都是12.5
+    const allSame = rates.every((rate) => rate === 12.5);
+
+    return !allSame;
+});
 
 const getSkillDescription = (skillName: string) => {
     const store = useSearcherDataStore();
@@ -297,16 +398,68 @@ const startCalcCharacter = (sub: boolean) => {
     }
 };
 
+const STAT_KEY_MAP = {
+    力: 'str',
+    智慧: 'iq',
+    信仰心: 'pie',
+    生命力: 'vit',
+    灵巧: 'dex',
+    敏捷: 'spe',
+    运: 'luck',
+};
+
+const getMainBgColor = (isSub: boolean, stat: string) => {
+    const jobName = isSub ? props.character.data.class[1] : props.character.data.class[0];
+    if (!jobName) return '';
+
+    if (!props.character.characterRates) return getStatBgColor(isSub, stat);
+
+    const value = props.character.characterRates[STAT_KEY_MAP[stat]];
+    if (value === 0) {
+        return 'bg-red-800/70';
+    } else if (value < 1) {
+        return 'bg-violet-800/70';
+    }
+    return '';
+};
+
 // 获取1级属性背景色
-const redBgMap = ['战士-智慧', '战士-信仰心', '骑士-智慧', '骑士-敏捷', '盗贼-信仰心', '法师-力', '僧侣-敏捷'];
+const bgMapByRace = {
+    '矮人-战士-敏捷': 'bg-violet-800/30',
+    '矮人-骑士-运': 'bg-violet-800/30',
+    '精灵-盗贼-力': 'bg-violet-800/30',
+    '精灵-盗贼-智慧': '',
+    '精灵-盗贼-生命力': 'bg-violet-800/30',
+    '人类-法师-生命力': '',
+    '精灵-法师-运': 'bg-violet-800/30',
+};
+const bgMap = {
+    '战士-智慧': 'bg-red-800/30',
+    '战士-信仰心': 'bg-red-800/30',
+    '骑士-智慧': 'bg-red-800/30',
+    '骑士-敏捷': 'bg-red-800/30',
+    '盗贼-智慧': 'bg-red-800/30',
+    '盗贼-信仰心': 'bg-red-800/30',
+    '法师-力': 'bg-red-800/30',
+    '法师-生命力': 'bg-red-800/30',
+    '僧侣-敏捷': 'bg-red-800/30',
+    '忍者-信仰心': 'bg-red-800/30',
+    // '武士-敏捷': 'bg-red-800/30', // 不好说，现在只有一个SR矮人武士
+    '游侠-信仰心': 'bg-red-800/30', // 现在只有一个游侠
+};
 
 const getStatBgColor = (isSub: boolean, stat: string) => {
     const jobName = isSub ? props.character.data.class[1] : props.character.data.class[0];
     if (!jobName) return '';
 
-    const checkStr = `${jobName}-${stat}`;
-    if (redBgMap.includes(checkStr)) {
-        return 'bg-red-800/30';
+    let checkStr = `${props.character.data.race}-${jobName}-${stat}`;
+    if (bgMapByRace[checkStr]) {
+        return bgMapByRace[checkStr];
+    }
+
+    checkStr = `${jobName}-${stat}`;
+    if (bgMap[checkStr]) {
+        return bgMap[checkStr];
     }
     return '';
 };
