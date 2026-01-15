@@ -66,6 +66,7 @@ export const DEFAULT_SETTINGS: DataSearcherSettings = {
     // 角色过滤器默认值
     characterFilter: {
         searchText: '',
+        group: '',
         element: '',
         race: '',
         gender: '',

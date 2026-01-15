@@ -63,6 +63,9 @@ export class Character {
         if (filter.rarity && this.data.rarity !== filter.rarity) {
             return false;
         }
+        if (filter.group !== undefined && filter.group !== '' && this.data.group !== filter.group) {
+            return false;
+        }
         if (filter.element && this.data.element !== filter.element) {
             return false;
         }

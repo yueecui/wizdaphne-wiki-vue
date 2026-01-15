@@ -18,6 +18,14 @@
         </div>
         <div class="flex flex-col">
             <div class="flex justify-between items-center h-6">
+                <label class="text-sm">组别</label>
+            </div>
+            <div class="flex flex-row gap-2 items-center h-12">
+                <NSelect :options="groupOptions" v-model:value="filter.group" class="w-24!"></NSelect>
+            </div>
+        </div>
+        <div class="flex flex-col">
+            <div class="flex justify-between items-center h-6">
                 <label class="text-sm">SP</label>
             </div>
             <div class="flex flex-row gap-2 items-center h-12">
@@ -283,6 +291,35 @@ const statOptions = computed<SelectOption[]>(() => [
         disabled: filter.value.class.length === 2 && filter.value.class.indexOf(r) === -1,
     })),
 ]);
+
+// 组别过滤器选项
+const groupOptions = [
+    {
+        label: '全部',
+        value: '',
+    },
+    {
+        label: '限定',
+        value: -1,
+    },
+    {
+        label: 'Ⅱ组',
+        value: 2,
+    },
+    {
+        label: 'Ⅰ组',
+        value: 1,
+    },
+
+    {
+        label: '联动',
+        value: -2,
+    },
+    {
+        label: '共用',
+        value: 0,
+    },
+];
 
 // SP过滤器选项
 const spFilterOptions = [

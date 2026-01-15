@@ -10,10 +10,19 @@
                     SP
                 </div>
                 <div
-                    class="text-xs text-light bg-black/70 border! border-solid rounded-sm px-1 py-0.5 shadow"
+                    class="text-xs text-orange-300 bg-black/70 border! border-solid rounded-sm px-1 py-0.5 shadow"
                     v-if="character.data.rarity === RARITY_TYPE.传说"
                 >
                     传说
+                </div>
+            </div>
+            <div class="absolute right-1 bottom-1 flex gap-1">
+                <div
+                    class="text-xs bg-black/70 border! border-solid rounded-sm px-1 py-0.5 shadow"
+                    :class="groupInfo?.color"
+                    v-if="groupInfo"
+                >
+                    {{ groupInfo.text }}
                 </div>
             </div>
             <div class="absolute left-1 bottom-1">
@@ -37,6 +46,21 @@ import { computed } from 'vue';
 import ElementIcon from '../../../components/ElementIcon.vue';
 import { RARITY_TYPE } from '../data/enum';
 import { Character } from './Character';
+
+// 组别配置
+const groupConfig = {
+    '-1': { text: '限', color: 'text-orange-300' },
+    '-2': { text: '联动', color: 'text-orange-300' },
+    '1': { text: 'Ⅰ', color: 'text-green-300' },
+    '2': { text: 'Ⅱ', color: 'text-blue-300' },
+};
+
+// 计算组别的显示信息
+const groupInfo = computed(() => {
+    const group = props.character.data.group;
+    if (group === 0) return null;
+    return groupConfig[group.toString()] || null;
+});
 
 const props = defineProps<{
     character: Character;

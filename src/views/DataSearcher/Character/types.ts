@@ -7,6 +7,7 @@ export interface ICharacterFilter {
     gender: GENDER_TYPE | '';
     personality: PERSONALITY_TYPE | '';
     rarity: RARITY_TYPE | '';
+    group: number | '';
     fate: FATE_TYPE | '';
     class: (string | '特殊' | '')[];
     onlyPrimary: boolean; // 只检查主职业

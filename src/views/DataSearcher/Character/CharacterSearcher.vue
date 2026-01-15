@@ -109,6 +109,7 @@ const onFilterReset = () => {
         gender: '',
         personality: '',
         rarity: '',
+        group: '',
         fate: '',
         class: [''],
         onlyPrimary: true,

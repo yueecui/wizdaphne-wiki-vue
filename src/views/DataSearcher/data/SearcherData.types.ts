@@ -75,6 +75,7 @@ export interface ICharacter {
     name_en: string;
     style: string;
     rarity: RARITY_TYPE;
+    group: number;
     race: RACE_TYPE;
     gender: GENDER_TYPE;
     element: ELEMENT_TYPE;
