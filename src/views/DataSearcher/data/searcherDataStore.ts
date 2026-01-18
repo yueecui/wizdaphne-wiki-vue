@@ -2,6 +2,7 @@ import { useStorage } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { IS_DEV } from '../../../util';
+import type { IAchievementFilter } from '../Achievement/types';
 import { Character } from '../Character/Character';
 import type { ICharacterFilter } from '../Character/types';
 import type { IEquipmentFilter } from '../Equipment/types';
@@ -33,6 +34,8 @@ export interface DataSearcherSettings {
     armorFilter: IEquipmentFilter;
     // 杂物过滤器
     junkFilter: IJunkFilter;
+    // 成就过滤器
+    achievementFilter: IAchievementFilter;
 
     // 特性值配置
     statCalculator: {
@@ -111,6 +114,15 @@ export const DEFAULT_SETTINGS: DataSearcherSettings = {
         maxGrade: null,
         maxTier: null,
         junkAutoLoad: false,
+    },
+
+    // 成就过滤器默认值
+    achievementFilter: {
+        searchText: '',
+        category: '',
+        subCategory: '',
+        completionStatus: 'incomplete',
+        achievementAutoLoad: true,
     },
 
     // 特性值配置默认值

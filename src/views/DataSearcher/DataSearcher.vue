@@ -19,6 +19,7 @@
             <WeaponSearcher v-if="activeKey == 'Weapon'" />
             <ArmorSearcher v-if="activeKey == 'Armor'" />
             <JunkSearcher v-if="activeKey == 'Junk'" />
+            <AchievementSearcher v-if="activeKey == 'Achievement'" />
         </div>
     </ThemeConfigProvider>
 </template>
@@ -27,6 +28,7 @@
 import { NButton } from 'naive-ui';
 import ThemeConfigProvider from '../../layout/ThemeConfigProvider.vue';
 import AbilityCalculator from './AbilityCalculator/AbilityCalculator.vue';
+import AchievementSearcher from './Achievement/AchievementSearcher.vue';
 import CharacterSearcher from './Character/CharacterSearcher.vue';
 import ArmorSearcher from './Equipment/ArmorSearcher.vue';
 import WeaponSearcher from './Equipment/WeaponSearcher.vue';
@@ -55,6 +57,25 @@ onMounted(() => {
     if (firstHeading) {
         firstHeading.style.display = 'none';
     }
+
+    // 从URL参数中获取默认标签页
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam) {
+        // 检查参数是否是有效的标签页key
+        let tabKey = tabParam;
+        const isValidTab = tabs.some((tab) => {
+            if (tab.key === tabParam) return true;
+            if (tab.label === tabParam) {
+                tabKey = tab.key;
+                return true;
+            }
+            return false;
+        });
+        if (isValidTab) {
+            activeKey.value = tabKey;
+        }
+    }
 });
 
 const tabs = [
@@ -81,6 +102,10 @@ const tabs = [
     {
         key: 'Junk',
         label: '杂物',
+    },
+    {
+        key: 'Achievement',
+        label: '成就',
     },
     {
         key: 'StatCalculator',
