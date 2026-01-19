@@ -12,7 +12,7 @@
             </div>
 
             <!-- 性格过滤 -->
-            <div class="flex flex-col w-40">
+            <div class="flex flex-col w-24">
                 <div class="flex justify-between items-center h-6">
                     <label class="text-sm">性格</label>
                 </div>
@@ -27,7 +27,7 @@
             </div>
 
             <!-- 提升属性过滤 -->
-            <div class="flex flex-col w-56">
+            <div class="flex flex-col w-32">
                 <div class="flex justify-between items-center h-6">
                     <label class="text-sm">提升属性</label>
                 </div>
@@ -42,7 +42,7 @@
             </div>
 
             <!-- 降低属性过滤 -->
-            <div class="flex flex-col w-56">
+            <div class="flex flex-col w-32">
                 <div class="flex justify-between items-center h-6">
                     <label class="text-sm">降低属性</label>
                 </div>
@@ -52,6 +52,21 @@
                         placeholder="全部"
                         size="small"
                         :options="statOptions"
+                    ></NSelect>
+                </div>
+            </div>
+
+            <!-- 推荐类别过滤 -->
+            <div class="flex flex-col w-32">
+                <div class="flex justify-between items-center h-6">
+                    <label class="text-sm">推荐类别</label>
+                </div>
+                <div class="flex items-center h-12">
+                    <NSelect
+                        v-model:value="filter.category"
+                        placeholder="全部"
+                        size="small"
+                        :options="categoryOptions"
                     ></NSelect>
                 </div>
             </div>
@@ -71,14 +86,25 @@
 
 <script setup lang="ts">
 import { NCheckbox, NInput, NSelect, SelectOption } from 'naive-ui';
-import { computed } from 'vue';
-import { STAT_DISPLAY_NAME_MAP, STAT_ORDER } from './RelicBrew';
+import { computed, onMounted, toRefs } from 'vue';
+import { DEFAULT_STAT_ORDER, STAT_DISPLAY_NAME_MAP } from './RelicBrew';
+import { useRelicBrewStore } from './relicBrewStore';
 import { IRelicBrewFilter } from './types';
 
 // 使用defineModel双向绑定过滤器
 const filter = defineModel<IRelicBrewFilter>('filter', {
     type: Object,
     required: true,
+});
+
+// 获取relicBrewStore
+const relicBrewStore = useRelicBrewStore();
+const { loadRelicBrewData } = relicBrewStore;
+const { statList, categoryList } = toRefs(relicBrewStore);
+
+onMounted(() => {
+    // 确保数据已加载
+    loadRelicBrewData();
 });
 
 // 性格选项
@@ -91,11 +117,24 @@ const alignOptions = computed<SelectOption[]>(() => [
 
 // 属性选项（按指定顺序排列，添加"全部"选项）
 const statOptions = computed<SelectOption[]>(() => {
+    // 使用statList，如果为空则使用默认顺序
+    const stats = statList.value.length > 0 ? statList.value : DEFAULT_STAT_ORDER;
     return [
         { label: '全部', value: '' },
-        ...STAT_ORDER.map((stat) => ({
+        ...stats.map((stat) => ({
             label: STAT_DISPLAY_NAME_MAP[stat] || stat,
             value: stat,
+        })),
+    ];
+});
+
+// 推荐类别选项
+const categoryOptions = computed<SelectOption[]>(() => {
+    return [
+        { label: '全部', value: '' },
+        ...categoryList.value.map((category) => ({
+            label: category,
+            value: category,
         })),
     ];
 });

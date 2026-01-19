@@ -8,6 +8,8 @@
                     <NButton size="small" type="error" @click="onFilterReset">重置</NButton>
                     <NButton size="small" type="primary" @click="openRelicBrewWiki">遗物酒说明</NButton>
                     <NButton size="small" type="primary" @click="showAIPromptModal">AI提示词</NButton>
+                    <NCheckbox v-model:checked="filter.showBrewName" size="small">显示遗物酒名</NCheckbox>
+                    <NCheckbox v-model:checked="filter.showRelicPower" size="small">显示遗物之力</NCheckbox>
                 </div>
             </div>
             <div v-if="isInit">共有 {{ filteredList.length }} 个符合条件的遗物酒</div>
@@ -17,8 +19,8 @@
                     <thead>
                         <tr>
                             <th class="xl:w-48">遗物名称</th>
-                            <th class="xl:w-36 2xl:w-48">遗物酒名</th>
-                            <th class="xl:w-36 2xl:w-48">遗物之力</th>
+                            <th v-if="filter.showBrewName" class="xl:w-36 2xl:w-48">遗物酒名</th>
+                            <th v-if="filter.showRelicPower" class="xl:w-36 2xl:w-48">遗物之力</th>
                             <th class="md:w-16">性格</th>
                             <th class="xl:w-36">提升属性</th>
                             <th class="xl:w-36">降低属性</th>
@@ -29,13 +31,13 @@
                     <tbody>
                         <tr v-for="item in paginatedList" :key="item.index" class="hover:bg-[#3a312a]!">
                             <td>{{ item.name }}</td>
-                            <td>{{ item.brew }}</td>
-                            <td>{{ item.power }}</td>
+                            <td v-if="filter.showBrewName">{{ item.brew }}</td>
+                            <td v-if="filter.showRelicPower">{{ item.power }}</td>
                             <td>{{ item.align }}</td>
                             <td>{{ item.inc.join(' / ') }}</td>
                             <td>{{ item.dec.join(' / ') }}</td>
                             <td>{{ item.monster }}</td>
-                            <td>{{ item.comment || '-' }}</td>
+                            <td><span v-html="formatComment(item.comment || '-')"></span></td>
                         </tr>
                     </tbody>
                 </table>
@@ -75,14 +77,18 @@
 </template>
 
 <script setup lang="ts">
-import { NButton, NInput, NModal, NPagination, NSpin } from 'naive-ui';
+import { NButton, NCheckbox, NInput, NModal, NPagination, NSpin } from 'naive-ui';
 import { computed, onMounted, ref, toRefs, watch } from 'vue';
 import { useSearcherDataStore } from '../data/searcherDataStore';
+import { convertDescription } from '../utils/convertDescription';
 import RelicBrewFilter from './RelicBrewFilter.vue';
 import { useRelicBrewStore } from './relicBrewStore';
 
 // 使用searcherDataStore的settings
 const { settings } = toRefs(useSearcherDataStore());
+
+// 将convertDescription函数暴露给模板
+const formatComment = (comment: string) => convertDescription(comment);
 
 // 使用计算属性获取和设置过滤器
 const filter = computed({
@@ -179,6 +185,11 @@ const filteredList = computed(() => {
                 return false;
             }
 
+            // 推荐类别过滤
+            if (filter.value.category && !item.matchesCategory(filter.value.category)) {
+                return false;
+            }
+
             // 仅显示双提升遗物过滤
             if (filter.value.showOnlyDoubleInc && item.inc.length <= 1) {
                 return false;
@@ -199,9 +210,17 @@ const paginatedList = computed(() => {
 
 // 重置过滤器
 const onFilterReset = () => {
+    // 保存当前的显示设置
+    const currentShowBrewName = filter.value.showBrewName;
+    const currentShowRelicPower = filter.value.showRelicPower;
+
     // 使用searcherDataStore中的方法获取默认过滤器设置
     const store = useSearcherDataStore();
     filter.value = store.getDefaultRelicBrewFilter();
+
+    // 恢复显示设置
+    filter.value.showBrewName = currentShowBrewName;
+    filter.value.showRelicPower = currentShowRelicPower;
 };
 
 // 打开遗物酒说明页面

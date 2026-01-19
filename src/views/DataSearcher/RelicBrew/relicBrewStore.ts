@@ -9,6 +9,8 @@ export const useRelicBrewStore = defineStore('relicBrew', () => {
     const relicBrews = ref<RelicBrew[]>([]);
     const isInit = ref(false);
     const isLoading = ref(false);
+    const statList = ref<string[]>([]);
+    const categoryList = ref<string[]>([]);
 
     // 加载并解析relicbrew.json数据
     const loadRelicBrewData = async () => {
@@ -28,6 +30,9 @@ export const useRelicBrewStore = defineStore('relicBrew', () => {
                 const data: any = await response.json();
                 // 获取relicbrews字段数据
                 const relicBrewData = data.relicbrews || [];
+                // 保存stat_list和category
+                statList.value = data.stat_list || [];
+                categoryList.value = data.category || [];
                 // 解析数据并创建RelicBrew对象
                 const parsedData = parseRelicBrewData(relicBrewData);
                 relicBrews.value = parsedData;
@@ -44,13 +49,15 @@ export const useRelicBrewStore = defineStore('relicBrew', () => {
 
     // 解析遗物酒数据
     const parseRelicBrewData = (data: IRelicBrew[]): RelicBrew[] => {
-        return data.map((brew) => new RelicBrew(brew));
+        return data.map((brew) => new RelicBrew(brew, statList.value));
     };
 
     return {
         relicBrews,
         isInit,
         isLoading,
+        statList,
+        categoryList,
         loadRelicBrewData,
     };
 });

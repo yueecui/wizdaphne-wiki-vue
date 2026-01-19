@@ -1,7 +1,7 @@
 import { IRelicBrew } from './types';
 
 // 提升、降低的字段顺序
-export const STAT_ORDER = [
+export const DEFAULT_STAT_ORDER = [
     'HP',
     'MP',
     'SP',
@@ -34,9 +34,11 @@ export const STAT_DISPLAY_NAME_MAP = {
 
 export class RelicBrew {
     private data: IRelicBrew;
+    private statOrder: string[];
 
-    constructor(data: IRelicBrew) {
+    constructor(data: IRelicBrew, statOrder: string[] = DEFAULT_STAT_ORDER) {
         this.data = data;
+        this.statOrder = statOrder;
     }
 
     // 获取怪物名称
@@ -88,14 +90,14 @@ export class RelicBrew {
     private sortStats(stats: string[]): string[] {
         // 创建一个映射，键是属性名，值是排序索引
         const statIndexMap = new Map<string, number>();
-        STAT_ORDER.forEach((stat, index) => {
+        this.statOrder.forEach((stat, index) => {
             statIndexMap.set(stat, index);
         });
 
-        // 排序：先按STAT_ORDER中的顺序，不在其中的放在后面
+        // 排序：先按this.statOrder中的顺序，不在其中的放在后面
         return [...stats].sort((a, b) => {
-            const indexA = statIndexMap.get(a) ?? STAT_ORDER.length;
-            const indexB = statIndexMap.get(b) ?? STAT_ORDER.length;
+            const indexA = statIndexMap.get(a) ?? this.statOrder.length;
+            const indexB = statIndexMap.get(b) ?? this.statOrder.length;
             return indexA - indexB;
         });
     }
@@ -128,5 +130,11 @@ export class RelicBrew {
     matchesDec(decFilter: string): boolean {
         if (!decFilter) return true;
         return this.dec.some((stat) => stat === decFilter);
+    }
+
+    // 检查是否匹配推荐类别过滤
+    matchesCategory(category: string): boolean {
+        if (!category) return true;
+        return this.data.c.some((cat) => cat === category);
     }
 }

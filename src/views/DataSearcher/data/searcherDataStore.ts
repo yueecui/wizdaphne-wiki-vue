@@ -134,8 +134,10 @@ export const DEFAULT_SETTINGS: DataSearcherSettings = {
         align: '',
         inc: '',
         dec: '',
-        relicBrewAutoLoad: true, // 改为true，实现进入模块时直接加载
+        category: '', // 推荐类别过滤默认值为空
         showOnlyDoubleInc: false, // 仅显示双提升遗物过滤器默认关闭
+        showBrewName: true, // 默认显示遗物酒名
+        showRelicPower: true, // 默认显示遗物之力
     },
 
     // 特性值配置默认值
