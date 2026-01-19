@@ -14,10 +14,10 @@
                 <table class="wikitable w-full text-center">
                     <thead>
                         <tr>
-                            <th>完成</th>
-                            <th>成就名称</th>
-                            <th>分类</th>
-                            <th>子分类</th>
+                            <th class="md:w-16">完成</th>
+                            <th class="md:w-40 lg:w-56 xl:w-72">成就名称</th>
+                            <th class="md:w-24">分类</th>
+                            <th class="md:w-32">子分类</th>
                             <th>描述</th>
                         </tr>
                     </thead>

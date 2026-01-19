@@ -7,6 +7,7 @@ import { Character } from '../Character/Character';
 import type { ICharacterFilter } from '../Character/types';
 import type { IEquipmentFilter } from '../Equipment/types';
 import type { IJunkFilter } from '../Junk/types';
+import type { IRelicBrewFilter } from '../RelicBrew/types';
 import { Skill } from '../Skill/Skill';
 import type { ISkillFilter } from '../Skill/types';
 import type { SimCharacterConfig } from '../StatCalculator/types';
@@ -36,6 +37,8 @@ export interface DataSearcherSettings {
     junkFilter: IJunkFilter;
     // 成就过滤器
     achievementFilter: IAchievementFilter;
+    // 遗物酒过滤器
+    relicBrewFilter: IRelicBrewFilter;
 
     // 特性值配置
     statCalculator: {
@@ -123,6 +126,16 @@ export const DEFAULT_SETTINGS: DataSearcherSettings = {
         subCategory: '',
         completionStatus: 'incomplete',
         achievementAutoLoad: true,
+    },
+
+    // 遗物酒过滤器默认值
+    relicBrewFilter: {
+        searchText: '',
+        align: '',
+        inc: '',
+        dec: '',
+        relicBrewAutoLoad: true, // 改为true，实现进入模块时直接加载
+        showOnlyDoubleInc: false, // 仅显示双提升遗物过滤器默认关闭
     },
 
     // 特性值配置默认值
@@ -325,6 +338,13 @@ export const useSearcherDataStore = defineStore('searcherData', () => {
     // 自动拉取数据
     fetchData();
 
+    // 获取默认遗物酒过滤器设置
+    const getDefaultRelicBrewFilter = () => {
+        return {
+            ...DEFAULT_SETTINGS.relicBrewFilter,
+        };
+    };
+
     return {
         data,
         isInit,
@@ -338,5 +358,7 @@ export const useSearcherDataStore = defineStore('searcherData', () => {
         allStandardClass,
         // 响应式设置存储
         settings,
+        // 获取默认过滤器设置的方法
+        getDefaultRelicBrewFilter,
     };
 });

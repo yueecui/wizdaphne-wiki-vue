@@ -6,7 +6,7 @@
                     <label class="text-sm">搜索词</label>
                 </div>
                 <div class="flex items-center h-12">
-                    <NInput v-model:value="filter.searchText" placeholder="支持中日名字搜索成就" size="small"></NInput>
+                    <NInput v-model:value="filter.searchText" placeholder="" size="small"></NInput>
                 </div>
             </div>
 

@@ -14,7 +14,7 @@
                     <div
                         class="hidden md:group-hover:!block absolute z-10 -translate-x-full! w-max px-2 bg-black/70 text-white rounded text-center drop-shadow-inline"
                     >
-                        掉落计时器
+                        奖励计时器
                     </div>
                 </div>
                 <div

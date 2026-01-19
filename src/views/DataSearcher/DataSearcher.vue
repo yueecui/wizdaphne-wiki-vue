@@ -20,6 +20,7 @@
             <ArmorSearcher v-if="activeKey == 'Armor'" />
             <JunkSearcher v-if="activeKey == 'Junk'" />
             <AchievementSearcher v-if="activeKey == 'Achievement'" />
+            <RelicBrewSearcher v-if="activeKey == 'RelicBrew'" />
         </div>
     </ThemeConfigProvider>
 </template>
@@ -34,10 +35,11 @@ import ArmorSearcher from './Equipment/ArmorSearcher.vue';
 import WeaponSearcher from './Equipment/WeaponSearcher.vue';
 import InheritSkill from './InheritSkill/InheritSkill.vue';
 import JunkSearcher from './Junk/JunkSearcher.vue';
+import RelicBrewSearcher from './RelicBrew/RelicBrewSearcher.vue';
 import SkillSearcher from './Skill/SkillSearcher.vue';
 import StatCalculator from './StatCalculator/StatCalculator.vue';
 
-import { computed, onMounted, provide, ref, toRefs } from 'vue';
+import { computed, onMounted, provide, ref, toRefs, watch } from 'vue';
 import { useSearcherDataStore } from './data/searcherDataStore';
 import { useJunkStore } from './Junk/junkStore';
 import { SimCharacterConfig } from './StatCalculator/types';
@@ -50,33 +52,6 @@ defineOptions({
 });
 
 const junkStore = useJunkStore();
-
-onMounted(() => {
-    // 隐藏#firstHeading
-    const firstHeading = document.getElementById('firstHeading');
-    if (firstHeading) {
-        firstHeading.style.display = 'none';
-    }
-
-    // 从URL参数中获取默认标签页
-    const urlParams = new URLSearchParams(window.location.search);
-    const tabParam = urlParams.get('tab');
-    if (tabParam) {
-        // 检查参数是否是有效的标签页key
-        let tabKey = tabParam;
-        const isValidTab = tabs.some((tab) => {
-            if (tab.key === tabParam) return true;
-            if (tab.label === tabParam) {
-                tabKey = tab.key;
-                return true;
-            }
-            return false;
-        });
-        if (isValidTab) {
-            activeKey.value = tabKey;
-        }
-    }
-});
 
 const tabs = [
     {
@@ -108,6 +83,10 @@ const tabs = [
         label: '成就',
     },
     {
+        key: 'RelicBrew',
+        label: '遗物酒',
+    },
+    {
         key: 'StatCalculator',
         label: '特性值计算',
     },
@@ -116,6 +95,40 @@ const tabs = [
         label: '能力值计算',
     },
 ];
+
+// 组件初始化时优先检查URL参数
+const initActiveTabFromUrl = () => {
+    // 从URL参数中获取默认标签页
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam) {
+        // 检查参数是否是有效的标签页key
+        let tabKey = tabParam;
+        const isValidTab = tabs.some((tab) => {
+            if (tab.key === tabParam) return true;
+            if (tab.label === tabParam) {
+                tabKey = tab.key;
+                return true;
+            }
+            return false;
+        });
+        if (isValidTab) {
+            // 直接更新settings，确保URL参数优先级高于localStorage
+            settings.value.activeTab = tabKey;
+        }
+    }
+};
+
+// 立即执行初始化函数
+initActiveTabFromUrl();
+
+onMounted(() => {
+    // 隐藏#firstHeading
+    const firstHeading = document.getElementById('firstHeading');
+    if (firstHeading) {
+        firstHeading.style.display = 'none';
+    }
+});
 
 const calcStatCharacterConfig = ref<SimCharacterConfig | null>(null);
 
@@ -140,4 +153,20 @@ const activeKey = computed({
     get: () => settings.value.activeTab,
     set: (newKey) => (settings.value.activeTab = newKey),
 });
+
+// 监听activeKey的变化，同步更新浏览器地址
+watch(
+    activeKey,
+    (newKey) => {
+        // 更新URL参数
+        const urlParams = new URLSearchParams(window.location.search);
+        // 如果是默认标签页，移除tab参数；否则设置tab参数
+        urlParams.set('tab', newKey);
+        // 构建新的URL
+        const newUrl = `${window.location.pathname}${urlParams.toString() ? `?${urlParams.toString()}` : ''}`;
+        // 使用replaceState更新URL，不刷新页面
+        window.history.replaceState({}, '', newUrl);
+    },
+    // 移除immediate: true选项，避免在组件初始化时立即执行
+);
 </script>
