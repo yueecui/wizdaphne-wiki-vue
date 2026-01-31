@@ -8,7 +8,7 @@
             >
                 全部
             </NButton>
-            <template v-for="(armor, index) in ARMOR_SORT_ORDER" :key="index">
+            <template v-for="(armor, index) in armorSortOrder" :key="index">
                 <NButton
                     size="small"
                     :type="filter.category === armor ? 'primary' : 'default'"
@@ -74,7 +74,6 @@
 import { NButton, NCheckbox, NInput, NSelect, SelectOption } from 'naive-ui';
 
 import { computed, toRefs } from 'vue';
-import { ARMOR_SORT_ORDER } from './Equipment';
 import { useEquipmentStore } from './equipmentStore';
 import { IEquipmentFilter } from './types';
 
@@ -83,7 +82,8 @@ const filter = defineModel<IEquipmentFilter>('filter', {
     required: true,
 });
 
-const { equipments, equipmentSkills } = toRefs(useEquipmentStore());
+const { equipments, equipmentSkills, armorSortOrder } = toRefs(useEquipmentStore());
+
 const allWeapon = computed(() => {
     return equipments.value.filter((equipment) => equipment.data.cate !== '武器');
 });

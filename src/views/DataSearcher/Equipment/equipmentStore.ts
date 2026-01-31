@@ -1,13 +1,14 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { IS_DEV } from '../../../util';
 import { Equipment } from './Equipment';
-import { IEquipmentSkill, type IEquipmentJson } from './types';
+import { IEquipmentBaseStat, IEquipmentSkill, type IEquipmentJson } from './types';
 
 export const useEquipmentStore = defineStore('equipment', () => {
     // 配置数据
     const equipments = ref<Equipment[]>([]);
     const equipmentSkills = ref<IEquipmentSkill[]>([]);
+    const baseStats = ref<Record<string, IEquipmentBaseStat & { i: number }>>({});
 
     // 初始化状态
     const isInit = ref(false);
@@ -22,7 +23,9 @@ export const useEquipmentStore = defineStore('equipment', () => {
                         const levels = data.levels;
                         equipmentSkills.value = data.skill;
 
-                        // 处理bonus数据，创建装备名称到bonus数据的映射
+                        baseStats.value = data.baseStat || {};
+                        Equipment.baseStats = baseStats.value;
+
                         const bonusMap = new Map<string, Array<Array<number>>>();
                         if (data.bonus) {
                             data.bonus.forEach(([name, rates]) => {
@@ -30,14 +33,13 @@ export const useEquipmentStore = defineStore('equipment', () => {
                             });
                         }
 
-                        // 创建装备对象并设置bonus数据
-                        equipments.value = base.map((item) => {
+                        const equipmentsValue = base.map((item) => {
                             const equipment = new Equipment(item, levels[item.ba ?? item.n] ?? []);
-                            // 根据njp查找对应的bonus数据
                             const bonusData = bonusMap.get(item.njp) ?? null;
                             equipment.setBonusData(bonusData);
                             return equipment;
                         });
+                        equipments.value = equipmentsValue;
 
                         isInit.value = true;
                         resolve();
@@ -102,6 +104,28 @@ export const useEquipmentStore = defineStore('equipment', () => {
         });
     };
 
+    const weaponSortOrder = computed(() => {
+        const weapons = Object.entries(baseStats.value)
+            .filter(([, stat]) => stat.i < 100)
+            .map(([sub, stat]) => ({
+                name: sub,
+                index: stat.i,
+            }));
+        weapons.sort((a, b) => a.index - b.index);
+        return weapons.map((item) => item.name);
+    });
+
+    const armorSortOrder = computed(() => {
+        const armors = Object.entries(baseStats.value)
+            .filter(([, stat]) => stat.i >= 100)
+            .map(([sub, stat]) => ({
+                name: sub,
+                index: stat.i,
+            }));
+        armors.sort((a, b) => a.index - b.index);
+        return armors.map((item) => item.name);
+    });
+
     return {
         equipments,
         equipmentSkills,
@@ -110,5 +134,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
         waitForInit,
         getEquipmentByNJP,
         updateEquipmentEnhancedStats,
+        weaponSortOrder,
+        armorSortOrder,
     };
 });
