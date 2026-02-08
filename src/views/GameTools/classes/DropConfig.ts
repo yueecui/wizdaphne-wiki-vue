@@ -2,14 +2,7 @@ import { useUtilStore } from '../../../stores/util';
 import { useDropRecordStore } from '../dropRecordStore';
 import { type AbstractRecordConfig, type IDropConfig } from '../type';
 import { formatTimeFromMilliseconds } from '../util';
-import {
-    addNewRecordTime,
-    clearRecord,
-    NEAR_TIME,
-    removeRecord,
-    toggleHidden,
-    updateLastRecordTime,
-} from './recordConfigUtil';
+import { addNewRecordTime, clearRecord, removeRecord, toggleHidden, updateLastRecordTime } from './recordConfigUtil';
 
 export class DropConfig implements AbstractRecordConfig {
     constructor(public data: IDropConfig) {}
@@ -134,6 +127,8 @@ export class DropConfig implements AbstractRecordConfig {
     }
 
     // 是否显示在「待办项目」
+    // 刷新时间 >= 14天的项目：提前3天显示
+    // 刷新时间 < 14天的项目：提前1天显示
     isNear() {
         if (!this.isCountdown) {
             return false;
@@ -142,7 +137,18 @@ export class DropConfig implements AbstractRecordConfig {
             return false;
         }
         const differenceTime = this.getDifferenceTime();
-        return differenceTime < NEAR_TIME;
+        // 14天 = 14 * 24 * 60 * 60 * 1000 = 1209600000 毫秒
+        const fourteenDays = 14 * 24 * 60 * 60 * 1000;
+        // 3天 = 3 * 24 * 60 * 60 * 1000 = 259200000 毫秒
+        const threeDays = 3 * 24 * 60 * 60 * 1000;
+        // 1天 = 24 * 60 * 60 * 1000 = 86400000 毫秒
+        const oneDay = 24 * 60 * 60 * 1000;
+
+        if (this.refreshMilliseconds >= fourteenDays) {
+            return differenceTime < threeDays;
+        } else {
+            return differenceTime < oneDay;
+        }
     }
 
     // 用于在近期列表里获取不同的颜色来表示是否临期
@@ -150,11 +156,11 @@ export class DropConfig implements AbstractRecordConfig {
         if (!this.isCountdown) {
             return '';
         }
-        if (this.getLastRecord() === 0) {
-            return '';
-        }
         if (this.isHidden) {
             return 'text-gray-400';
+        }
+        if (this.getLastRecord() === 0) {
+            return '';
         }
         const differenceTime = this.getDifferenceTime();
         // 如果为正数表示还未到达目标时间

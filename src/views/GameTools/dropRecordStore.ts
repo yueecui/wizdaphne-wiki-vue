@@ -18,6 +18,15 @@ export const useDropRecordStore = defineStore('drop-record', () => {
         }
     })();
 
+    // 用户配置数据（非记录数据）
+    const dropSettings = useLocalStorage<{
+        activeAllTab?: string | number;
+        hideHiddenItems?: boolean;
+    }>('drop-settings', {});
+
+    // 自定义项配置（单独存储）
+    const customConfigsData = useLocalStorage<import('./type').ICustomConfig[]>('drop-custom-configs', []);
+
     // 配置数据
     const dropConfigs = ref<DropConfig[]>([]);
     const dropCategorys = ref<IDropCategory[]>([]);
@@ -61,6 +70,8 @@ export const useDropRecordStore = defineStore('drop-record', () => {
 
     return {
         dropRecords,
+        dropSettings,
+        customConfigsData,
 
         dropConfigs,
         fixedConfigs,

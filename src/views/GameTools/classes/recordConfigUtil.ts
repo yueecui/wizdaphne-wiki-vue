@@ -66,6 +66,14 @@ export const toggleHidden = (id: string) => {
     const { dropRecords } = toRefs(useDropRecordStore());
     const recordData = dropRecords.value.find((record) => record.id === id);
     if (recordData) {
+        // 已有记录，切换隐藏状态
         recordData.h = recordData.h ? undefined : true;
+    } else {
+        // 没有记录，创建一条空记录用于存储隐藏状态
+        dropRecords.value.push({
+            id: id,
+            r: [],
+            h: true,
+        });
     }
 };

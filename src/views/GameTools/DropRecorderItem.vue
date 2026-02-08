@@ -104,14 +104,14 @@
                                         <div>
                                             {{ item.getRemainTimeText() }}
                                         </div>
-                                        <div v-if="item.hasHidden && item.getLastRecord()">
+                                        <div v-if="item.hasHidden">
                                             <NTooltip placement="bottom">
                                                 <template #trigger>
                                                     <NButton size="tiny" @click="toggleHidden">
                                                         {{ item.isHidden ? '显示' : '隐藏' }}
                                                     </NButton>
                                                 </template>
-                                                隐藏的项目将不在「待办项目」中显示，持续到解除隐藏或产生新记录
+                                                隐藏的项目将不在「待办项目」中显示
                                             </NTooltip>
                                         </div>
                                     </div>

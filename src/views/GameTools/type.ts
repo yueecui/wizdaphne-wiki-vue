@@ -34,8 +34,9 @@ export interface IDropRecord {
     r: number[]; // 记录的时间，最后一个是最新的
     lt?: number; // 最后一次检查的记录时间
     h?: boolean; // 是否隐藏
+    c?: boolean; // 是否为自定义项（custom），避免与预设项ID冲突
 
-    timestamp?: number; // 旧的记录时间
+    timestamp?: number; // 旧的记录时间（旧格式兼容）
 }
 
 // 配置文件
@@ -72,4 +73,14 @@ export interface IFixedRefreshConfig {
         url: string;
         text: string;
     }[];
+}
+
+// 自定义项配置
+export interface ICustomConfig {
+    id: string;
+    title: string;
+    description: string;
+    refreshType: '自定义' | '每周六' | '每周日' | '双周六' | '双周日';
+    refreshHours: number; // 自定义刷新小时数，仅当 refreshType 为 '自定义' 时有效
+    isJunk: boolean;
 }
