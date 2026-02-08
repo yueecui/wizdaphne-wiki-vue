@@ -80,8 +80,11 @@ export class CustomConfig implements AbstractRecordConfig {
                 return 0;
             }
             return lastRecord + this.refreshMilliseconds;
+        } else if (this.data.refreshType === '每月') {
+            // 每月类型基于当前时间计算下个月的月底
+            return this.getNextMonthLastDay23(new Date());
         } else {
-            // 固定周期类型
+            // 其他固定周期类型基于记录时间计算
             return this.getFixedTargetTime(lastRecord || Date.now());
         }
     }
@@ -140,6 +143,16 @@ export class CustomConfig implements AbstractRecordConfig {
             nextSunday += 7 * 24 * 60 * 60 * 1000;
         }
         return nextSunday;
+    }
+
+    private getNextMonthLastDay23(date: Date): number {
+        // 设置为当前月份最后一天的23:00:00 (UTC+8)
+        // month + 1, day 0 会得到当前月的最后一天
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        // 使用 UTC 时间创建，指定为 UTC+8 (即 UTC 时间减 8 小时)
+        const monthLastDay = new Date(Date.UTC(year, month + 1, 0, 23 - 8, 0, 0, 0));
+        return monthLastDay.getTime();
     }
 
     private toUTC8(date: Date): number {

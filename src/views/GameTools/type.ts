@@ -67,7 +67,7 @@ export interface IFixedRefreshConfig {
     id: string;
     title: string;
     description: string;
-    refreshType: '双周六' | '每周六' | '每周日' | '双周日';
+    refreshType: '双周六' | '每周六' | '每周日' | '双周日' | '每月';
     refreshText: string;
     links?: {
         url: string;
@@ -80,7 +80,7 @@ export interface ICustomConfig {
     id: string;
     title: string;
     description: string;
-    refreshType: '自定义' | '每周六' | '每周日' | '双周六' | '双周日';
+    refreshType: '自定义' | '每周六' | '每周日' | '双周六' | '双周日' | '每月';
     refreshHours: number; // 自定义刷新小时数，仅当 refreshType 为 '自定义' 时有效
     isJunk: boolean;
 }

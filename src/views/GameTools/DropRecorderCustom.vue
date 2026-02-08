@@ -79,7 +79,7 @@
                         <div class="flex justify-between items-center">
                             <div>
                                 <template v-if="item.isHidden">【隐藏】</template>
-                                <span :class="item.data.isJunk ? 'text-amber-400' : ''">{{ item.data.title }}</span>
+                                <span>{{ item.data.title }}</span>
                             </div>
                             <div class="flex gap-1">
                                 <NButton size="tiny" @click.stop="saveNewRecord(item)">快速记录</NButton>
@@ -199,6 +199,7 @@ const refreshTypeOptions = [
     { label: '每周日', value: '每周日' },
     { label: '双周六', value: '双周六' },
     { label: '双周日', value: '双周日' },
+    { label: '每月', value: '每月' },
 ];
 
 // 弹窗相关

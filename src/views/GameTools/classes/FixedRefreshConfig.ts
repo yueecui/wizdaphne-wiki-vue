@@ -82,7 +82,10 @@ export class FixedRefreshConfig implements AbstractRecordConfig {
         // 双周六晚23点：2025年4月5日23点开始，每两周的周六晚23点
         // 每周日晚23点：每周的周日晚23点
         const recordTime = this.getLastRecord();
-        if (this.data.refreshType === '双周六') {
+        if (this.data.refreshType === '每月') {
+            // 每月类型基于当前时间计算下个月的月底
+            return getNextMonthLastDay23(new Date());
+        } else if (this.data.refreshType === '双周六') {
             let nextSaturday = getNextTargetDay23(new Date(recordTime), 6);
             const days = (nextSaturday.getTime() - TEMPLE_REFRESH_TIME) / (1000 * 60 * 60 * 24);
             if (days % 14 !== 0) {
@@ -250,4 +253,14 @@ function getNextTargetDay23(givenDate, weekday: number) {
     }
 
     return nextSaturday;
+}
+
+// 计算当前月份最后一天的23点 (UTC+8)
+function getNextMonthLastDay23(givenDate: Date) {
+    const year = givenDate.getFullYear();
+    const month = givenDate.getMonth();
+    // month + 1, day 0 会得到当前月的最后一天
+    // 使用 UTC 时间创建，指定为 UTC+8 (即 UTC 时间减 8 小时)
+    const monthLastDay = new Date(Date.UTC(year, month + 1, 0, 23 - 8, 0, 0, 0));
+    return monthLastDay.getTime();
 }
