@@ -288,8 +288,8 @@ const nearDropConfigs = computed<AbstractRecordConfig[]>(() => {
     const nearConfigs = [
         // 第一部分是有记录的drop record，并且临期了
         ...dropConfigs.value.filter((config) => config.isNear() && !config.isHidden && !config.isJunk),
-        // 第二部分是检查所有固定项目，临期或是没记录的都要
-        ...fixedConfigs.value.filter((config) => config.isNear()),
+        // 第二部分是有记录的固定项目，并且临期了
+        ...fixedConfigs.value.filter((config) => config.getLastRecord() !== 0 && config.isNear()),
         // 第三部分是自定义项（非杂物）
         ...customConfigs.value.filter((config) => config.isNear() && !config.isHidden && !config.isJunk),
     ];
@@ -344,7 +344,7 @@ const filteredNerfJunkDropConfigs = computed<AbstractRecordConfig[]>(() => {
 
 // 判断固定周期是否有临期项目
 const hasFixedNearItems = computed(() => {
-    return fixedConfigs.value.some((config) => config.isNear());
+    return fixedConfigs.value.some((config) => config.getLastRecord() !== 0 && config.isNear());
 });
 
 // 过滤出有临期项目的分类

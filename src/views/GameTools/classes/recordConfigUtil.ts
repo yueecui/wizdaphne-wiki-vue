@@ -34,7 +34,6 @@ export const addNewRecordTime = (id: string) => {
             recordData.r.splice(0, recordData.r.length - 100);
         }
         recordData.lt = undefined;
-        recordData.h = undefined;
     } else {
         dropRecords.value.push({
             id: id,

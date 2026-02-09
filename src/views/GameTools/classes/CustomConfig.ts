@@ -152,6 +152,13 @@ export class CustomConfig implements AbstractRecordConfig {
         const month = date.getMonth();
         // 使用 UTC 时间创建，指定为 UTC+8 (即 UTC 时间减 8 小时)
         const monthLastDay = new Date(Date.UTC(year, month + 1, 0, 23 - 8, 0, 0, 0));
+
+        // 如果已经过了本月最后一天的23点，则返回下个月最后一天的23点
+        if (monthLastDay.getTime() <= date.getTime()) {
+            const nextMonthLastDay = new Date(Date.UTC(year, month + 2, 0, 23 - 8, 0, 0, 0));
+            return nextMonthLastDay.getTime();
+        }
+
         return monthLastDay.getTime();
     }
 
