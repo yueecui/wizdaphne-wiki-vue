@@ -50,7 +50,7 @@
                             <td class="text-left">
                                 <div class="flex flex-col gap-2">
                                     <div v-for="(source, index) in equipment.data.sou" :key="index">
-                                        {{ source }}
+                                        <span v-html="convertDescription(source)"></span>
                                     </div>
                                 </div>
                             </td>
