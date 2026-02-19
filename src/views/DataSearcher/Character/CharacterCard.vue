@@ -221,7 +221,7 @@
                                     <div class="text-light pb-0.5 border-b! mb-2 relative">
                                         {{ character.data.discipline_skill }}
                                     </div>
-                                    <div>{{ getSkillDescription(character.data.discipline_skill) }}</div>
+                                    <div v-html="getSkillDescription(character.data.discipline_skill)"></div>
                                 </div>
                             </td>
                         </tr>
