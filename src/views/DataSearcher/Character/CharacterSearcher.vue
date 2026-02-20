@@ -34,7 +34,7 @@ import CharacterCard from './CharacterCard.vue';
 import CharacterFilter from './CharacterFilter.vue';
 import CharacterItem from './CharacterItem.vue';
 
-import { computed, onMounted, ref, toRefs, watch } from 'vue';
+import { computed, ref, toRefs } from 'vue';
 import { useSearcherDataStore } from '../data/searcherDataStore';
 import { Character } from './Character';
 
@@ -69,27 +69,6 @@ const characterList = computed(() => {
 });
 
 const filteredCharacterList = computed(() => characterList.value.filter((char) => char.isMatch(filter.value)));
-
-onMounted(async () => {
-    // 监听数据加载完成事件，初始化每个角色的数据
-    watch(
-        () => store.isInit,
-        async (newVal) => {
-            if (newVal) {
-                // 数据加载完成后，初始化每个角色的数据
-                for (const char of characterList.value) {
-                    await char.initialize();
-                }
-            }
-        },
-        { immediate: true },
-    );
-
-    // if (IS_DEV) {
-    //     showDetailCharacter.value = characterList.value[0];
-    //     isShowDetail.value = true;
-    // }
-});
 
 const showDetailCharacter = ref<Character | null>(null);
 const showDetail = (character: Character) => {

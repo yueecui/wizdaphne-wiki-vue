@@ -1,6 +1,6 @@
 import { useStorage } from '@vueuse/core';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { IS_DEV } from '../../../util';
 import type { IAchievementFilter } from '../Achievement/types';
 import { Character } from '../Character/Character';
@@ -343,6 +343,20 @@ export const useSearcherDataStore = defineStore('searcherData', () => {
             ...DEFAULT_SETTINGS.relicBrewFilter,
         };
     };
+
+    // 监听数据加载完成事件，初始化每个角色的数据
+    watch(
+        () => isInit.value,
+        async (newVal) => {
+            if (newVal) {
+                // 数据加载完成后，初始化每个角色的数据
+                for (const char of characterList.value) {
+                    await char.initialize();
+                }
+            }
+        },
+        { immediate: true },
+    );
 
     return {
         data,
