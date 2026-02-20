@@ -18,8 +18,6 @@ export const DATA_SEARCHER_STORAGE_KEY = 'dataSearcherSettings';
 
 // 存储结构定义
 export interface DataSearcherSettings {
-    // 最后一次打开的标签
-    activeTab: string;
     // 特典装备显示规则 (all/show/hide)
     soucateFilter: 'all' | 'show' | 'hide';
     // 装备加护排序方式 (attribute/probability)
@@ -65,7 +63,6 @@ export interface DataSearcherSettings {
 
 // 默认设置
 export const DEFAULT_SETTINGS: DataSearcherSettings = {
-    activeTab: 'Character',
     soucateFilter: 'all',
     equipmentBonusOrder: 'attribute',
 

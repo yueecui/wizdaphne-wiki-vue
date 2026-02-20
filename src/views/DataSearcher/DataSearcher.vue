@@ -39,19 +39,36 @@ import RelicBrewSearcher from './RelicBrew/RelicBrewSearcher.vue';
 import SkillSearcher from './Skill/SkillSearcher.vue';
 import StatCalculator from './StatCalculator/StatCalculator.vue';
 
-import { computed, onMounted, provide, ref, toRefs, watch } from 'vue';
+import { onMounted, provide, ref, watch } from 'vue';
 import { useSearcherDataStore } from './data/searcherDataStore';
-import { useJunkStore } from './Junk/junkStore';
 import { SimCharacterConfig } from './StatCalculator/types';
 
-// 使用searcherDataStore的settings
-const { settings } = toRefs(useSearcherDataStore());
+const LocalStorageKey = 'DataSearcherActiveTab';
+
+// 独立的activeKey，不使用useLocalStorage同步
+const activeKey = ref((localStorage.getItem(LocalStorageKey) || 'Character') as string);
+
+// 监听activeKey的变化，同步更新浏览器地址
+watch(
+    activeKey,
+    (newKey) => {
+        localStorage.setItem(LocalStorageKey, newKey);
+
+        // 更新URL参数
+        const urlParams = new URLSearchParams(window.location.search);
+        // 如果是默认标签页，移除tab参数；否则设置tab参数
+        urlParams.set('tab', newKey);
+        // 构建新的URL
+        const newUrl = `${window.location.pathname}${urlParams.toString() ? `?${urlParams.toString()}` : ''}`;
+        // 使用replaceState更新URL，不刷新页面
+        window.history.replaceState({}, '', newUrl);
+    },
+    // 移除immediate: true选项，避免在组件初始化时立即执行
+);
 
 defineOptions({
     name: '数据搜索器',
 });
-
-const junkStore = useJunkStore();
 
 const tabs = [
     {
@@ -113,8 +130,8 @@ const initActiveTabFromUrl = () => {
             return false;
         });
         if (isValidTab) {
-            // 直接更新settings，确保URL参数优先级高于localStorage
-            settings.value.activeTab = tabKey;
+            // 从localStorage读取初始值
+            activeKey.value = tabKey;
         }
     }
 };
@@ -144,29 +161,7 @@ const startCalcStat = (characterName: string, isSub: boolean) => {
             tier: 0, // 角色数据中没有tier属性，使用默认值0
         };
     }
-    settings.value.activeTab = 'StatCalculator';
+    activeKey.value = 'StatCalculator';
 };
 provide('startCalcStat', startCalcStat);
-
-// 使用计算属性获取和设置活跃标签
-const activeKey = computed({
-    get: () => settings.value.activeTab,
-    set: (newKey) => (settings.value.activeTab = newKey),
-});
-
-// 监听activeKey的变化，同步更新浏览器地址
-watch(
-    activeKey,
-    (newKey) => {
-        // 更新URL参数
-        const urlParams = new URLSearchParams(window.location.search);
-        // 如果是默认标签页，移除tab参数；否则设置tab参数
-        urlParams.set('tab', newKey);
-        // 构建新的URL
-        const newUrl = `${window.location.pathname}${urlParams.toString() ? `?${urlParams.toString()}` : ''}`;
-        // 使用replaceState更新URL，不刷新页面
-        window.history.replaceState({}, '', newUrl);
-    },
-    // 移除immediate: true选项，避免在组件初始化时立即执行
-);
 </script>
