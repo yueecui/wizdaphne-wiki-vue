@@ -10,11 +10,11 @@ export class Character {
         public data: ICharacter,
         public characterRates?: ICharacterRate,
     ) {
-        // 构造函数只初始化数据，不进行异步操作
+        this.initialize();
     }
 
     // 异步初始化方法，用于计算属性
-    async initialize() {
+    initialize() {
         const store = useSearcherDataStore();
 
         this.stats = store.calculateStats({
