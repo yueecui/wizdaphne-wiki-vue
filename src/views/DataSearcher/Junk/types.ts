@@ -45,15 +45,15 @@ export interface IJunkSupplementary {
 export interface IJunkJson {
     junkData: CompactJunkData;
     supplementary: IJunkSupplementary[];
-    junkNameMap: [string, string][];
+    // junkNameMap: [string, string][];
 }
 
 // 定义杂物过滤器类型
 export interface IJunkFilter {
     searchText: string;
-    maxQuality: number | null;
-    maxGrade: number | null;
-    maxTier: number | null;
+    maxQuality: number;
+    maxGrade: number;
+    maxTier: number;
     // 杂物自动加载开关
     junkAutoLoad: boolean;
 }

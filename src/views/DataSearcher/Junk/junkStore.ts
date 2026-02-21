@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import { MwConfig } from '../../../huiji/MwConfig';
 import { IS_DEV } from '../../../util';
 import { useEquipmentStore } from '../Equipment/equipmentStore';
 import { JunkItem } from './JunkItem';
 import type { IJunkJson, IJunkSupplementary } from './types';
-import { MwConfig } from '../../../huiji/MwConfig';
 
 export const useJunkStore = defineStore('junk', () => {
     // 配置数据
@@ -54,13 +54,13 @@ export const useJunkStore = defineStore('junk', () => {
             return map;
         })();
 
-        const nameMap = (() => {
-            const map: Map<string, string> = new Map();
-            data.junkNameMap.forEach(([key, value]) => {
-                map.set(key, value);
-            });
-            return map;
-        })();
+        // const nameMap = (() => {
+        //     const map: Map<string, string> = new Map();
+        //     data.junkNameMap.forEach(([key, value]) => {
+        //         map.set(key, value);
+        //     });
+        //     return map;
+        // })();
 
         // 使用异步并行方式创建JunkItem实例，避免主线程阻塞
         const promises = data.junkData.data.map((raw, arrayIndex) => {
@@ -90,7 +90,7 @@ export const useJunkStore = defineStore('junk', () => {
                     const processedRaw = [categoryName, processedGroups] as any;
 
                     // 不再传入strMap，因为已经完成了字段替换
-                    resolve(new JunkItem(processedRaw, { nameMap, index }));
+                    resolve(new JunkItem(processedRaw, { index }));
                 }, 0);
             });
         });
@@ -107,7 +107,7 @@ export const useJunkStore = defineStore('junk', () => {
             });
 
             // 收集未匹配的supplementary数据
-            const unmatchedSupplements:IJunkSupplementary[] = [];
+            const unmatchedSupplements: IJunkSupplementary[] = [];
 
             // 遍历supplementary数据，关联到对应的JunkItem
             data.supplementary.forEach((supplement) => {

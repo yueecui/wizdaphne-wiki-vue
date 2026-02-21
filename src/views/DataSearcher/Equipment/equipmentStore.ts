@@ -35,7 +35,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
 
                         const equipmentsValue = base.map((item) => {
                             const equipment = new Equipment(item, levels[item.ba ?? item.n] ?? []);
-                            const bonusData = bonusMap.get(item.njp) ?? null;
+                            const bonusData = bonusMap.get(item.n) ?? null;
                             equipment.setBonusData(bonusData);
                             return equipment;
                         });
@@ -55,6 +55,11 @@ export const useEquipmentStore = defineStore('equipment', () => {
     // 等待初始化完成
     const waitForInit = async () => {
         await initPromise;
+    };
+
+    // 根据name查找装备
+    const getEquipmentByName = (name: string) => {
+        return equipments.value.find((equipment) => equipment.data.n === name);
     };
 
     // 根据njp查找装备
@@ -106,7 +111,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
 
     const weaponSortOrder = computed(() => {
         const weapons = Object.entries(baseStats.value)
-            .filter(([, stat]) => stat.i < 100)
+            .filter(([sub, stat]) => stat.i < 100 && !sub.includes('R'))
             .map(([sub, stat]) => ({
                 name: sub,
                 index: stat.i,
@@ -117,7 +122,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
 
     const armorSortOrder = computed(() => {
         const armors = Object.entries(baseStats.value)
-            .filter(([, stat]) => stat.i >= 100)
+            .filter(([sub, stat]) => stat.i >= 100 && !sub.includes('R'))
             .map(([sub, stat]) => ({
                 name: sub,
                 index: stat.i,
@@ -132,6 +137,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
         isInit,
         initPromise,
         waitForInit,
+        getEquipmentByName,
         getEquipmentByNJP,
         updateEquipmentEnhancedStats,
         weaponSortOrder,

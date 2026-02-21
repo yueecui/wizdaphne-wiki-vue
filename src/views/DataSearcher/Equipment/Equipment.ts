@@ -101,7 +101,8 @@ export class Equipment {
         if (!stat) return '';
         if (this.data.sub === '工具') return '';
         const statValue = this.data[stat];
-        const baseStat = Equipment.baseStats[this.data.sub];
+        const baseStat =
+            Equipment.baseStats[`${this.data.sub}R${this.data.t}`] ?? Equipment.baseStats[`${this.data.sub}`];
         const statBaseValue = baseStat?.[stat] ?? 0;
         if (statBaseValue === -1) {
             //表示不参与比较的数值类型

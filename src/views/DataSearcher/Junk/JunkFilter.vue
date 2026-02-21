@@ -77,19 +77,19 @@ const filter = defineModel<IJunkFilter>('filter', {
 
 // 最高星级选项 - 从大到小排列
 const qualityOptions = computed<SelectOption[]>(() => [
-    { label: '全部', value: '' },
+    { label: '全部', value: 0 },
     ...Array.from({ length: 5 }, (_, i) => ({ label: `${5 - i}`, value: 5 - i })),
 ]);
 
 // 最高颜色选项 - 从大到小排列
 const gradeOptions = computed<SelectOption[]>(() => [
-    { label: '全部', value: '' },
+    { label: '全部', value: 0 },
     ...Array.from({ length: 5 }, (_, i) => ({ label: `${5 - i}`, value: 5 - i })),
 ]);
 
 // 最高阶级选项 - 从大到小排列，并添加文字说明
 const tierOptions = computed<SelectOption[]>(() => [
-    { label: '全部', value: '' },
+    { label: '全部', value: 0 },
     ...Array.from({ length: 5 }, (_, i) => {
         const tier = 6 - i;
         const tierName = TIER_NAME_MAP[tier] || '';

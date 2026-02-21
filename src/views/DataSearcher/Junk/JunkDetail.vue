@@ -954,7 +954,7 @@ const closeRawDataTable = () => {
 const showEquipmentDetail = () => {
     if (!selectedItemName.value) return;
     // 根据选中的物品名称查找对应的装备
-    const equipment = equipments.value.find((eq) => eq.data.njp === selectedItemName.value);
+    const equipment = equipments.value.find((eq) => eq.data.n === selectedItemName.value);
     if (equipment) {
         showDetailEquipment.value = equipment;
         isShowDetail.value = true;

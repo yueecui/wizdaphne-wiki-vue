@@ -10,7 +10,12 @@ const hashString = (str: string): string => {
         hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
     }
 
-    return (hash >>> 0).toString(16);
+    let result = (hash >>> 0).toString(16);
+    // 检查是否为科学计数法格式 (例如 1e10 或 2.5e-3)
+    if (/^[0-9]+(\.[0-9]+)?[eE][+-]?[0-9]+$/.test(result)) {
+        result += 'X';
+    }
+    return result;
 };
 
 // 初始化垃圾装备数据
@@ -38,11 +43,11 @@ const InitJunkData = (
                 // 查找装备信息获取中文名
                 let equipment = equipmentCache.get(itemName);
                 if (equipment === undefined) {
-                    equipment = equipmentStore.getEquipmentByNJP(itemName);
+                    equipment = equipmentStore.getEquipmentByName(itemName);
                     equipmentCache.set(itemName, equipment);
                     if (!equipment && !MissingJunkNames.has(itemName)) {
                         MissingJunkNames.add(itemName);
-                        console.log(`未找到装备: ${itemName}`);
+                        console.log(`InitJunkData 未找到装备: ${itemName}`);
                     }
                 }
 
@@ -85,7 +90,7 @@ const InitJunkData = (
                 equipmentCache.set(item.name, equipment);
                 if (!equipment && !MissingJunkNames.has(item.name)) {
                     MissingJunkNames.add(item.name);
-                    console.log(`未找到装备: ${item.name}`);
+                    console.log(`InitJunkData Calculate 未找到装备: ${item.name}`);
                 }
             }
 
@@ -148,10 +153,10 @@ export class JunkItem {
     // raw参数是经过预处理的，其中categoryIndex和itemNameIndex已经替换为对应的字符串名称
     constructor(
         public raw: [string, Array<[number, Array<[string, number, number[], number[]]>]>],
-        { nameMap, index }: { nameMap: Map<string, string>; index: number },
+        { index }: { index: number },
     ) {
         [this.data, this.items] = InitJunkData(raw);
-        this.name = nameMap.get(this.data.name) || this.data.name; // 如果有中文名就获取，否则就是用日文名
+        this.name = this.data.name; // 如果有中文名就获取，否则就是用日文名
         this.index = index;
 
         // 使用raw数据的哈希值作为唯一码，不依赖index

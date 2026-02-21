@@ -30,25 +30,25 @@ interface EquipmentData {
 
 // 定义属性的固定顺序
 const attributeOrder = [
-    '攻撃力上昇（％）',
-    '魔力上昇（％）',
-    '神力上昇（％）',
-    '命中上昇（％）',
-    '回避上昇（％）',
-    '抵抗上昇（％）',
-    '防御力上昇（％）',
-    '魔術防御力上昇（％）',
-    '行動速度上昇（％）',
-    '攻撃力上昇（固定）',
-    '魔力上昇（固定）',
-    '神力上昇（固定）',
-    '命中上昇（固定）',
-    '回避上昇（固定）',
-    '抵抗上昇（固定）',
-    '防御力上昇（固定）',
-    '魔術防御力上昇（固定）',
-    '会心上昇（固定）',
-    '行動速度上昇（固定）',
+    '攻击力提升（％）',
+    '魔力提升（％）',
+    '神力提升（％）',
+    '命中提升（％）',
+    '回避提升（％）',
+    '抵抗提升（％）',
+    '防御力提升（％）',
+    '法术防御力提升（％）',
+    '行动速度提升（％）',
+    '攻击力提升（固定值）',
+    '魔力提升（固定值）',
+    '神力提升（固定值）',
+    '命中提升（固定值）',
+    '回避提升（固定值）',
+    '抵抗提升（固定值）',
+    '防御力提升（固定值）',
+    '法术防御力提升（固定值）',
+    '会心提升（固定值）',
+    '行动速度提升（固定值）',
 ];
 
 // 辅助函数：将百分比字符串转换为数值
@@ -60,20 +60,20 @@ const parsePercentage = (percentage: string): number => {
 // 1. 抓取普通装备加护数据
 const scrapeRegularEquipmentBonusRates = async (): Promise<EquipmentData[]> => {
     try {
-        const url = 'https://wizardry.info/daphne/gacha_rates/ja/alternations.html';
+        const url = 'https://wizardry.info/daphne/gacha_rates/zh_cn/alternations.html';
         console.log(`正在抓取普通装备数据：${url}...`);
 
         const response = await axios.get(url);
         const $ = cheerio.load(response.data);
         const equipmentData: EquipmentData[] = [];
 
-        // 找到「装備別 追加護提供割合」部分
+        // 找到「按装备分类的附加加护获取概率」部分
         const sectionTitle = $('h1').filter((_, element) => {
-            return $(element).text().trim() === '装備別 追加護提供割合';
+            return $(element).text().trim() === '按装备分类的附加加护获取概率';
         });
 
         if (sectionTitle.length === 0) {
-            console.error('未找到「装備別 追加護提供割合」部分');
+            console.error('未找到「按装备分类的附加加护获取概率」部分');
             return [];
         }
 
@@ -113,27 +113,27 @@ const scrapeRegularEquipmentBonusRates = async (): Promise<EquipmentData[]> => {
         if (headers.length < 5 || headers[0] !== '装備') {
             console.warn('表头解析可能不正确，使用手动设置的标准表头');
             headers = [
-                '装備',
-                '追加護枠',
-                '攻撃力上昇（％）',
-                '魔力上昇（％）',
-                '神力上昇（％）',
-                '命中上昇（％）',
-                '回避上昇（％）',
-                '抵抗上昇（％）',
-                '防御力上昇（％）',
-                '魔術防御力上昇（％）',
-                '行動速度上昇（％）',
-                '攻撃力上昇（固定）',
-                '魔力上昇（固定）',
-                '神力上昇（固定）',
-                '命中上昇（固定）',
-                '回避上昇（固定）',
-                '抵抗上昇（固定）',
-                '防御力上昇（固定）',
-                '魔術防御力上昇（固定）',
-                '会心上昇（固定）',
-                '行動速度上昇（固定）',
+                '装备',
+                '附加加护栏位',
+                '攻击力提升（％）',
+                '魔力提升（％）',
+                '神力提升（％）',
+                '命中提升（％）',
+                '回避提升（％）',
+                '抵抗提升（％）',
+                '防御力提升（％）',
+                '法术防御力提升（％）',
+                '行动速度提升（％）',
+                '攻击力提升（固定值）',
+                '魔力提升（固定值）',
+                '神力提升（固定值）',
+                '命中提升（固定值）',
+                '回避提升（固定值）',
+                '抵抗提升（固定值）',
+                '防御力提升（固定值）',
+                '法术防御力提升（固定值）',
+                '会心提升（固定值）',
+                '行动速度提升（固定值）',
             ];
         }
 
@@ -220,17 +220,17 @@ const scrapeRegularEquipmentBonusRates = async (): Promise<EquipmentData[]> => {
 // 2. 抓取特典装备加护数据
 const scrapeSpecialEquipmentBonusRates = async (): Promise<EquipmentData[]> => {
     try {
-        const url = 'https://wizardry.info/daphne/gacha_rates/ja/characters.html';
+        const url = 'https://wizardry.info/daphne/gacha_rates/zh_cn/characters.html';
         console.log(`正在抓取特典装备数据：${url}...`);
 
         const response = await axios.get(url);
         const $ = cheerio.load(response.data);
         const equipmentData: EquipmentData[] = [];
 
-        // 找到「特典装備 追加護提供割合」部分
+        // 找到「特典装备附加加护获取概率」部分
         const sectionAnchor = $('#additions_additional_blessing_rates');
         if (!sectionAnchor.length) {
-            console.error('未找到「特典装備 追加護提供割合」部分的锚点');
+            console.error('未找到「特典装备附加加护获取概率」部分的锚点');
             return [];
         }
 

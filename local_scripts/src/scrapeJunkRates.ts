@@ -225,7 +225,7 @@ async function uploadJunkRatesToWiki(filePath: string) {
 
 const scrapeGachaRates = async () => {
     try {
-        const url = 'https://wizardry.info/daphne/gacha_rates/ja/equipments.html';
+        const url = 'https://wizardry.info/daphne/gacha_rates/zh_cn/equipments.html';
         console.log(`正在抓取 ${url}...`);
 
         const response = await axios.get(url);
@@ -482,7 +482,7 @@ const scrapeGachaRates = async () => {
         console.log(`处理完成，共保存了 ${gachaData.data.length} 条记录`);
 
         // 上传数据到 HuijiWiki
-        await uploadToWiki(gachaData.data);
+        // await uploadToWiki(gachaData.data);  // 不再需要中日对照表
         // 上传 junkrates.json 到 Data:JunkRates.json
         await uploadJunkRatesToWiki('./public/junkrates.json');
     } catch (error) {

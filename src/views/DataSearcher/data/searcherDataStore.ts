@@ -110,9 +110,9 @@ export const DEFAULT_SETTINGS: DataSearcherSettings = {
     // 杂物过滤器默认值
     junkFilter: {
         searchText: '',
-        maxQuality: null,
-        maxGrade: null,
-        maxTier: null,
+        maxQuality: 0,
+        maxGrade: 0,
+        maxTier: 0,
         junkAutoLoad: false,
     },
 

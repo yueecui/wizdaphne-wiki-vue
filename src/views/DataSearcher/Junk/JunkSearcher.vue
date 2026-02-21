@@ -138,17 +138,17 @@ const filteredList = computed(() => {
         }
 
         // 最高星级过滤
-        if (filter.value.maxQuality !== null && item.maxQuality !== filter.value.maxQuality) {
+        if (filter.value.maxQuality !== 0 && item.maxQuality !== filter.value.maxQuality) {
             return false;
         }
 
         // 最高颜色过滤
-        if (filter.value.maxGrade !== null && item.maxGrade !== filter.value.maxGrade) {
+        if (filter.value.maxGrade !== 0 && item.maxGrade !== filter.value.maxGrade) {
             return false;
         }
 
         // 最高阶级过滤
-        if (filter.value.maxTier !== null && item.maxTier !== filter.value.maxTier) {
+        if (filter.value.maxTier !== 0 && item.maxTier !== filter.value.maxTier) {
             return false;
         }
 
