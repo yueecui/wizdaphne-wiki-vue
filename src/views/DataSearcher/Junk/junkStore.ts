@@ -127,7 +127,7 @@ export const useJunkStore = defineStore('junk', () => {
                 });
 
                 // 如果是管理员且有未匹配数据，发送消息通知
-                if (MwConfig.getInstance().isSystemAdmin) {
+                if (MwConfig.getInstance().canEdit) {
                     // 使用setTimeout确保通知在DOM渲染完成后显示
                     setTimeout(() => {
                         window.wiz?.$message?.warning?.(

@@ -188,7 +188,7 @@
             <!-- 动态标签页：选中杂物的物品几率 -->
             <NTabPane v-if="selectedJunkItem" name="junk-detail" :tab="renderJunkTabTitle">
                 <div class="mt-2">
-                    <div class="text-sm text-gray-400" v-if="isSystemAdmin">
+                    <div class="text-sm text-gray-400" v-if="canEdit">
                         Unique Code: {{ selectedJunkItem.uniqueCode }}
                     </div>
                     <div class="text-md text-light font-semibold bg-black/50 px-2 py-1 mt-4">
@@ -448,7 +448,7 @@
 
         <!-- 操作按钮 -->
         <div class="flex justify-center gap-4" v-if="onClose">
-            <NButton size="small" type="error" @click="openEditorModal" v-if="isSystemAdmin">编辑装备强化属性</NButton>
+            <NButton size="small" type="error" @click="openEditorModal" v-if="canEdit">编辑装备强化属性</NButton>
             <NButton size="small" type="warning" @click="onClose">关闭</NButton>
         </div>
 
@@ -489,8 +489,8 @@ const editorModalVisible = ref(false);
 const mwConfig = MwConfig.getInstance();
 
 // 判断是否为系统管理员
-const isSystemAdmin = computed(() => {
-    return mwConfig.isSystemAdmin;
+const canEdit = computed(() => {
+    return mwConfig.canEdit;
 });
 
 // 选中的杂物

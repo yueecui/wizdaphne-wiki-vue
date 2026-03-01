@@ -44,4 +44,16 @@ export class MwConfig {
         if (IS_DEV) return true;
         return this.mwConfig?.wgUserGroups?.includes('sysop') ?? false;
     }
+
+    public get isAdvanced(): boolean {
+        return this.mwConfig?.wgUserGroups?.includes('advanced') ?? false;
+    }
+
+    public get isVerified(): boolean {
+        return this.mwConfig?.wgUserGroups?.includes('verified') ?? false;
+    }
+
+    public get canEdit(): boolean {
+        return this.isVerified;
+    }
 }

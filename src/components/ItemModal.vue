@@ -64,7 +64,7 @@
                         </div>
 
                         <div class="flex justify-center gap-4 mt-4">
-                            <NButton size="small" type="error" @click="openEditorModal" v-if="isSystemAdmin">
+                            <NButton size="small" type="error" @click="openEditorModal" v-if="canEdit">
                                 编辑备注
                             </NButton>
                             <NButton size="small" type="warning" @click="closeModal">关闭</NButton>
@@ -114,8 +114,8 @@ const getCategoryName = (cate: number) => {
 const formatComment = (comment: string) => convertDescription(comment);
 
 const mwConfig = MwConfig.getInstance();
-const isSystemAdmin = computed(() => {
-    return mwConfig.isSystemAdmin;
+const canEdit = computed(() => {
+    return mwConfig.canEdit;
 });
 
 const editorModalVisible = ref(false);
