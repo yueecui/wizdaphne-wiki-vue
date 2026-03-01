@@ -47,6 +47,9 @@ export const useItemStore = defineStore('item', () => {
         return Array.from(categories).sort((a, b) => a - b);
     };
 
+    // 在初始化时自动加载数据
+    loadItemData();
+
     return {
         itemItems,
         isInit,

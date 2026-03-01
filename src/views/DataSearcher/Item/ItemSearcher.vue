@@ -26,6 +26,8 @@
                             v-for="item in paginatedList"
                             :key="item.id"
                             :class="{ 'text-gray-500': item.isUnconfirmed() }"
+                            class="cursor-pointer hover:bg-[#3a312a]! transition-colors"
+                            @click="handleItemClick(item)"
                         >
                             <td>{{ item.id }}</td>
                             <td class="text-left">
@@ -52,6 +54,7 @@
 <script setup lang="ts">
 import { NButton, NPagination, NSpin } from 'naive-ui';
 import { computed, onMounted, ref, toRefs, watch } from 'vue';
+import { useItemModalStore } from '../../../stores/itemModalStore';
 import { DEFAULT_SETTINGS, useSearcherDataStore } from '../data/searcherDataStore';
 import { convertDescription } from '../utils/convertDescription';
 import ItemFilter from './ItemFilter.vue';
@@ -78,6 +81,8 @@ watch(
 const itemStore = useItemStore();
 const { itemItems, isInit, isLoading } = toRefs(itemStore);
 const { loadItemData } = itemStore;
+
+const itemModalStore = useItemModalStore();
 
 // 分类映射
 const categoryMap: Record<number, string> = {
@@ -146,5 +151,9 @@ const onFilterReset = () => {
     filter.value = {
         ...DEFAULT_SETTINGS.itemFilter,
     };
+};
+
+const handleItemClick = (item: any) => {
+    itemModalStore.openModal(item);
 };
 </script>

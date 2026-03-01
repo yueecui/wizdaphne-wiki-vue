@@ -1,9 +1,10 @@
 import type { LoaderConfig } from '../loaderConfig.type';
+import { hasHTMLElement } from '../util';
 
 /** 角色项元素处理 */
 const config: LoaderConfig = {
     isEnabled: () => {
-        return document.querySelector('.character-item') !== null;
+        return hasHTMLElement('.character-item') !== null;
     },
     components: [
         {
