@@ -9,6 +9,7 @@ const API_URLS = {
     dropConfig: 'https://wizdaphne.huijiwiki.com/api.php?action=lua&module=Api/GetDropConfig&format=json&utf8=1',
     achievement: 'https://wizdaphne.huijiwiki.com/api.php?action=lua&module=Api/GetAchievement&format=json&utf8=1',
     relicbrew: 'https://wizdaphne.huijiwiki.com/api.php?action=lua&module=Api/GetRelicbrew&format=json&utf8=1',
+    items: 'https://wizdaphne.huijiwiki.com/api.php?action=lua&module=Api/GetItem&format=json&utf8=1',
 };
 
 // 请求头配置
@@ -26,6 +27,7 @@ const OUTPUT_PATHS = {
     dropConfig: 'd:\\WizardyDaphne\\wizdaphne-wiki-vue\\public\\dropconfig.json',
     achievement: 'd:\\WizardyDaphne\\wizdaphne-wiki-vue\\public\\achievement.json',
     relicbrew: 'd:\\WizardyDaphne\\wizdaphne-wiki-vue\\public\\relicbrew.json',
+    items: 'd:\\WizardyDaphne\\wizdaphne-wiki-vue\\public\\items.json',
 };
 
 // 抓取数据函数
@@ -67,6 +69,7 @@ const main = async () => {
             fetchData(API_URLS.dropConfig, OUTPUT_PATHS.dropConfig),
             fetchData(API_URLS.achievement, OUTPUT_PATHS.achievement),
             fetchData(API_URLS.relicbrew, OUTPUT_PATHS.relicbrew),
+            fetchData(API_URLS.items, OUTPUT_PATHS.items),
         ]);
 
         console.log('所有数据抓取完成！');

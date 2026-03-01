@@ -20,6 +20,7 @@
             <ArmorSearcher v-if="activeKey == 'Armor'" />
             <JunkSearcher v-if="activeKey == 'Junk'" />
             <AchievementSearcher v-if="activeKey == 'Achievement'" />
+            <ItemSearcher v-if="activeKey == 'Item'" />
             <RelicBrewSearcher v-if="activeKey == 'RelicBrew'" />
         </div>
     </ThemeConfigProvider>
@@ -34,6 +35,7 @@ import CharacterSearcher from './Character/CharacterSearcher.vue';
 import ArmorSearcher from './Equipment/ArmorSearcher.vue';
 import WeaponSearcher from './Equipment/WeaponSearcher.vue';
 import InheritSkill from './InheritSkill/InheritSkill.vue';
+import ItemSearcher from './Item/ItemSearcher.vue';
 import JunkSearcher from './Junk/JunkSearcher.vue';
 import RelicBrewSearcher from './RelicBrew/RelicBrewSearcher.vue';
 import SkillSearcher from './Skill/SkillSearcher.vue';
@@ -98,6 +100,10 @@ const tabs = [
     {
         key: 'Achievement',
         label: '成就',
+    },
+    {
+        key: 'Item',
+        label: '物品',
     },
     {
         key: 'RelicBrew',

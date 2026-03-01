@@ -6,6 +6,7 @@ import type { IAchievementFilter } from '../Achievement/types';
 import { Character } from '../Character/Character';
 import type { ICharacterFilter } from '../Character/types';
 import type { IEquipmentFilter } from '../Equipment/types';
+import type { IItemFilter } from '../Item/types';
 import type { IJunkFilter } from '../Junk/types';
 import type { IRelicBrewFilter } from '../RelicBrew/types';
 import { Skill } from '../Skill/Skill';
@@ -35,6 +36,8 @@ export interface DataSearcherSettings {
     junkFilter: IJunkFilter;
     // 成就过滤器
     achievementFilter: IAchievementFilter;
+    // 物品过滤器
+    itemFilter: IItemFilter;
     // 遗物酒过滤器
     relicBrewFilter: IRelicBrewFilter;
 
@@ -123,6 +126,12 @@ export const DEFAULT_SETTINGS: DataSearcherSettings = {
         subCategory: '',
         completionStatus: 'incomplete',
         achievementAutoLoad: true,
+    },
+
+    // 物品过滤器默认值
+    itemFilter: {
+        searchText: '',
+        category: '',
     },
 
     // 遗物酒过滤器默认值
