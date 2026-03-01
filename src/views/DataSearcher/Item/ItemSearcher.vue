@@ -26,8 +26,9 @@
                             v-for="item in paginatedList"
                             :key="item.id"
                             :class="{ 'text-gray-500': item.isUnconfirmed() }"
-                            class="cursor-pointer hover:bg-[#3a312a]! transition-colors"
+                            class="cursor-pointer hover:bg-[#3a312a]! transition-colors select-none"
                             @click="handleItemClick(item)"
+                            @contextmenu.prevent="showContextMenu($event, item)"
                         >
                             <td>{{ item.id }}</td>
                             <td class="text-left">
@@ -47,6 +48,20 @@
                 </table>
                 <NPagination v-model:page="pageIndex" :page-count="pageCount"></NPagination>
             </template>
+        </div>
+
+        <!-- 右键菜单 -->
+        <div
+            v-if="contextMenu.show"
+            class="fixed z-50 bg-[#312721] border border-[#463d38] rounded shadow-lg"
+            :style="{
+                left: contextMenu.x + 'px',
+                top: contextMenu.y + 'px',
+            }"
+        >
+            <div class="px-4 py-2 hover:bg-[#463d38] cursor-pointer" @click="copyItemTemplate(contextMenu.item)">
+                复制 &#123;&#123;物品&#125;&#125;
+            </div>
         </div>
     </NSpin>
 </template>
@@ -155,5 +170,50 @@ const onFilterReset = () => {
 
 const handleItemClick = (item: any) => {
     itemModalStore.openModal(item);
+};
+
+// 右键菜单状态
+const contextMenu = ref({
+    show: false,
+    x: 0,
+    y: 0,
+    item: null as any,
+});
+
+// 显示右键菜单
+const showContextMenu = (event: MouseEvent, item: any) => {
+    contextMenu.value = {
+        show: true,
+        x: event.clientX,
+        y: event.clientY,
+        item: item,
+    };
+    document.addEventListener('click', closeContextMenu);
+};
+
+// 关闭右键菜单
+const closeContextMenu = () => {
+    contextMenu.value.show = false;
+    document.removeEventListener('click', closeContextMenu);
+};
+
+// 复制物品模板
+const copyItemTemplate = (item: any) => {
+    if (item) {
+        const template = `{{物品|${item.name}}}`;
+
+        // 复制到剪贴板
+        navigator.clipboard
+            .writeText(template)
+            .then(() => {
+                // 显示复制成功的提示
+                window.wiz.$message.success(`已复制 ${template} 模板到剪贴板`);
+            })
+            .catch((err) => {
+                window.wiz.$message.error('复制失败，请手动复制');
+            });
+
+        closeContextMenu();
+    }
 };
 </script>
