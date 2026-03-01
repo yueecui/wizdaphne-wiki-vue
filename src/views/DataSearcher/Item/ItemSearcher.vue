@@ -39,7 +39,7 @@
                             <td>{{ item.sell > 0 ? item.sell : '-' }}</td>
                             <td class="text-left">
                                 {{ item.desc }}
-                                <div v-if="item.comment" class="text-gray-500 text-sm">
+                                <div v-if="!item.desc && item.comment" class="text-gray-500 text-sm">
                                     <span v-html="formatComment(item.comment)"></span>
                                 </div>
                             </td>

@@ -1,11 +1,11 @@
 <template>
-    <div class="inline-item">
-        <span @click="handleClick" class="cursor-pointer text-blue-200 hover:text-blue-400">「{{ itemName }}」</span>
-    </div>
+    <span @click="handleClick" class="cursor-pointer text-blue-200 hover:text-blue-400">
+        {{ item?.name || itemName }}
+    </span>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed } from 'vue';
 import { useItemModalStore } from '../stores/itemModalStore';
 import { useItemStore } from '../views/DataSearcher/Item/itemStore';
 
@@ -15,16 +15,21 @@ const props = defineProps<{
 
 const itemStore = useItemStore();
 const itemModalStore = useItemModalStore();
-const item = ref<any>(null);
+const item = computed(() => {
+    // 如果itemName是数字，则按id查询，否则按物品名查询
+    if (/^\d+$/.test(props.itemName)) {
+        const itemId = parseInt(props.itemName, 10);
+        return itemStore.itemItems.find((i) => i.id === itemId);
+    } else {
+        return itemStore.itemItems.find((i) => i.name === props.itemName);
+    }
+});
 
 const handleClick = () => {
-    item.value = itemStore.itemItems.find((i) => i.name === props.itemName);
     if (item.value) {
         itemModalStore.openModal(item.value);
     } else {
         window.wiz.$message.error('物品不存在');
     }
 };
-
-
 </script>
