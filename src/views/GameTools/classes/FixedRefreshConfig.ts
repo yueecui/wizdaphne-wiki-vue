@@ -84,7 +84,7 @@ export class FixedRefreshConfig implements AbstractRecordConfig {
         const recordTime = this.getLastRecord();
         if (this.data.refreshType === '每月') {
             // 每月类型基于当前时间计算下个月的月底
-            return getNextMonthLastDay23(new Date());
+            return getNextMonthLastDay23(new Date(recordTime));
         } else if (this.data.refreshType === '双周六') {
             let nextSaturday = getNextTargetDay23(new Date(recordTime), 6);
             const days = (nextSaturday.getTime() - TEMPLE_REFRESH_TIME) / (1000 * 60 * 60 * 24);
