@@ -38,9 +38,9 @@
                             <td>{{ getCategoryName(item.cate) }}</td>
                             <td>{{ item.sell > 0 ? item.sell : '-' }}</td>
                             <td class="text-left">
-                                {{ item.desc }}
+                                <span v-html="convertDescription(item.desc)"></span>
                                 <div v-if="!item.desc && item.comment" class="text-gray-500 text-sm">
-                                    <span v-html="formatComment(item.comment)"></span>
+                                    <span v-html="convertDescription(item.comment)"></span>
                                 </div>
                             </td>
                         </tr>
@@ -76,9 +76,6 @@ import ItemFilter from './ItemFilter.vue';
 import { useItemStore } from './itemStore';
 
 const { settings } = toRefs(useSearcherDataStore());
-
-// 将convertDescription函数暴露给模板
-const formatComment = (comment: string) => convertDescription(comment);
 
 const filter = computed({
     get: () => settings.value.itemFilter,
