@@ -31,7 +31,7 @@
 
 <script setup lang="ts">
 import { NButton, NInput } from 'naive-ui';
-import { useItemStore } from './itemStore';
+import { categoryMap } from './Item';
 import type { IItemFilter } from './types';
 
 const filter = defineModel<IItemFilter>('filter', {
@@ -39,12 +39,5 @@ const filter = defineModel<IItemFilter>('filter', {
     required: true,
 });
 
-const itemStore = useItemStore();
-
-const categoryOrder = [
-    { label: '出售', value: '0' },
-    { label: '消耗品', value: '1' },
-    { label: '贵重品', value: '2' },
-    { label: '其他', value: '4' },
-];
+const categoryOrder = Object.entries(categoryMap).map(([value, label]) => ({ value, label }));
 </script>

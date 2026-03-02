@@ -25,4 +25,22 @@ export class Item {
     isUnconfirmed(): boolean {
         return this.name === '？？？？' && !this.desc;
     }
+
+    // 获取物品ID的字符串表示
+    get idStr(): string {
+        if (this.id === 0) return 'Ex';
+        if (this.id === -1) return '????';
+        return this.id.toString();
+    }
+
+    get cateStr(): string {
+        return categoryMap[this.cate] || '未知';
+    }
 }
+
+export const categoryMap: Record<number, string> = {
+    0: '出售',
+    1: '消耗品',
+    2: '贵重品',
+    4: '其他',
+};

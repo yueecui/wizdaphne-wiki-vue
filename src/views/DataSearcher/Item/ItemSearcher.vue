@@ -30,12 +30,12 @@
                             @click="handleItemClick(item)"
                             @contextmenu.prevent="showContextMenu($event, item)"
                         >
-                            <td>{{ item.id }}</td>
+                            <td>{{ item.idStr }}</td>
                             <td class="text-left">
                                 {{ item.name }}
                                 <span v-if="item.isUnconfirmed()" class="text-sm">（待确认）</span>
                             </td>
-                            <td>{{ getCategoryName(item.cate) }}</td>
+                            <td>{{ item.cateStr }}</td>
                             <td>{{ item.sell > 0 ? item.sell : '-' }}</td>
                             <td class="text-left">
                                 <span v-html="convertDescription(item.desc)"></span>
@@ -95,19 +95,6 @@ const { itemItems, isInit, isLoading } = toRefs(itemStore);
 const { loadItemData } = itemStore;
 
 const itemModalStore = useItemModalStore();
-
-// 分类映射
-const categoryMap: Record<number, string> = {
-    0: '出售',
-    1: '消耗品',
-    2: '贵重品',
-    4: '其他',
-};
-
-// 获取分类名称
-const getCategoryName = (cate: number) => {
-    return categoryMap[cate] || '其他';
-};
 
 onMounted(() => {
     console.log('ItemSearcher mounted, loading data...');

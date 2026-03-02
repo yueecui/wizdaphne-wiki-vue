@@ -8,14 +8,14 @@
                             <div class="text-sm text-light">
                                 <template v-if="currentItem?.id === 0">Ex</template>
                                 <template v-else-if="currentItem?.id === -1">Unknown</template>
-                                <template v-else>No. {{ currentItem?.id }}</template>
+                                <template v-else>No. {{ currentItem?.idStr }}</template>
                             </div>
                             <div class="text-3xl text-light font-bold flex items-baseline gap-4">
                                 <span>{{ currentItem?.name }}</span>
-                                <span class="text-sm text-gray-400">{{ getCategoryName(currentItem?.cate) }}</span>
+                                <span class="text-sm text-gray-400">{{ currentItem?.cateStr }}</span>
                             </div>
                             <div class="text-sm text-gray-400" v-if="currentItem?.comment">
-                                <span v-html="formatComment(currentItem.comment)"></span>
+                                <span v-html="convertDescription(currentItem.comment)"></span>
                             </div>
                         </div>
 
@@ -99,19 +99,6 @@ import ItemEditor from './ItemEditor.vue';
 const store = useItemModalStore();
 const { showModal, currentItem } = storeToRefs(store);
 const { closeModal } = store;
-
-const categoryMap: Record<number, string> = {
-    0: '出售',
-    1: '消耗品',
-    2: '贵重品',
-    4: '其他',
-};
-
-const getCategoryName = (cate: number) => {
-    return categoryMap[cate] || '其他';
-};
-
-const formatComment = (comment: string) => convertDescription(comment);
 
 const mwConfig = MwConfig.getInstance();
 const canEdit = computed(() => {
