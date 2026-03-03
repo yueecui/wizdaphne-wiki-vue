@@ -14,9 +14,6 @@
                                 <span>{{ currentItem?.name }}</span>
                                 <span class="text-sm text-gray-400">{{ currentItem?.cateStr }}</span>
                             </div>
-                            <div class="text-sm text-gray-400" v-if="currentItem?.comment">
-                                <span v-html="convertDescription(currentItem.comment)"></span>
-                            </div>
                         </div>
 
                         <div class="flex flex-row gap-4">
