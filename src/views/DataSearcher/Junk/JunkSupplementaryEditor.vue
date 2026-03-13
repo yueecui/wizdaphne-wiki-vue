@@ -229,8 +229,8 @@ const onCancel = () => {
 // 组件挂载时加载数据
 onMounted(async () => {
     // 确保杂物数据已加载
-    if (!junkStore.isInit && !junkStore.isLoading) {
-        await junkStore.loadJunkData();
+    if (!junkStore.isAllInit) {
+        await junkStore.loadAndInitJunkData();
     }
 
     // 加载当前杂物项的补充数据

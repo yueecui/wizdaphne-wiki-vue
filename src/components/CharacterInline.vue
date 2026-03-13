@@ -40,6 +40,10 @@ const handleClick = () => {
     if (character.value) {
         // 使用 store 打开模态框
         characterModalStore.openModal(character.value);
+    } else if (!isInit.value) {
+        window.wiz.$message.info('角色数据正在加载，请稍后再试');
+    } else {
+        window.wiz.$message.error('角色不存在');
     }
 };
 </script>

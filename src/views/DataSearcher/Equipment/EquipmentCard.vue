@@ -9,7 +9,7 @@
             </div>
             <div class="text-3xl text-light font-bold flex items-baseline gap-4">
                 <span>{{ equipment.data.n }}</span>
-                <span v-if="equipment.data.soucate === 1" class="text-sm text-blue-300">特典</span>
+                <span v-if="equipment.data.soucate === 9" class="text-sm text-blue-300">特典</span>
             </div>
             <div class="text-sm text-gray-400" v-if="equipment.data.njp">
                 {{ equipment.data.njp }}
@@ -37,7 +37,12 @@
                             <th>说明</th>
                             <td class="text-left">
                                 <div class="text-sm">
-                                    <div v-if="equipment.data.req">职业限制：{{ equipment.data.req }}</div>
+                                    <div
+                                        class="text-red-400"
+                                        v-if="equipment.data.req && equipment.data.req.length > 0"
+                                    >
+                                        职业限制：{{ equipment.data.req.join('、') }}
+                                    </div>
                                     <div
                                         v-if="equipment.data.desc"
                                         v-html="convertDescription(equipment.data.desc)"
@@ -137,7 +142,7 @@
                 <div class="mt-2">
                     <!-- 根据杂物数据加载状态显示不同内容 -->
                     <div v-if="!isJunkInit && !isJunkLoading" class="flex justify-center p-4">
-                        <NButton type="primary" @click="loadJunkData">加载杂物数据</NButton>
+                        <NButton type="primary" @click="loadAndInitJunkData">加载杂物数据</NButton>
                     </div>
 
                     <div v-else-if="isJunkLoading" class="flex justify-center p-4">
@@ -431,7 +436,7 @@
                     <div class="text-sm text-gray-400 mt-4">
                         <div>
                             <span>※ 数据来自</span>
-                            <a href="https://wizardry.info/daphne/gacha_rates/ja/alternations.html" target="_blank">
+                            <a href="https://wizardry.info/daphne/gacha_rates/zh_cn/alternations.html" target="_blank">
                                 官方提供的数据
                             </a>
                             <span>。</span>
@@ -497,7 +502,7 @@ const canEdit = computed(() => {
 const selectedJunkItem = ref<JunkItem | null>(null);
 
 // 杂物数据
-const { junkItems, isInit: isJunkInit, isLoading: isJunkLoading, loadJunkData } = toRefs(useJunkStore());
+const { junkItems, isAllInit: isJunkInit, isLoading: isJunkLoading, loadAndInitJunkData } = toRefs(useJunkStore());
 
 // 杂物来源标签页标题
 const junkSourcesTabTitle = computed(() => {

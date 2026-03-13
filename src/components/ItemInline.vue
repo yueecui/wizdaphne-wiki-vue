@@ -28,6 +28,8 @@ const item = computed(() => {
 const handleClick = () => {
     if (item.value) {
         itemModalStore.openModal(item.value);
+    } else if (!itemStore.isInit) {
+        window.wiz.$message.info('物品数据正在加载，请稍后再试');
     } else {
         window.wiz.$message.error('物品不存在');
     }

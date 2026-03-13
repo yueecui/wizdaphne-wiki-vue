@@ -7,6 +7,7 @@ export interface IJunkItemData {
     name_cn: string;
     tier: number;
     sort: number;
+    soucate: number;
 }
 
 // 定义显示用的杂物项类型
@@ -26,7 +27,6 @@ export interface IJunkData {
         weight: number;
         items: {
             name: string;
-            name_cn?: string;
             weight: number;
             qualityWeights: number[];
             gradeWeights: number[];

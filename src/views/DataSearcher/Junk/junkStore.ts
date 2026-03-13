@@ -9,12 +9,13 @@ import type { IJunkJson, IJunkSupplementary } from './types';
 export const useJunkStore = defineStore('junk', () => {
     // 配置数据
     const junkItems = ref<JunkItem[]>([]);
-    const isInit = ref(false);
+    const isAllInit = ref(false); // 所有杂物数据已全部初始化，只有显示链接时不会全部初始化，列表时则会全部初始化
     const isLoading = ref(false);
+    const isLoaded = ref(false); // 杂物数据是否已加载
 
     // 加载并解析junkrates.json数据
     const loadJunkData = async () => {
-        if (isLoading.value || isInit.value) return;
+        if (isLoading.value || isLoaded.value) return;
 
         isLoading.value = true;
 
@@ -28,7 +29,7 @@ export const useJunkStore = defineStore('junk', () => {
                 // 解析数据并创建JunkItem对象
                 const parsedData = await parseJunkData(data);
                 junkItems.value = parsedData;
-                isInit.value = true;
+                isLoaded.value = true;
             } else {
                 console.error('获取垃圾装备数据失败');
             }
@@ -53,14 +54,6 @@ export const useJunkStore = defineStore('junk', () => {
             });
             return map;
         })();
-
-        // const nameMap = (() => {
-        //     const map: Map<string, string> = new Map();
-        //     data.junkNameMap.forEach(([key, value]) => {
-        //         map.set(key, value);
-        //     });
-        //     return map;
-        // })();
 
         // 使用异步并行方式创建JunkItem实例，避免主线程阻塞
         const promises = data.junkData.data.map((raw, arrayIndex) => {
@@ -149,11 +142,58 @@ export const useJunkStore = defineStore('junk', () => {
         }
     };
 
+    // 初始化所有杂物的详细数据
+    const initAllJunkItemDetails = () => {
+        junkItems.value.forEach((item) => {
+            if (!item.isInit) {
+                item.initJunkItem();
+            }
+        });
+        isAllInit.value = true;
+    };
+
+    // 初始化特定杂物的详细数据
+    const initJunkItemDetailByName = async (junkName: string) => {
+        while (!isLoaded.value) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        const junkItem = junkItems.value.find((item) => item.name === junkName);
+        if (junkItem && !junkItem.isInit) {
+            junkItem.initJunkItem();
+        }
+    };
+
+    // 初始化特定杂物的详细数据
+    const initJunkItemDetailByHash = async (junkHash: string) => {
+        while (!isLoaded.value) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        const junkItem = junkItems.value.find((item) => item.uniqueCode === junkHash);
+        if (junkItem && !junkItem.isInit) {
+            junkItem.initJunkItem();
+        }
+    };
+
+    // 初始化store时就加载数据
+    const loadAndInitJunkData = async () => {
+        await loadJunkData();
+        // 等待杂物数据加载完成
+        while (!isLoaded.value) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        initAllJunkItemDetails();
+    };
+
     return {
         junkItems,
-        isInit,
+        isAllInit,
         isLoading,
+        isLoaded,
         loadJunkData,
         updateSupplementaryData,
+        initAllJunkItemDetails,
+        loadAndInitJunkData,
+        initJunkItemDetailByName,
+        initJunkItemDetailByHash,
     };
 });

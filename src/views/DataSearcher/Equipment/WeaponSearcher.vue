@@ -34,11 +34,12 @@
                         :key="item.data.n"
                         class="hover:bg-black/30 cursor-pointer"
                         @click="() => showDetail(item)"
+                        @contextmenu.prevent="showContextMenu($event, item)"
                     >
                         <td>
                             <div class="flex justify-between items-center">
                                 <div>
-                                    <span :class="{ 'text-blue-300': item.data.soucate === 1 }">
+                                    <span :class="{ 'text-blue-300': item.data.soucate === 9 }">
                                         {{ item.data.n }}
                                     </span>
                                 </div>
@@ -79,22 +80,29 @@
             </div>
             <div>※ 阶级为根据装备图标、主要属性数值或强化费用推测，仅作为参考。</div>
         </div>
-        <NModal v-model:show="isShowDetail">
-            <template v-if="showDetailEquipment">
-                <div class="w-[90%] md:h-auto md:w-[800px] m-auto huiji-css-hook bg-transparent!">
-                    <EquipmentCard :equipment="showDetailEquipment" :onClose="closeDetail" />
-                </div>
-            </template>
-        </NModal>
+
+        <!-- 右键菜单 -->
+        <div
+            v-if="contextMenu.show"
+            class="fixed z-50 bg-[#312721] border border-[#463d38] rounded shadow-lg"
+            :style="{
+                left: contextMenu.x + 'px',
+                top: contextMenu.y + 'px',
+            }"
+        >
+            <div class="px-4 py-2 hover:bg-[#463d38] cursor-pointer" @click="copyEquipmentTemplate(contextMenu.item)">
+                复制 &#123;&#123;装备&#125;&#125;
+            </div>
+        </div>
     </div>
 </template>
 
 <script setup lang="tsx">
-import { NButton, NModal, NPagination } from 'naive-ui';
-import EquipmentCard from './EquipmentCard.vue';
+import { NButton, NPagination } from 'naive-ui';
 import WeaponFilter from './WeaponFilter.vue';
 
 import { computed, onMounted, ref, toRefs, watch } from 'vue';
+import { useEquipmentModalStore } from '../../../stores/equipmentModalStore';
 import { DEFAULT_SETTINGS, useSearcherDataStore } from '../data/searcherDataStore';
 import { convertDescription } from '../utils/convertDescription';
 import { Equipment } from './Equipment';
@@ -142,11 +150,9 @@ const filteredList = computed(() => {
             return b.data.t - a.data.t;
         }
 
-        // 2. 特典优先 (soucate === 1)
-        const aIsSpecial = a.data.soucate === 1;
-        const bIsSpecial = b.data.soucate === 1;
-        if (aIsSpecial !== bIsSpecial) {
-            return aIsSpecial ? -1 : 1;
+        // 2. 按soucate排序，越大越靠前
+        if (a.data.soucate !== b.data.soucate) {
+            return b.data.soucate - a.data.soucate;
         }
 
         // 3. id = 0的最靠前，>0的倒序排列
@@ -202,13 +208,52 @@ const onFilterReset = () => {
     };
 };
 
-const showDetailEquipment = ref<Equipment | null>(null);
+const equipmentModalStoreInstance = useEquipmentModalStore();
 const showDetail = (equipment: Equipment) => {
-    showDetailEquipment.value = equipment;
-    isShowDetail.value = true;
+    equipmentModalStoreInstance.openModal(equipment);
 };
-const isShowDetail = ref(false);
-const closeDetail = () => {
-    isShowDetail.value = false;
+
+// 右键菜单状态
+const contextMenu = ref({
+    show: false,
+    x: 0,
+    y: 0,
+    item: null as Equipment | null,
+});
+
+// 显示右键菜单
+const showContextMenu = (event: MouseEvent, item: Equipment) => {
+    contextMenu.value = {
+        show: true,
+        x: event.clientX,
+        y: event.clientY,
+        item: item,
+    };
+    document.addEventListener('click', closeContextMenu);
+};
+
+// 关闭右键菜单
+const closeContextMenu = () => {
+    contextMenu.value.show = false;
+    document.removeEventListener('click', closeContextMenu);
+};
+
+// 复制装备模板
+const copyEquipmentTemplate = (item: Equipment | null) => {
+    if (item) {
+        const template = `{{装备|${item.data.n}}}`;
+
+        // 复制到剪贴板
+        navigator.clipboard
+            .writeText(template)
+            .then(() => {
+                // 显示复制成功的提示
+                window.wiz.$message.success(`已复制 ${template} 模板到剪贴板`);
+            })
+            .catch((err) => {
+                window.wiz.$message.error('复制失败，请手动复制');
+            });
+    }
+    closeContextMenu();
 };
 </script>

@@ -58,12 +58,12 @@ export const useEquipmentStore = defineStore('equipment', () => {
     };
 
     // 根据name查找装备
-    const getEquipmentByName = (name: string) => {
+    const getEquipmentByName = (name: string): Equipment | undefined => {
         return equipments.value.find((equipment) => equipment.data.n === name);
     };
 
     // 根据njp查找装备
-    const getEquipmentByNJP = (njp: string) => {
+    const getEquipmentByNJP = (njp: string): Equipment | undefined => {
         return equipments.value.find((equipment) => equipment.data.njp === njp);
     };
 

@@ -18,131 +18,10 @@ const hashString = (str: string): string => {
     return result;
 };
 
-// 初始化垃圾装备数据
-// 注意：raw参数是经过预处理的，其中categoryIndex和itemNameIndex已经替换为对应的字符串名称
-const InitJunkData = (
-    raw: [string, Array<[number, Array<[string, number, number[], number[]]>]>],
-): [IJunkData, IJunkItemData[]] => {
-    const equipmentStore = useEquipmentStore();
-
-    // 从raw中解析IJunkData
-    const [categoryName, groups] = raw;
-
-    // 目前没有中文名的日文名记录
-    const MissingJunkNames = new Set<string>();
-
-    // 缓存装备查找结果，避免重复查找
-    const equipmentCache = new Map<string, ReturnType<typeof equipmentStore.getEquipmentByNJP>>();
-
-    // 转换为IJunkData格式
-    const junkData: IJunkData = {
-        name: categoryName,
-        groups: groups.map(([groupWeight, items]) => ({
-            weight: groupWeight,
-            items: items.map(([itemName, itemWeight, qualityWeights, gradeWeights]) => {
-                // 查找装备信息获取中文名
-                let equipment = equipmentCache.get(itemName);
-                if (equipment === undefined) {
-                    equipment = equipmentStore.getEquipmentByName(itemName);
-                    equipmentCache.set(itemName, equipment);
-                    if (!equipment && !MissingJunkNames.has(itemName)) {
-                        MissingJunkNames.add(itemName);
-                        console.log(`InitJunkData 未找到装备: ${itemName}`);
-                    }
-                }
-
-                return {
-                    name: itemName,
-                    name_cn: equipment ? equipment.data.n : undefined,
-                    weight: itemWeight,
-                    qualityWeights,
-                    gradeWeights,
-                };
-            }),
-        })),
-    };
-
-    // 计算每个物品、品质、星级的获得几率
-    const existingItemsMap = new Map<string, IJunkItemData>();
-
-    // 计算总权重用于归一化
-    const totalGroupWeight = junkData.groups.reduce((sum, group) => sum + group.weight, 0);
-
-    junkData.groups.forEach((group) => {
-        // 计算组内物品的总权重
-        const groupItemTotalWeight = group.items.reduce((sum, item) => sum + item.weight, 0);
-        const groupWeightRatio = group.weight / totalGroupWeight;
-
-        group.items.forEach((item) => {
-            // 计算物品在组内的权重比
-            const itemWeightRatio = item.weight / groupItemTotalWeight;
-
-            // 计算品质总权重
-            const qualityTotalWeight = item.qualityWeights.reduce((sum, weight) => sum + weight, 0);
-
-            // 计算星级总权重
-            const gradeTotalWeight = item.gradeWeights.reduce((sum, weight) => sum + weight, 0);
-
-            // 缓存当前物品的装备信息，避免在品质和星级循环中重复查找
-            let equipment = equipmentCache.get(item.name);
-            if (equipment === undefined) {
-                equipment = equipmentStore.getEquipmentByNJP(item.name);
-                equipmentCache.set(item.name, equipment);
-                if (!equipment && !MissingJunkNames.has(item.name)) {
-                    MissingJunkNames.add(item.name);
-                    console.log(`InitJunkData Calculate 未找到装备: ${item.name}`);
-                }
-            }
-
-            // 预先获取装备相关属性
-            const equipmentNameCn = equipment ? equipment.data.n : '';
-            const equipmentTier = equipment ? equipment.data.t : 0;
-            const equipmentSort = equipment ? equipment.sort : 0;
-
-            // 生成所有品质和星级的组合
-            item.qualityWeights.forEach((qualityWeight, quality) => {
-                const qualityRatio = qualityWeight / qualityTotalWeight;
-                const actualQuality = quality + 1;
-
-                item.gradeWeights.forEach((gradeWeight, grade) => {
-                    const gradeRatio = gradeWeight / gradeTotalWeight;
-                    const actualGrade = grade + 1;
-                    const totalRate = groupWeightRatio * itemWeightRatio * qualityRatio * gradeRatio;
-
-                    // 生成唯一键用于检查是否已存在相同的项
-                    const key = `${item.name}|${actualQuality}|${actualGrade}`;
-
-                    if (existingItemsMap.has(key)) {
-                        // 如果已存在相同项，累加rates
-                        const existingItem = existingItemsMap.get(key)!;
-                        existingItem.rates += totalRate;
-                    } else {
-                        // 如果不存在，创建新项并加入map
-                        const newItem = {
-                            name: item.name,
-                            quality: actualQuality,
-                            grade: actualGrade,
-                            rates: totalRate,
-                            name_cn: equipmentNameCn,
-                            tier: equipmentTier,
-                            sort: equipmentSort,
-                        };
-
-                        existingItemsMap.set(key, newItem);
-                    }
-                });
-            });
-        });
-    });
-
-    // 直接返回Map的值数组，避免额外的forEach循环
-    return [junkData, Array.from(existingItemsMap.values())];
-};
-
 export class JunkItem {
     public name: string;
     public data: IJunkData;
-    public items: IJunkItemData[];
+    public items: IJunkItemData[] = [];
     public maxQuality: number;
     public maxGrade: number;
     public maxTier: number;
@@ -155,8 +34,8 @@ export class JunkItem {
         public raw: [string, Array<[number, Array<[string, number, number[], number[]]>]>],
         { index }: { index: number },
     ) {
-        [this.data, this.items] = InitJunkData(raw);
-        this.name = this.data.name; // 如果有中文名就获取，否则就是用日文名
+        this.name = this.raw[0];
+        this.data = InitJunkData(raw);
         this.index = index;
 
         // 使用raw数据的哈希值作为唯一码，不依赖index
@@ -166,7 +45,14 @@ export class JunkItem {
         this.maxQuality = 0;
         this.maxGrade = 0;
         this.maxTier = 0;
+    }
 
+    get isInit(): boolean {
+        return this.items.length > 0;
+    }
+
+    initJunkItem() {
+        this.items = initJunkItem(this.data);
         this.items.forEach((item) => {
             if (item.quality > this.maxQuality) {
                 this.maxQuality = item.quality;
@@ -262,3 +148,116 @@ export class JunkItem {
         return this.supplementary?.desc;
     }
 }
+
+// 初始化垃圾装备数据
+// 注意：raw参数是经过预处理的，其中categoryIndex和itemNameIndex已经替换为对应的字符串名称
+const InitJunkData = (raw: [string, Array<[number, Array<[string, number, number[], number[]]>]>]): IJunkData => {
+    // 从raw中解析IJunkData
+    const [categoryName, groups] = raw;
+
+    // 转换为IJunkData格式
+    const junkData: IJunkData = {
+        name: categoryName,
+        groups: groups.map(([groupWeight, items]) => ({
+            weight: groupWeight,
+            items: items.map(([itemName, itemWeight, qualityWeights, gradeWeights]) => {
+                return {
+                    name: itemName,
+                    weight: itemWeight,
+                    qualityWeights,
+                    gradeWeights,
+                };
+            }),
+        })),
+    };
+
+    return junkData;
+};
+
+const initJunkItem = (junkData: IJunkData): IJunkItemData[] => {
+    const equipmentStore = useEquipmentStore();
+
+    // 目前没有中文名的日文名记录
+    const MissingJunkNames = new Set<string>();
+
+    // 缓存装备查找结果，避免重复查找
+    const equipmentCache = new Map<string, ReturnType<typeof equipmentStore.getEquipmentByName>>();
+
+    // 计算每个物品、品质、星级的获得几率
+    const existingItemsMap = new Map<string, IJunkItemData>();
+
+    // 计算总权重用于归一化
+    const totalGroupWeight = junkData.groups.reduce((sum, group) => sum + group.weight, 0);
+
+    junkData.groups.forEach((group) => {
+        // 计算组内物品的总权重
+        const groupItemTotalWeight = group.items.reduce((sum, item) => sum + item.weight, 0);
+        const groupWeightRatio = group.weight / totalGroupWeight;
+
+        group.items.forEach((item) => {
+            // 计算物品在组内的权重比
+            const itemWeightRatio = item.weight / groupItemTotalWeight;
+
+            // 计算品质总权重
+            const qualityTotalWeight = item.qualityWeights.reduce((sum, weight) => sum + weight, 0);
+
+            // 计算星级总权重
+            const gradeTotalWeight = item.gradeWeights.reduce((sum, weight) => sum + weight, 0);
+
+            // 缓存当前物品的装备信息，避免在品质和星级循环中重复查找
+            let equipment = equipmentCache.get(item.name);
+            if (equipment === undefined) {
+                equipment = equipmentStore.getEquipmentByName(item.name);
+                equipmentCache.set(item.name, equipment);
+                if (!equipment && !MissingJunkNames.has(item.name)) {
+                    MissingJunkNames.add(item.name);
+                    console.log(`InitJunkData Calculate 未找到装备: ${item.name}`);
+                }
+            }
+
+            // 预先获取装备相关属性
+            const equipmentNameCn = equipment ? equipment.data.n : '';
+            const equipmentTier = equipment ? equipment.data.t : 0;
+            const equipmentSort = equipment ? equipment.sort : 0;
+            const equipmentSoucate = equipment ? equipment.data.soucate : 0;
+
+            // 生成所有品质和星级的组合
+            item.qualityWeights.forEach((qualityWeight, quality) => {
+                const qualityRatio = qualityWeight / qualityTotalWeight;
+                const actualQuality = quality + 1;
+
+                item.gradeWeights.forEach((gradeWeight, grade) => {
+                    const gradeRatio = gradeWeight / gradeTotalWeight;
+                    const actualGrade = grade + 1;
+                    const totalRate = groupWeightRatio * itemWeightRatio * qualityRatio * gradeRatio;
+
+                    // 生成唯一键用于检查是否已存在相同的项
+                    const key = `${item.name}|${actualQuality}|${actualGrade}`;
+
+                    if (existingItemsMap.has(key)) {
+                        // 如果已存在相同项，累加rates
+                        const existingItem = existingItemsMap.get(key)!;
+                        existingItem.rates += totalRate;
+                    } else {
+                        // 如果不存在，创建新项并加入map
+                        const newItem: IJunkItemData = {
+                            name: item.name,
+                            quality: actualQuality,
+                            grade: actualGrade,
+                            rates: totalRate,
+                            name_cn: equipmentNameCn,
+                            tier: equipmentTier,
+                            sort: equipmentSort,
+                            soucate: equipmentSoucate,
+                        };
+
+                        existingItemsMap.set(key, newItem);
+                    }
+                });
+            });
+        });
+    });
+
+    // 直接返回Map的值数组，避免额外的forEach循环
+    return Array.from(existingItemsMap.values());
+};

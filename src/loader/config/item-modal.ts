@@ -4,7 +4,7 @@ import { hasHTMLElement } from '../util';
 /** 物品模态框全局组件 */
 const config: LoaderConfig = {
     isEnabled: () => {
-        return hasHTMLElement('.item-inline') !== null || hasHTMLElement('.item-modal') !== null;
+        return hasHTMLElement('.item-inline') !== null;
     },
     components: [
         {

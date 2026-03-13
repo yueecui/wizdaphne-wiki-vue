@@ -67,7 +67,7 @@
 
                                 <!-- 装备名称 -->
                                 <td class="border border-[#463d38]! px-4 py-2 text-light align-middle">
-                                    {{ item.name_cn || item.name }}
+                                    {{ item.name }}
                                 </td>
 
                                 <!-- 装备提供割合 -->
@@ -122,12 +122,16 @@
 <script setup lang="ts">
 import { NButton } from 'naive-ui';
 import { computed } from 'vue';
+import { useEquipmentStore } from '../Equipment/equipmentStore';
 import { JunkItem } from './JunkItem';
 
 const props = defineProps<{
     junkItem: JunkItem;
     onClose?: () => void;
 }>();
+
+// 获取装备store
+const equipmentStore = useEquipmentStore();
 
 // 计算总组权重
 const totalGroupWeight = computed(() => {
@@ -142,7 +146,6 @@ const groupItemTotalWeight = (group: (typeof props.junkItem.data.groups)[0]) => 
 // 定义物品类型
 interface GroupItem {
     name: string;
-    name_cn?: string;
     weight: number;
     qualityWeights: number[];
     gradeWeights: number[];
