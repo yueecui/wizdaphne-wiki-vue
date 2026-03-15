@@ -71,7 +71,7 @@
                                         </span>
                                         <br />
                                         具体可参考
-                                        <a href="/wiki/能力值#无法识别的个体" target="_blank">这里</a>
+                                        <a href="/wiki/能力值#个体的识别" target="_blank">这里</a>
                                     </NTooltip>
                                 </div>
                             </th>

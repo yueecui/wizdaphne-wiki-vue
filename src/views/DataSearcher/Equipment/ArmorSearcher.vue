@@ -32,7 +32,7 @@
                         v-for="item in currentPageList"
                         :key="item.data.n"
                         class="hover:bg-black/30 cursor-pointer"
-                        @click="() => showDetail(item)"
+                        @click="() => openModal(item)"
                         @contextmenu.prevent="showContextMenu($event, item)"
                     >
                         <td class="text-left">
@@ -108,6 +108,7 @@ import { useEquipmentStore } from './equipmentStore';
 
 // 使用searcherDataStore的settings
 const { settings } = toRefs(useSearcherDataStore());
+const { openModal } = useEquipmentModalStore();
 
 // 使用计算属性获取和设置防具过滤器
 const filter = computed({
@@ -204,11 +205,6 @@ const onFilterReset = () => {
         ...DEFAULT_SETTINGS.armorFilter,
         soucateFilter: filter.value.soucateFilter, // 保留特典过滤
     };
-};
-
-const equipmentModalStoreInstance = useEquipmentModalStore();
-const showDetail = (equipment: Equipment) => {
-    equipmentModalStoreInstance.openModal(equipment);
 };
 
 // 右键菜单状态

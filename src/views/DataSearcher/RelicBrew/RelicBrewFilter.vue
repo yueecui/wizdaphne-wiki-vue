@@ -87,8 +87,8 @@
 <script setup lang="ts">
 import { NCheckbox, NInput, NSelect, SelectOption } from 'naive-ui';
 import { computed, onMounted, toRefs } from 'vue';
+import { useMonsterStore } from '../Monster/monsterStore';
 import { DEFAULT_STAT_ORDER, STAT_DISPLAY_NAME_MAP } from './RelicBrew';
-import { useRelicBrewStore } from './relicBrewStore';
 import { IRelicBrewFilter } from './types';
 
 // 使用defineModel双向绑定过滤器
@@ -98,13 +98,13 @@ const filter = defineModel<IRelicBrewFilter>('filter', {
 });
 
 // 获取relicBrewStore
-const relicBrewStore = useRelicBrewStore();
-const { loadRelicBrewData } = relicBrewStore;
-const { statList, categoryList } = toRefs(relicBrewStore);
+const monsterStore = useMonsterStore();
+const { loadAllData } = monsterStore;
+const { relicStatList, reliceCategoryList } = toRefs(monsterStore);
 
 onMounted(() => {
     // 确保数据已加载
-    loadRelicBrewData();
+    loadAllData();
 });
 
 // 性格选项
@@ -118,7 +118,7 @@ const alignOptions = computed<SelectOption[]>(() => [
 // 属性选项（按指定顺序排列，添加"全部"选项）
 const statOptions = computed<SelectOption[]>(() => {
     // 使用statList，如果为空则使用默认顺序
-    const stats = statList.value.length > 0 ? statList.value : DEFAULT_STAT_ORDER;
+    const stats = relicStatList.value.length > 0 ? relicStatList.value : DEFAULT_STAT_ORDER;
     return [
         { label: '全部', value: '' },
         ...stats.map((stat) => ({
@@ -132,7 +132,7 @@ const statOptions = computed<SelectOption[]>(() => {
 const categoryOptions = computed<SelectOption[]>(() => {
     return [
         { label: '全部', value: '' },
-        ...categoryList.value.map((category) => ({
+        ...reliceCategoryList.value.map((category) => ({
             label: category,
             value: category,
         })),

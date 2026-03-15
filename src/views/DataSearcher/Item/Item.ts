@@ -27,7 +27,7 @@ export class Item {
     }
 
     // 获取物品ID的字符串表示
-    get idStr(): string {
+    get idText(): string {
         if (this.id === 0) return 'Ex';
         if (this.id === -1) return '????';
         return this.id.toString();

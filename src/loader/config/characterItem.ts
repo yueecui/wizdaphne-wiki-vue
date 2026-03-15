@@ -4,7 +4,7 @@ import { hasHTMLElement } from '../util';
 /** 角色项元素处理 */
 const config: LoaderConfig = {
     isEnabled: () => {
-        return hasHTMLElement('.character-item') !== null;
+        return hasHTMLElement('.character-item');
     },
     components: [
         {

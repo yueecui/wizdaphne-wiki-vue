@@ -34,7 +34,7 @@
                             v-for="item in paginatedList"
                             :key="item.name"
                             class="cursor-pointer hover:bg-[#3a312a]! transition-colors select-none"
-                            @click="showDetail(item)"
+                            @click="openModal(item)"
                             @contextmenu.prevent="showContextMenu($event, item)"
                         >
                             <td class="text-left">
@@ -67,8 +67,6 @@
             <span>。</span>
         </span>
     </div>
-    <!-- 详情模态框 -->
-    <JunkModal />
 
     <!-- 右键菜单 -->
     <div
@@ -88,7 +86,6 @@
 <script setup lang="ts">
 import { NButton, NCheckbox, NPagination, NSpin } from 'naive-ui';
 import { computed, onMounted, ref, toRefs, watch } from 'vue';
-import JunkModal from '../../../components/JunkModal.vue';
 import { useJunkModalStore } from '../../../stores/junkModalStore';
 import { DEFAULT_SETTINGS, useSearcherDataStore } from '../data/searcherDataStore';
 import { getGradeColorClass, getTierTableDisplayName } from './constants';
@@ -98,6 +95,7 @@ import { useJunkStore } from './junkStore';
 
 // 使用searcherDataStore的settings
 const { settings } = toRefs(useSearcherDataStore());
+const { openModal } = useJunkModalStore();
 
 // 使用计算属性获取和设置过滤器
 const filter = computed({
@@ -176,14 +174,6 @@ const paginatedList = computed(() => {
     const end = start + pageSize.value;
     return filteredList.value.slice(start, end);
 });
-
-// 详情模态框相关
-const junkModalStore = useJunkModalStore();
-const { openModal } = junkModalStore;
-
-const showDetail = (item: JunkItem) => {
-    openModal(item);
-};
 
 // 重置过滤器
 const onFilterReset = () => {

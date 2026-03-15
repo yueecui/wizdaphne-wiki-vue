@@ -27,10 +27,10 @@
                             :key="item.id"
                             :class="{ 'text-gray-500': item.isUnconfirmed() }"
                             class="cursor-pointer hover:bg-[#3a312a]! transition-colors select-none"
-                            @click="handleItemClick(item)"
+                            @click="openModal(item)"
                             @contextmenu.prevent="showContextMenu($event, item)"
                         >
-                            <td>{{ item.idStr }}</td>
+                            <td>{{ item.idText }}</td>
                             <td class="text-left">
                                 {{ item.name }}
                                 <span v-if="item.isUnconfirmed()" class="text-sm">（待确认）</span>
@@ -76,6 +76,7 @@ import ItemFilter from './ItemFilter.vue';
 import { useItemStore } from './itemStore';
 
 const { settings } = toRefs(useSearcherDataStore());
+const { openModal } = useItemModalStore();
 
 const filter = computed({
     get: () => settings.value.itemFilter,
@@ -93,8 +94,6 @@ watch(
 const itemStore = useItemStore();
 const { itemItems, isInit, isLoading } = toRefs(itemStore);
 const { loadItemData } = itemStore;
-
-const itemModalStore = useItemModalStore();
 
 onMounted(() => {
     console.log('ItemSearcher mounted, loading data...');
@@ -150,10 +149,6 @@ const onFilterReset = () => {
     filter.value = {
         ...DEFAULT_SETTINGS.itemFilter,
     };
-};
-
-const handleItemClick = (item: any) => {
-    itemModalStore.openModal(item);
 };
 
 // 右键菜单状态

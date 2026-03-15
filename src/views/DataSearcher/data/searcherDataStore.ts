@@ -8,6 +8,8 @@ import type { ICharacterFilter } from '../Character/types';
 import type { IEquipmentFilter } from '../Equipment/types';
 import type { IItemFilter } from '../Item/types';
 import type { IJunkFilter } from '../Junk/types';
+import type { IMapFilter } from '../Map/types';
+import type { IMonsterFilter } from '../Monster/types';
 import type { IRelicBrewFilter } from '../RelicBrew/types';
 import { Skill } from '../Skill/Skill';
 import type { ISkillFilter } from '../Skill/types';
@@ -40,6 +42,10 @@ export interface DataSearcherSettings {
     itemFilter: IItemFilter;
     // 遗物酒过滤器
     relicBrewFilter: IRelicBrewFilter;
+    // 怪物过滤器
+    monsterFilter: IMonsterFilter;
+    // 地图过滤器
+    mapFilter: IMapFilter;
 
     // 特性值配置
     statCalculator: {
@@ -144,6 +150,19 @@ export const DEFAULT_SETTINGS: DataSearcherSettings = {
         showOnlyDoubleInc: false, // 仅显示双提升遗物过滤器默认关闭
         showBrewName: true, // 默认显示遗物酒名
         showRelicPower: true, // 默认显示遗物之力
+    },
+
+    // 怪物过滤器默认值
+    monsterFilter: {
+        searchText: '',
+        race: '',
+        element: '',
+        weakness: '',
+    },
+
+    // 地图过滤器默认值
+    mapFilter: {
+        searchText: '',
     },
 
     // 特性值配置默认值
@@ -353,6 +372,20 @@ export const useSearcherDataStore = defineStore('searcherData', () => {
         };
     };
 
+    // 获取默认怪物过滤器设置
+    const getDefaultMonsterFilter = () => {
+        return {
+            ...DEFAULT_SETTINGS.monsterFilter,
+        };
+    };
+
+    // 获取默认地图过滤器设置
+    const getDefaultMapFilter = () => {
+        return {
+            ...DEFAULT_SETTINGS.mapFilter,
+        };
+    };
+
     return {
         data,
         isInit,
@@ -368,5 +401,7 @@ export const useSearcherDataStore = defineStore('searcherData', () => {
         settings,
         // 获取默认过滤器设置的方法
         getDefaultRelicBrewFilter,
+        getDefaultMonsterFilter,
+        getDefaultMapFilter,
     };
 });

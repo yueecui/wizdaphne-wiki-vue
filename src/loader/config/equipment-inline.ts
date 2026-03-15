@@ -4,7 +4,7 @@ import { hasHTMLElement } from '../util';
 /** 装备内联元素处理 */
 const config: LoaderConfig = {
     isEnabled: () => {
-        return hasHTMLElement('.equipment-inline') !== null;
+        return hasHTMLElement('.equipment-inline');
     },
     components: [
         {

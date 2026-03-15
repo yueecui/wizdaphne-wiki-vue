@@ -24,19 +24,25 @@
                             <th class="md:w-16">性格</th>
                             <th class="xl:w-36">提升属性</th>
                             <th class="xl:w-36">降低属性</th>
-                            <th>掉落怪物</th>
-                            <th class="xl:w-36 2xl:w-48">备注</th>
+                            <th class="xl:w-36">掉落怪物</th>
+                            <th>备注</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="item in paginatedList" :key="item.index" class="hover:bg-[#3a312a]!">
+                        <tr
+                            v-for="item in paginatedList"
+                            :key="item.index"
+                            class="hover:bg-[#3a312a]! cursor-pointer"
+                            @click="openRelicModal(item)"
+                            @contextmenu.prevent="showContextMenu($event, item)"
+                        >
                             <td>{{ item.name }}</td>
                             <td v-if="filter.showBrewName">{{ item.brew }}</td>
                             <td v-if="filter.showRelicPower">{{ item.power }}</td>
                             <td>{{ item.align }}</td>
                             <td>{{ item.inc.join(' / ') }}</td>
                             <td>{{ item.dec.join(' / ') }}</td>
-                            <td>{{ item.monster }}</td>
+                            <td>{{ getFirstMonsterName(item.name) }}</td>
                             <td><span v-html="formatComment(item.comment || '-')"></span></td>
                         </tr>
                     </tbody>
@@ -45,6 +51,23 @@
                 <!-- 分页 -->
                 <NPagination v-model:page="pageIndex" :page-count="pageCount"></NPagination>
             </template>
+
+            <!-- 右键菜单 -->
+            <div
+                v-if="contextMenu.show"
+                class="fixed z-50 bg-[#312721] border border-[#463d38] rounded shadow-lg"
+                :style="{
+                    left: contextMenu.x + 'px',
+                    top: contextMenu.y + 'px',
+                }"
+            >
+                <div
+                    class="px-4 py-2 hover:bg-[#463d38] cursor-pointer"
+                    @click="copyRelicTemplate(contextMenu.item as RelicBrew)"
+                >
+                    复制 &#123;&#123;遗物&#125;&#125;
+                </div>
+            </div>
         </div>
     </NSpin>
 
@@ -79,10 +102,12 @@
 <script setup lang="ts">
 import { NButton, NCheckbox, NInput, NModal, NPagination, NSpin } from 'naive-ui';
 import { computed, onMounted, ref, toRefs, watch } from 'vue';
+import { useMonsterModalStore } from '../../../stores/monsterModalStore';
 import { useSearcherDataStore } from '../data/searcherDataStore';
+import { useMonsterStore } from '../Monster/monsterStore';
 import { convertDescription } from '../utils/convertDescription';
+import type { RelicBrew } from './RelicBrew';
 import RelicBrewFilter from './RelicBrewFilter.vue';
-import { useRelicBrewStore } from './relicBrewStore';
 
 // 使用searcherDataStore的settings
 const { settings } = toRefs(useSearcherDataStore());
@@ -105,14 +130,24 @@ watch(
     { deep: true },
 );
 
-// 获取relicBrewStore数据
-const relicBrewStore = useRelicBrewStore();
-const { relicBrews, isInit, isLoading } = toRefs(relicBrewStore);
-const { loadRelicBrewData } = relicBrewStore;
+// 获取monsterStore饿reliceBrew数据数据
+const monsterStore = useMonsterStore();
+const { relicBrews, monsters, isInit, isLoading } = toRefs(monsterStore);
+const { loadAllData } = monsterStore;
+
+// 获取遗物对应的第一个怪物名称
+const getFirstMonsterName = (relicName: string) => {
+    const monster = monsters.value.find((m) => m.relic === relicName);
+    return monster?.name || '-';
+};
+
+// 遗物模态框
+const monsterModalStore = useMonsterModalStore();
+const { openRelicModal } = monsterModalStore;
 
 // 组件初始化时直接加载数据
 onMounted(() => {
-    loadRelicBrewData();
+    loadAllData();
 });
 
 // 分页相关
@@ -197,7 +232,7 @@ const filteredList = computed(() => {
 
             return true;
         })
-        .sort((a, b) => a.index - b.index); // 按i字段（index）排序
+        .sort((a, b) => a.index - b.index) as RelicBrew[]; // 按i字段（index）排序
 });
 
 // 分页计算
@@ -226,5 +261,54 @@ const onFilterReset = () => {
 // 打开遗物酒说明页面
 const openRelicBrewWiki = () => {
     window.open('/wiki/遗物酒', '_blank');
+};
+
+// 右键菜单状态
+const contextMenu = ref<{
+    show: boolean;
+    x: number;
+    y: number;
+    item: RelicBrew | null;
+}>({
+    show: false,
+    x: 0,
+    y: 0,
+    item: null,
+});
+
+// 显示右键菜单
+const showContextMenu = (event: MouseEvent, item: RelicBrew) => {
+    contextMenu.value = {
+        show: true,
+        x: event.clientX,
+        y: event.clientY,
+        item: item,
+    };
+    document.addEventListener('click', closeContextMenu);
+};
+
+// 关闭右键菜单
+const closeContextMenu = () => {
+    contextMenu.value.show = false;
+    document.removeEventListener('click', closeContextMenu);
+};
+
+// 复制遗物模板
+const copyRelicTemplate = (item: RelicBrew | null) => {
+    if (item) {
+        const template = `{{遗物|${item.name}}}`;
+
+        // 复制到剪贴板
+        navigator.clipboard
+            .writeText(template)
+            .then(() => {
+                // 显示复制成功的提示
+                window.wiz.$message.success(`已复制 ${template} 模板到剪贴板`);
+            })
+            .catch((err) => {
+                window.wiz.$message.error('复制失败，请手动复制');
+            });
+    }
+    closeContextMenu();
 };
 </script>

@@ -1,3 +1,4 @@
+import { useMonsterStore } from '../Monster/monsterStore';
 import { IRelicBrew } from './types';
 
 // 提升、降低的字段顺序
@@ -33,17 +34,12 @@ export const STAT_DISPLAY_NAME_MAP = {
 };
 
 export class RelicBrew {
-    private data: IRelicBrew;
-    private statOrder: string[];
-
-    constructor(data: IRelicBrew, statOrder: string[] = DEFAULT_STAT_ORDER) {
+    constructor(public data: IRelicBrew) {
         this.data = data;
-        this.statOrder = statOrder;
     }
 
-    // 获取怪物名称
-    get monster(): string {
-        return this.data.monster;
+    get id(): number {
+        return this.data.id;
     }
 
     // 获取力量名称
@@ -86,18 +82,24 @@ export class RelicBrew {
         return this.data.comment;
     }
 
+    // 推荐类别
+    get category(): string[] {
+        return this.data.c;
+    }
+
     // 根据指定顺序对属性数组进行排序
     private sortStats(stats: string[]): string[] {
+        const statOrder = useMonsterStore().relicStatList;
         // 创建一个映射，键是属性名，值是排序索引
         const statIndexMap = new Map<string, number>();
-        this.statOrder.forEach((stat, index) => {
+        statOrder.forEach((stat, index) => {
             statIndexMap.set(stat, index);
         });
 
         // 排序：先按this.statOrder中的顺序，不在其中的放在后面
         return [...stats].sort((a, b) => {
-            const indexA = statIndexMap.get(a) ?? this.statOrder.length;
-            const indexB = statIndexMap.get(b) ?? this.statOrder.length;
+            const indexA = statIndexMap.get(a) ?? statOrder.length;
+            const indexB = statIndexMap.get(b) ?? statOrder.length;
             return indexA - indexB;
         });
     }

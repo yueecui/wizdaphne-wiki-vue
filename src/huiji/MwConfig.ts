@@ -46,14 +46,17 @@ export class MwConfig {
     }
 
     public get isAdvanced(): boolean {
+        if (IS_DEV) return true;
         return this.mwConfig?.wgUserGroups?.includes('advanced') ?? false;
     }
 
     public get isVerified(): boolean {
+        if (IS_DEV) return true;
         return this.mwConfig?.wgUserGroups?.includes('verified') ?? false;
     }
 
     public get canEdit(): boolean {
+        if (IS_DEV) return true;
         return this.isVerified;
     }
 }

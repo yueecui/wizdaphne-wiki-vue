@@ -9,7 +9,7 @@
             <template v-for="char in filteredCharacterList" :key="char.data.key">
                 <div
                     class="cursor-pointer relative p-2 group w-1/2 md:w-1/3 lg:w-1/4 xl:w-1/5 3xl:w-1/6 select-none"
-                    @click="() => showDetail(char)"
+                    @click="() => openModal(char)"
                     @contextmenu.prevent="showContextMenu($event, char)"
                 >
                     <div
@@ -19,13 +19,6 @@
                 </div>
             </template>
         </div>
-        <NModal v-model:show="isShowDetail">
-            <template v-if="showDetailCharacter">
-                <div class="w-[90%] md:h-auto md:w-[600px] m-auto huiji-css-hook bg-transparent!">
-                    <CharacterCard :character="showDetailCharacter" :onClose="closeDetail" />
-                </div>
-            </template>
-        </NModal>
 
         <!-- 右键菜单 -->
         <div
@@ -59,17 +52,18 @@
 </template>
 
 <script setup lang="ts">
-import { NButton, NModal } from 'naive-ui';
-import CharacterCard from './CharacterCard.vue';
+import { NButton } from 'naive-ui';
 import CharacterFilter from './CharacterFilter.vue';
 import CharacterItem from './CharacterItem.vue';
 
 import { computed, ref, toRefs } from 'vue';
+import { useCharacterModalStore } from '../../../stores/characterModalStore';
 import { useSearcherDataStore } from '../data/searcherDataStore';
 import { Character } from './Character';
 
 // 使用searcherDataStore的settings
 const { settings } = toRefs(useSearcherDataStore());
+const { openModal } = useCharacterModalStore();
 
 // 使用计算属性获取和设置角色过滤器
 const filter = computed({
@@ -99,16 +93,6 @@ const characterList = computed(() => {
 });
 
 const filteredCharacterList = computed(() => characterList.value.filter((char) => char.isMatch(filter.value)));
-
-const showDetailCharacter = ref<Character | null>(null);
-const isShowDetail = ref(false);
-const showDetail = (character: Character) => {
-    showDetailCharacter.value = character;
-    isShowDetail.value = true;
-};
-const closeDetail = () => {
-    isShowDetail.value = false;
-};
 
 // 右键菜单状态
 const contextMenu = ref({

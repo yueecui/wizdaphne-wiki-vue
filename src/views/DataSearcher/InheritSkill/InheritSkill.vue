@@ -16,7 +16,7 @@
                     v-for="character in characterList"
                     :key="character.data.key"
                     class="hover:bg-black/30 hover:cursor-pointer"
-                    @click="() => showDetail(character)"
+                    @click="() => openModal(character)"
                 >
                     <td class="text-light">
                         {{ character.data.key }}
@@ -26,26 +26,18 @@
                 </tr>
             </tbody>
         </table>
-        <NModal v-model:show="isShowDetail">
-            <template v-if="showDetailCharacter">
-                <div class="w-[90%] md:h-auto md:w-[600px] m-auto huiji-css-hook bg-transparent!">
-                    <CharacterCard :character="showDetailCharacter" :onClose="closeDetail" />
-                </div>
-            </template>
-        </NModal>
     </div>
 </template>
 
 <script setup lang="ts">
 import WikiImg from '@/components/huiji/WikiImg.vue';
-import { NModal } from 'naive-ui';
-import CharacterCard from '../Character/CharacterCard.vue';
 
-import { computed, onMounted, ref, watch } from 'vue';
-import { Character } from '../Character/Character';
+import { computed, onMounted, watch } from 'vue';
+import { useCharacterModalStore } from '../../../stores/characterModalStore';
 import { useSearcherDataStore } from '../data/searcherDataStore';
 
 const store = useSearcherDataStore();
+const { openModal } = useCharacterModalStore();
 
 // 使用computed属性响应store数据变化
 const characterList = computed(() => {
@@ -91,14 +83,4 @@ watch(
     },
     { immediate: true },
 );
-
-const showDetailCharacter = ref<Character | null>(null);
-const showDetail = (character: Character) => {
-    showDetailCharacter.value = character;
-    isShowDetail.value = true;
-};
-const isShowDetail = ref(false);
-const closeDetail = () => {
-    isShowDetail.value = false;
-};
 </script>

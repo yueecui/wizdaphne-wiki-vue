@@ -4,7 +4,7 @@ import { hasHTMLElement } from '../util';
 /** 杂物内联元素处理 */
 const config: LoaderConfig = {
     isEnabled: () => {
-        return hasHTMLElement('.junk-inline') !== null;
+        return hasHTMLElement('.junk-inline');
     },
     components: [
         {

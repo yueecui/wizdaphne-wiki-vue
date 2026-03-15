@@ -4,7 +4,9 @@ import { hasHTMLElement } from '../util';
 /** 角色模态框全局组件 */
 const config: LoaderConfig = {
     isEnabled: () => {
-        return hasHTMLElement('.character-inline') !== null || hasHTMLElement('.character-item') !== null;
+        return (
+            hasHTMLElement('.character-inline') || hasHTMLElement('.character-item') || hasHTMLElement('#data-searcher')
+        );
     },
     components: [
         {

@@ -22,6 +22,8 @@
             <AchievementSearcher v-if="activeKey == 'Achievement'" />
             <ItemSearcher v-if="activeKey == 'Item'" />
             <RelicBrewSearcher v-if="activeKey == 'RelicBrew'" />
+            <MonsterSearcher v-if="activeKey == 'Monster'" />
+            <MapSearcher v-if="activeKey == 'Map'" />
         </div>
     </ThemeConfigProvider>
 </template>
@@ -37,6 +39,8 @@ import WeaponSearcher from './Equipment/WeaponSearcher.vue';
 import InheritSkill from './InheritSkill/InheritSkill.vue';
 import ItemSearcher from './Item/ItemSearcher.vue';
 import JunkSearcher from './Junk/JunkSearcher.vue';
+import MapSearcher from './Map/MapSearcher.vue';
+import MonsterSearcher from './Monster/MonsterSearcher.vue';
 import RelicBrewSearcher from './RelicBrew/RelicBrewSearcher.vue';
 import SkillSearcher from './Skill/SkillSearcher.vue';
 import StatCalculator from './StatCalculator/StatCalculator.vue';
@@ -106,8 +110,17 @@ const tabs = [
         label: '物品',
     },
     {
+        key: 'Monster',
+        label: '敌人',
+    },
+    {
         key: 'RelicBrew',
-        label: '遗物酒',
+        label: '遗物',
+    },
+
+    {
+        key: 'Map',
+        label: '地图',
     },
     {
         key: 'StatCalculator',

@@ -4,7 +4,7 @@ import { hasHTMLElement } from '../util';
 /** 装备模态框全局组件 */
 const config: LoaderConfig = {
     isEnabled: () => {
-        return hasHTMLElement('.equipment-inline') !== null;
+        return hasHTMLElement('.equipment-inline') || hasHTMLElement('#data-searcher');
     },
     components: [
         {

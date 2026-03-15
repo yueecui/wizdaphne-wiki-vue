@@ -8,7 +8,7 @@
                             <div class="text-sm text-light">
                                 <template v-if="currentItem?.id === 0">Ex</template>
                                 <template v-else-if="currentItem?.id === -1">Unknown</template>
-                                <template v-else>No. {{ currentItem?.idStr }}</template>
+                                <template v-else>No. {{ currentItem?.idText }}</template>
                             </div>
                             <div class="text-3xl text-light font-bold flex items-baseline gap-4">
                                 <span>{{ currentItem?.name }}</span>

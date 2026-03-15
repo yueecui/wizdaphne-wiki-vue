@@ -1,6 +1,5 @@
 // 遗物酒数据类型
 export interface IRelicBrew {
-    monster: string; // 怪物名称
     power: string; // 力量名称
     align: string; // 性格 (善/中立/恶)
     i: number; // 索引

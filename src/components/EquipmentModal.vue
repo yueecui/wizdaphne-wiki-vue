@@ -23,7 +23,7 @@
                         </div>
 
                         <!-- 装备基本信息表格（左右分栏） -->
-                        <div class="flex flex-row gap-4">
+                        <div class="flex flex-col md:flex-row gap-4">
                             <!-- 左边表格：装备类型、阶级、主要来源、其他说明 -->
                             <div class="flex-1">
                                 <table class="wikitable w-full text-center m-0!">

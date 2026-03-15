@@ -4,7 +4,7 @@ import { hasHTMLElement } from '../util';
 /** 杂物模态框全局组件 */
 const config: LoaderConfig = {
     isEnabled: () => {
-        return hasHTMLElement('.junk-inline') !== null;
+        return hasHTMLElement('.junk-inline') || hasHTMLElement('#data-searcher');
     },
     components: [
         {
