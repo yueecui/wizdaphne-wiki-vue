@@ -1,6 +1,6 @@
 import type { IMap } from './types';
 
-export class Map {
+export class GameMap {
     constructor(public data: IMap) {}
 
     // 获取索引
@@ -49,6 +49,30 @@ export class Map {
 
     set noRelicEnemies(value: string[]) {
         this.data.no_relic_enemy = value;
+    }
+
+    // 获取掉落列表
+    get drops(): string[] {
+        return this.data.drop;
+    }
+
+    set drops(value: string[]) {
+        this.data.drop = value;
+    }
+
+    // 获取 junk 列表
+    get junk(): string[] {
+        return this.data.junk;
+    }
+
+    // 获取 junk 代码列表
+    get junkCodes(): string[] {
+        return this.data.junk_code;
+    }
+
+    setJunks(value: { name: string; uniqueCode: string }[]) {
+        this.data.junk = value.map((j) => j.name);
+        this.data.junk_code = value.map((j) => j.uniqueCode);
     }
 
     // 获取注释

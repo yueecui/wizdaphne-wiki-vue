@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { IS_DEV } from '../../../util';
-import { Map } from '../Map/Map';
+import { GameMap } from '../Map/Map';
 import type { IMap } from '../Map/types';
 import { RelicBrew } from '../RelicBrew/RelicBrew';
 import type { IRelicBrew } from '../RelicBrew/types';
@@ -12,7 +12,7 @@ export const useMonsterStore = defineStore('monster', () => {
     // 配置数据
     const relicBrews = ref<RelicBrew[]>([]);
     const monsters = ref<Monster[]>([]);
-    const maps = ref<Map[]>([]);
+    const maps = ref<GameMap[]>([]);
     const isInit = ref(false);
     const isLoading = ref(false);
     const monsterRaceList = ref<string[]>([]);
@@ -64,8 +64,8 @@ export const useMonsterStore = defineStore('monster', () => {
     };
 
     // 解析地图数据
-    const parseMapData = (data: IMap[]): Map[] => {
-        return data.map((map) => new Map(map));
+    const parseMapData = (data: IMap[]): GameMap[] => {
+        return data.map((map) => new GameMap(map));
     };
 
     return {

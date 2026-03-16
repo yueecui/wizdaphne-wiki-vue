@@ -23,8 +23,9 @@ import { onMounted, ref } from 'vue';
 import { edit } from '../api/editPage';
 import { getPageRawByTitle } from '../api/getPageRaw';
 import { IS_DEV } from '../util/index';
-import type { RelicBrew } from '../views/DataSearcher/RelicBrew/RelicBrew';
+import { getFieldIndex, type TabxSchema } from '../util/tabxUtils';
 import { useMonsterStore } from '../views/DataSearcher/Monster/monsterStore';
+import type { RelicBrew } from '../views/DataSearcher/RelicBrew/RelicBrew';
 
 const emit = defineEmits<{
     cancel: [];
@@ -53,7 +54,7 @@ const fetchWikiData = async () => {
             const response = await fetch('/relics.json');
             return await response.json();
         } else {
-            const data = await getPageRawByTitle<any>('Data:遗物酒.tabx', true);
+            const data = await getPageRawByTitle<TabxSchema>('Data:遗物酒.tabx', true);
             return data;
         }
     } catch (error) {
@@ -63,16 +64,22 @@ const fetchWikiData = async () => {
     }
 };
 
-const mergeData = (wikiData: any, relicIndex: string, newComment: string) => {
+const mergeData = (wikiData: TabxSchema, relicIndex: string, newComment: string) => {
     if (!wikiData || !Array.isArray(wikiData.data)) {
         return wikiData;
     }
+
+    // 动态获取字段索引
+    const commentIndex = getFieldIndex(wikiData, 'comment');
 
     const mergedData = [...wikiData.data];
     const index = mergedData.findIndex((record: any[]) => record[0].toString() === relicIndex);
 
     if (index !== -1) {
-        mergedData[index][9] = newComment || null;
+        // 更新备注
+        if (commentIndex !== -1) {
+            mergedData[index][commentIndex] = newComment || null;
+        }
     }
 
     return {

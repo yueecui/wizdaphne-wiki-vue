@@ -548,11 +548,7 @@
                             :closable="true"
                         >
                             <div class="w-[90%] md:w-[600px] m-auto huiji-css-hook bg-transparent!">
-                                <JunkSupplementaryEditor
-                                    :junkItem="currentJunk"
-                                    @cancel="closeEditModal"
-                                    @submit="onEditSubmit"
-                                />
+                                <JunkEditor :junkItem="currentJunk" @cancel="closeEditModal" @submit="onEditSubmit" />
                             </div>
                         </NModal>
                     </div>
@@ -578,7 +574,6 @@ import {
     getTierTableDisplayName,
 } from '../views/DataSearcher/Junk/constants';
 import { useJunkStore } from '../views/DataSearcher/Junk/junkStore';
-import JunkSupplementaryEditor from '../views/DataSearcher/Junk/JunkSupplementaryEditor.vue';
 import RawDataTable from '../views/DataSearcher/Junk/RawDataTable.vue';
 import type { IJunkItemData } from '../views/DataSearcher/Junk/types';
 

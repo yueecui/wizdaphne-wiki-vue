@@ -67,7 +67,7 @@ import { useMonsterModalStore } from '../../../stores/monsterModalStore';
 import { useSearcherDataStore } from '../data/searcherDataStore';
 import { useMonsterStore } from '../Monster/monsterStore';
 import { convertDescription } from '../utils/convertDescription';
-import type { Map } from './Map';
+import type { GameMap } from './Map';
 import MapFilter from './MapFilter.vue';
 
 const { settings } = toRefs(useSearcherDataStore());
@@ -129,11 +129,11 @@ const contextMenu = ref({
     show: false,
     x: 0,
     y: 0,
-    item: null as Map | null,
+    item: null as GameMap | null,
 });
 
 // 显示右键菜单
-const showContextMenu = (event: MouseEvent, item: Map) => {
+const showContextMenu = (event: MouseEvent, item: GameMap) => {
     contextMenu.value = {
         show: true,
         x: event.clientX,
@@ -150,7 +150,7 @@ const closeContextMenu = () => {
 };
 
 // 复制地图模板
-const copyMapTemplate = (item: Map | null) => {
+const copyMapTemplate = (item: GameMap | null) => {
     if (item) {
         const template = `{{地图|${item.name}}}`;
 
@@ -169,7 +169,7 @@ const copyMapTemplate = (item: Map | null) => {
 };
 
 // 复制带短名称的地图模板
-const copyMapTemplateWithShortName = (item: Map | null) => {
+const copyMapTemplateWithShortName = (item: GameMap | null) => {
     if (item) {
         // 假设Map类型有shortName属性
         const shortName = (item as any).shortName || item.name;

@@ -44,12 +44,13 @@
 <script setup lang="ts">
 import { NButton, NCheckbox, NInput } from 'naive-ui';
 import { onMounted, reactive, ref } from 'vue';
-import { edit } from '../../../api/editPage';
-import { getPageRawByTitle } from '../../../api/getPageRaw';
-import { IS_DEV } from '../../../util/index';
-import { JunkItem } from './JunkItem';
-import { useJunkStore } from './junkStore';
-import type { IJunkSupplementary } from './types';
+import { edit } from '../api/editPage';
+import { getPageRawByTitle } from '../api/getPageRaw';
+import { IS_DEV } from '../util/index';
+import { getFieldIndex, type TabxSchema } from '../util/tabxUtils';
+import { JunkItem } from '../views/DataSearcher/Junk/JunkItem';
+import { useJunkStore } from '../views/DataSearcher/Junk/junkStore';
+import type { IJunkSupplementary } from '../views/DataSearcher/Junk/types';
 
 // 定义组件属性
 const props = defineProps<{
@@ -85,7 +86,7 @@ const fetchWikiData = async () => {
             return await response.json();
         } else {
             // 生产环境：使用getPageRawByTitle获取Data:JunkSupplementary.tabx的数据
-            const data = await getPageRawByTitle<any>('Data:JunkSupplementary.tabx');
+            const data = await getPageRawByTitle<TabxSchema>('Data:JunkSupplementary.tabx');
             return data;
         }
     } catch (error) {
@@ -107,11 +108,22 @@ const loadCurrentJunkData = async () => {
     const wikiData = await fetchWikiData();
     if (!wikiData || !Array.isArray(wikiData.data)) return;
 
+    // 动态获取字段索引
+    const idIndex = getFieldIndex(wikiData, 'id');
+    const notObtIndex = getFieldIndex(wikiData, 'not_obt');
+    const descIndex = getFieldIndex(wikiData, 'desc');
+
+    if (idIndex === -1) return;
+
     // 查找当前杂物项的补充数据
-    const supplementaryData = wikiData.data.find((item: any[]) => item[0] === props.junkItem.uniqueCode);
+    const supplementaryData = wikiData.data.find((item: any[]) => item[idIndex] === props.junkItem.uniqueCode);
     if (supplementaryData) {
-        editedData.not_obt = supplementaryData[1] === 1;
-        editedData.desc = supplementaryData[2] || '';
+        if (notObtIndex !== -1) {
+            editedData.not_obt = supplementaryData[notObtIndex] === 1;
+        }
+        if (descIndex !== -1) {
+            editedData.desc = supplementaryData[descIndex] || '';
+        }
     }
 };
 
@@ -122,29 +134,47 @@ const onNotObtChange = () => {
 };
 
 // 合并数据到wiki数据
-const mergeData = (wikiData: any, newItem: IJunkSupplementary) => {
+const mergeData = (wikiData: TabxSchema, newItem: IJunkSupplementary) => {
+    // 动态获取字段索引
+    const idIndex = getFieldIndex(wikiData, 'id');
+    const notObtIndex = getFieldIndex(wikiData, 'not_obt');
+    const descIndex = getFieldIndex(wikiData, 'desc');
+    const nameIndex = getFieldIndex(wikiData, 'name');
+
     if (!wikiData || !Array.isArray(wikiData.data)) {
         // 如果wiki数据无效，直接返回包含新数据的结构
+        const newRecord: any[] = [];
+        if (idIndex !== -1) newRecord[idIndex] = newItem.id;
+        if (notObtIndex !== -1) newRecord[notObtIndex] = newItem.not_obt;
+        if (descIndex !== -1) newRecord[descIndex] = newItem.desc;
+        if (nameIndex !== -1) newRecord[nameIndex] = newItem.name;
+
         return {
             ...wikiData,
-            data: [[newItem.id, newItem.not_obt, newItem.desc, newItem.name]],
+            data: [newRecord],
         };
     }
 
     // 创建一个映射表，用于快速查找现有记录
     const existingRecords = new Map<string, number>();
     wikiData.data.forEach((record: any[], index: number) => {
-        const key = record[0]; // 使用id作为唯一键
+        const key = idIndex !== -1 ? record[idIndex] : record[0]; // 使用id作为唯一键
         existingRecords.set(key, index);
     });
 
     // 合并新数据
     const mergedData = [...wikiData.data];
-    const newRecord = [newItem.id, newItem.not_obt, newItem.desc, newItem.name];
+    const newRecord = [...mergedData[0]]; // 复制第一条记录的结构
 
-    if (existingRecords.has(newItem.id)) {
+    if (idIndex !== -1) newRecord[idIndex] = newItem.id;
+    if (notObtIndex !== -1) newRecord[notObtIndex] = newItem.not_obt;
+    if (descIndex !== -1) newRecord[descIndex] = newItem.desc;
+    if (nameIndex !== -1) newRecord[nameIndex] = newItem.name;
+
+    const key = idIndex !== -1 ? newItem.id : newItem.id; // 使用id作为唯一键
+    if (existingRecords.has(key)) {
         // 如果记录已存在，更新它
-        const index = existingRecords.get(newItem.id)!;
+        const index = existingRecords.get(key)!;
         mergedData[index] = newRecord;
     } else {
         // 如果记录不存在，添加新记录

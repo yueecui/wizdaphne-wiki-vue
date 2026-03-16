@@ -23,6 +23,7 @@ import { onMounted, ref } from 'vue';
 import { edit } from '../api/editPage';
 import { getPageRawByTitle } from '../api/getPageRaw';
 import { IS_DEV } from '../util/index';
+import { getFieldIndex, type TabxSchema } from '../util/tabxUtils';
 import type { Monster } from '../views/DataSearcher/Monster/Monster';
 import { useMonsterStore } from '../views/DataSearcher/Monster/monsterStore';
 
@@ -53,7 +54,7 @@ const fetchWikiData = async () => {
             const response = await fetch('/monsters.json');
             return await response.json();
         } else {
-            const data = await getPageRawByTitle<any>('Data:Monsters.tabx', true);
+            const data = await getPageRawByTitle<TabxSchema>('Data:Monsters.tabx', true);
             return data;
         }
     } catch (error) {
@@ -63,16 +64,22 @@ const fetchWikiData = async () => {
     }
 };
 
-const mergeData = (wikiData: any, monsterId: string, newComment: string) => {
+const mergeData = (wikiData: TabxSchema, monsterId: string, newComment: string) => {
     if (!wikiData || !Array.isArray(wikiData.data)) {
         return wikiData;
     }
+
+    // 动态获取字段索引
+    const commentIndex = getFieldIndex(wikiData, 'comment');
 
     const mergedData = [...wikiData.data];
     const index = mergedData.findIndex((record: any[]) => record[0].toString() === monsterId);
 
     if (index !== -1) {
-        mergedData[index][6] = newComment || null;
+        // 更新备注
+        if (commentIndex !== -1) {
+            mergedData[index][commentIndex] = newComment || null;
+        }
     }
 
     return {

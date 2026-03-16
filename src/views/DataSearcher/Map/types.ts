@@ -7,6 +7,9 @@ export interface IMap {
     image_label: string[];
     enemy: string[];
     no_relic_enemy: string[];
+    drop: string[];
+    junk: string[];
+    junk_code: string[];
     comment?: string;
 }
 

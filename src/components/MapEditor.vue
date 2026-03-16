@@ -49,6 +49,98 @@
                 </div>
             </div>
 
+            <!-- 特殊掉落编辑 -->
+            <div class="mb-4">
+                <div class="text-sm text-gray-400 mb-2">特殊掉落</div>
+
+                <!-- 添加装备的下拉框 -->
+                <div class="flex gap-2 mb-4">
+                    <NSelect
+                        v-model:value="selectedSpecialDrop"
+                        :options="filteredEquipments"
+                        :filterable="true"
+                        placeholder="搜索装备"
+                        class="flex-1"
+                    />
+                    <NButton type="primary" @click="addSpecialDrop" :disabled="!selectedSpecialDrop">添加</NButton>
+                </div>
+
+                <!-- 特殊掉落列表 -->
+                <div class="border border-[#463d38] rounded">
+                    <div v-if="specialDrops.length === 0" class="p-4 text-center text-gray-400">
+                        暂无特殊掉落，请添加
+                    </div>
+                    <div v-else class="max-h-[200px] overflow-y-auto">
+                        <div
+                            v-for="(drop, index) in specialDrops"
+                            :key="index"
+                            class="flex items-center justify-between p-2 hover:bg-[#3a312a] border-b border-[#463d38]"
+                        >
+                            <div class="flex items-center gap-2">
+                                <NButton size="small" :disabled="index === 0" @click="moveSpecialDrop(index, -1)">
+                                    ↑
+                                </NButton>
+                                <NButton
+                                    size="small"
+                                    :disabled="index === specialDrops.length - 1"
+                                    @click="moveSpecialDrop(index, 1)"
+                                >
+                                    ↓
+                                </NButton>
+                                <span>{{ drop }}</span>
+                            </div>
+                            <NButton size="small" type="error" @click="removeSpecialDrop(index)">删除</NButton>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 特色杂物编辑 -->
+            <div class="mb-4">
+                <div class="text-sm text-gray-400 mb-2">特色杂物</div>
+
+                <!-- 添加杂物的下拉框 -->
+                <div class="flex gap-2 mb-4">
+                    <NSelect
+                        v-model:value="selectedJunk"
+                        :options="filteredJunks"
+                        :filterable="true"
+                        placeholder="搜索杂物"
+                        class="flex-1"
+                    />
+                    <NButton type="primary" @click="addFeaturedJunk" :disabled="!selectedJunk">添加</NButton>
+                </div>
+
+                <!-- 特色杂物列表 -->
+                <div class="border border-[#463d38] rounded">
+                    <div v-if="featuredJunks.length === 0" class="p-4 text-center text-gray-400">
+                        暂无特色杂物，请添加
+                    </div>
+                    <div v-else class="max-h-[200px] overflow-y-auto">
+                        <div
+                            v-for="(junk, index) in featuredJunks"
+                            :key="index"
+                            class="flex items-center justify-between p-2 hover:bg-[#3a312a] border-b border-[#463d38]"
+                        >
+                            <div class="flex items-center gap-2">
+                                <NButton size="small" :disabled="index === 0" @click="moveFeaturedJunk(index, -1)">
+                                    ↑
+                                </NButton>
+                                <NButton
+                                    size="small"
+                                    :disabled="index === featuredJunks.length - 1"
+                                    @click="moveFeaturedJunk(index, 1)"
+                                >
+                                    ↓
+                                </NButton>
+                                <span>{{ junk.name }}</span>
+                            </div>
+                            <NButton size="small" type="error" @click="removeFeaturedJunk(index)">删除</NButton>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="flex justify-end gap-2 mt-4">
                 <NButton size="small" type="default" @click="handleCancel">取消</NButton>
                 <NButton size="small" type="primary" @click="handleSave" :loading="isSubmitting">保存</NButton>
@@ -63,6 +155,10 @@ import { computed, onMounted, ref } from 'vue';
 import { edit } from '../api/editPage';
 import { getPageRawByTitle } from '../api/getPageRaw';
 import { IS_DEV } from '../util/index';
+import { getFieldIndex, type TabxSchema } from '../util/tabxUtils';
+import { useEquipmentStore } from '../views/DataSearcher/Equipment/equipmentStore';
+import { useJunkStore } from '../views/DataSearcher/Junk/junkStore';
+import type { GameMap } from '../views/DataSearcher/Map/Map';
 import type { Monster } from '../views/DataSearcher/Monster/Monster';
 import { useMonsterStore } from '../views/DataSearcher/Monster/monsterStore';
 
@@ -78,11 +174,40 @@ const props = defineProps<{
 const monsterStore = useMonsterStore();
 const { monsters } = storeToRefs(monsterStore);
 
-const map = ref<any>(null);
+const equipmentStore = useEquipmentStore();
+const junkStore = useJunkStore();
+
+const map = ref<GameMap | null>(null);
 const comment = ref('');
 const enemies = ref<Array<{ id: string; name: string; noRelic: boolean }>>([]);
 const selectedMonster = ref<string>('');
+const specialDrops = ref<string[]>([]);
+const selectedSpecialDrop = ref<string>('');
+const featuredJunks = ref<Array<{ name: string; uniqueCode: string }>>([]);
+const selectedJunk = ref<string>('');
 const isSubmitting = ref(false);
+
+// 过滤装备列表（排除已添加的特殊掉落）
+const filteredEquipments = computed(() => {
+    const addedDrops = specialDrops.value;
+    return equipmentStore.equipments
+        .filter((e) => !addedDrops.includes(e.data.n))
+        .map((e) => ({
+            label: e.data.n,
+            value: e.data.n,
+        }));
+});
+
+// 过滤杂物列表（排除已添加的特色杂物）
+const filteredJunks = computed(() => {
+    const addedJunkNames = featuredJunks.value.map((j) => j.name);
+    return junkStore.junkItems
+        .filter((j) => !addedJunkNames.includes(j.name))
+        .map((j) => ({
+            label: j.name,
+            value: j.name,
+        }));
+});
 
 const loadMapData = () => {
     const mapData = monsterStore.maps.find((m) => m.index.toString() === props.mapIndex);
@@ -114,6 +239,65 @@ const loadMapData = () => {
                 .filter((e) => e.name !== '？？？？')
                 .sort((a, b) => Number(a.id) - Number(b.id));
         }
+
+        // 初始化特殊掉落列表
+        if (mapData.drops) {
+            specialDrops.value = [...mapData.drops];
+        }
+
+        // 初始化特色杂物列表
+        if (mapData.junk && mapData.junkCodes) {
+            featuredJunks.value = mapData.junk.map((name: string, index: number) => ({
+                name: name,
+                uniqueCode: mapData.junkCodes[index] || '',
+            }));
+        }
+    }
+};
+
+const addSpecialDrop = () => {
+    if (selectedSpecialDrop.value && !specialDrops.value.includes(selectedSpecialDrop.value)) {
+        specialDrops.value.push(selectedSpecialDrop.value);
+        selectedSpecialDrop.value = '';
+    }
+};
+
+const removeSpecialDrop = (index: number) => {
+    specialDrops.value.splice(index, 1);
+};
+
+const moveSpecialDrop = (index: number, direction: number) => {
+    const newIndex = index + direction;
+    if (newIndex >= 0 && newIndex < specialDrops.value.length) {
+        const temp = specialDrops.value[index];
+        specialDrops.value[index] = specialDrops.value[newIndex];
+        specialDrops.value[newIndex] = temp;
+    }
+};
+
+const addFeaturedJunk = () => {
+    if (selectedJunk.value && !featuredJunks.value.some((j) => j.name === selectedJunk.value)) {
+        const junkItem = junkStore.junkItems.find((j) => j.name === selectedJunk.value);
+        if (junkItem) {
+            featuredJunks.value.push({
+                name: junkItem.name,
+                uniqueCode: junkItem.uniqueCode,
+            });
+            selectedJunk.value = '';
+        }
+    }
+};
+
+const removeFeaturedJunk = (index: number) => {
+    featuredJunks.value.splice(index, 1);
+};
+
+const moveFeaturedJunk = (index: number, direction: number) => {
+    const newIndex = index + direction;
+    if (newIndex >= 0 && newIndex < featuredJunks.value.length) {
+        const temp = featuredJunks.value[index];
+        featuredJunks.value[index] = featuredJunks.value[newIndex];
+        featuredJunks.value[newIndex] = temp;
     }
 };
 
@@ -152,7 +336,7 @@ const removeEnemy = (index: number) => {
 
 const fetchWikiData = async () => {
     try {
-        const data = await getPageRawByTitle<any>('Data:Map.tabx', true);
+        const data = await getPageRawByTitle<TabxSchema>('Data:Map.tabx', true);
         return data;
     } catch (error) {
         console.error('获取wiki数据失败:', error);
@@ -162,29 +346,60 @@ const fetchWikiData = async () => {
 };
 
 const mergeData = (
-    wikiData: any,
+    wikiData: TabxSchema,
     mapIndex: string,
     newComment: string,
     newEnemies: Array<{ id: string; name: string; noRelic: boolean }>,
+    newDrops: string[],
+    newJunks: Array<{ name: string; uniqueCode: string }>,
 ) => {
     if (!wikiData || !Array.isArray(wikiData.data)) {
         return wikiData;
     }
+
+    // 动态获取字段索引
+    const commentIndex = getFieldIndex(wikiData, 'comment');
+    const enemyIndex = getFieldIndex(wikiData, 'enemy');
+    const noRelicEnemyIndex = getFieldIndex(wikiData, 'no_relic_enemy');
+    const dropIndex = getFieldIndex(wikiData, 'drop');
+    const junkIndex = getFieldIndex(wikiData, 'junk');
+    const junkCodeIndex = getFieldIndex(wikiData, 'junk_code');
 
     const mergedData = [...wikiData.data];
     const index = mergedData.findIndex((record: any[]) => record[0].toString() === mapIndex);
 
     if (index !== -1) {
         // 更新备注
-        mergedData[index][8] = newComment || null;
+        if (commentIndex !== -1) {
+            mergedData[index][commentIndex] = newComment || null;
+        }
 
         // 更新敌人列表（使用ID）
-        const enemyIds = newEnemies.map((e) => e.id);
-        mergedData[index][6] = enemyIds.length > 0 ? enemyIds.join(';') : null;
+        if (enemyIndex !== -1) {
+            const enemyIds = newEnemies.map((e) => e.id);
+            mergedData[index][enemyIndex] = enemyIds.length > 0 ? enemyIds.join(';') : null;
+        }
 
         // 更新不掉落遗物的敌人列表（使用ID）
-        const noRelicEnemyIds = newEnemies.filter((e) => e.noRelic).map((e) => e.id);
-        mergedData[index][7] = noRelicEnemyIds.length > 0 ? noRelicEnemyIds.join(';') : null;
+        if (noRelicEnemyIndex !== -1) {
+            const noRelicEnemyIds = newEnemies.filter((e) => e.noRelic).map((e) => e.id);
+            mergedData[index][noRelicEnemyIndex] = noRelicEnemyIds.length > 0 ? noRelicEnemyIds.join(';') : null;
+        }
+
+        // 更新特殊掉落列表
+        if (dropIndex !== -1) {
+            mergedData[index][dropIndex] = newDrops.length > 0 ? newDrops.join(';') : null;
+        }
+
+        // 更新特色杂物列表
+        if (junkIndex !== -1) {
+            mergedData[index][junkIndex] = newJunks.length > 0 ? newJunks.map((j) => j.name).join(';') : null;
+        }
+
+        // 更新特色杂物代码列表
+        if (junkCodeIndex !== -1) {
+            mergedData[index][junkCodeIndex] = newJunks.length > 0 ? newJunks.map((j) => j.uniqueCode).join(';') : null;
+        }
     }
 
     return {
@@ -201,6 +416,8 @@ const handleSave = async () => {
             mapIndex: props.mapIndex,
             comment: comment.value,
             enemies: enemies.value,
+            drops: specialDrops.value,
+            junks: featuredJunks.value,
         });
         return;
     }
@@ -212,7 +429,14 @@ const handleSave = async () => {
             return;
         }
 
-        const mergedData = mergeData(wikiData, props.mapIndex, comment.value, enemies.value);
+        const mergedData = mergeData(
+            wikiData,
+            props.mapIndex,
+            comment.value,
+            enemies.value,
+            specialDrops.value,
+            featuredJunks.value,
+        );
 
         const jsonText = JSON.stringify(mergedData, null, 2);
         const response = await edit({
@@ -232,6 +456,8 @@ const handleSave = async () => {
         map.value.comment = comment.value;
         map.value.enemies = enemies.value.map((e) => e.id);
         map.value.noRelicEnemies = enemies.value.filter((e) => e.noRelic).map((e) => e.id);
+        map.value.drops = [...specialDrops.value];
+        map.value.setJunks(featuredJunks.value);
 
         window.wiz.$message.success('数据提交成功');
         emit('submit');

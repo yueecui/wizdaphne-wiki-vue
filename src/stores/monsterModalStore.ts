@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { Map } from '../views/DataSearcher/Map/Map';
+import { GameMap } from '../views/DataSearcher/Map/Map';
 import { Monster } from '../views/DataSearcher/Monster/Monster';
 import type { RelicBrew } from '../views/DataSearcher/RelicBrew/RelicBrew';
 
@@ -10,7 +10,7 @@ type ModalType = 'monster' | 'map' | 'relic';
 /** 历史记录项 */
 interface HistoryItem {
     type: ModalType;
-    data: Monster | Map | RelicBrew;
+    data: Monster | GameMap | RelicBrew;
 }
 
 /** 敌人模态框状态管理 */
@@ -21,7 +21,7 @@ export const useMonsterModalStore = defineStore('monsterModal', () => {
 
     // ===== 地图模态框状态 =====
     const showMapModal = ref(false);
-    const currentMap = ref<Map | null>(null);
+    const currentMap = ref<GameMap | null>(null);
 
     // ===== 遗物模态框状态 =====
     const showRelicModal = ref(false);
@@ -82,7 +82,7 @@ export const useMonsterModalStore = defineStore('monsterModal', () => {
             currentMonster.value = lastItem.data as Monster;
             showMonsterModal.value = true;
         } else if (lastItem.type === 'map') {
-            currentMap.value = lastItem.data as Map;
+            currentMap.value = lastItem.data as GameMap;
             showMapModal.value = true;
         } else if (lastItem.type === 'relic') {
             currentRelic.value = lastItem.data as RelicBrew;
@@ -112,7 +112,7 @@ export const useMonsterModalStore = defineStore('monsterModal', () => {
     };
 
     // ===== 地图模态框方法 =====
-    const openMapModal = (map: Map) => {
+    const openMapModal = (map: GameMap) => {
         // 保存当前状态到历史记录
         saveCurrentToHistory();
 

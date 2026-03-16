@@ -10,12 +10,71 @@
                             </div>
                         </div>
 
-                        <!-- 备注（最上面显示） -->
-                        <div
-                            v-if="currentMap?.comment"
-                            class="bg-[#3a312a] p-3 rounded"
-                            v-html="formatComment(currentMap.comment)"
-                        ></div>
+                        <!-- 左右两列表格 -->
+                        <div class="flex flex-col md:flex-row gap-4">
+                            <!-- 左侧表格：特殊掉落和特色杂物 -->
+                            <div class="md:w-1/2">
+                                <table class="wikitable w-full m-0!">
+                                    <tbody>
+                                        <tr>
+                                            <th colspan="2">基础情报</th>
+                                        </tr>
+                                        <tr>
+                                            <th class="w-24">小怪等级</th>
+                                            <td>{{ currentMap?.level }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>特殊掉落</th>
+                                            <td>
+                                                <div class="flex flex-wrap gap-2">
+                                                    <template v-if="currentMap?.drops?.length">
+                                                        <EquipmentInline
+                                                            v-for="(drop, index) in currentMap.drops"
+                                                            :key="index"
+                                                            :equipmentName="drop"
+                                                        />
+                                                    </template>
+                                                    <template v-else>
+                                                        <span class="text-sm text-gray-500">无</span>
+                                                    </template>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th>特色杂物</th>
+                                            <td>
+                                                <div class="flex flex-wrap gap-2">
+                                                    <template v-if="currentMap?.junk?.length">
+                                                        <JunkInline
+                                                            v-for="(junkName, index) in currentMap.junk"
+                                                            :key="index"
+                                                            :junkName="junkName"
+                                                        />
+                                                    </template>
+                                                    <template v-else>
+                                                        <span class="text-sm text-gray-500">无</span>
+                                                    </template>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- 右侧表格：备注 -->
+                            <div v-if="currentMap?.comment" class="md:w-1/2">
+                                <table class="wikitable w-full m-0!">
+                                    <tbody>
+                                        <tr>
+                                            <th class="text-left">备注</th>
+                                        </tr>
+                                        <tr>
+                                            <td v-html="formatComment(currentMap.comment)"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
 
                         <!-- 分页组件 -->
                         <NTabs type="card" size="small" v-model:value="activeTab">
@@ -203,7 +262,9 @@ import type { Monster } from '../views/DataSearcher/Monster/Monster';
 import { useMonsterStore } from '../views/DataSearcher/Monster/monsterStore';
 import type { RelicBrew } from '../views/DataSearcher/RelicBrew/RelicBrew';
 import { convertDescription } from '../views/DataSearcher/utils/convertDescription';
+import EquipmentInline from './EquipmentInline.vue';
 import WikiImg from './huiji/WikiImg.vue';
+import JunkInline from './JunkInline.vue';
 import MapEditor from './MapEditor.vue';
 
 const store = useMonsterModalStore();
@@ -219,7 +280,7 @@ const canEdit = computed(() => {
     return mwConfig.canEdit;
 });
 
-const activeTab = ref('map');
+const activeTab = ref('enemies');
 const currentImageIndex = ref(0);
 const editorModalVisible = ref(false);
 
