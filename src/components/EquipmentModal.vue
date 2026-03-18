@@ -1014,95 +1014,185 @@ const handleAttributeSelect = (slot: number, value: number | null) => {
 };
 
 // 生成所选属性的所有排列
-const generateCombinations = (slots: number, selected: (number | null)[]) => {
-    if (slots === 0) return [[]];
-
+const getPermutations = (arr: number[]): number[][] => {
+    if (arr.length === 0) return [[]];
     const result: number[][] = [];
-    const prev = generateCombinations(slots - 1, selected);
-
-    for (const combo of prev) {
-        const availableIndices = attributeNames
-            .map((_, index) => index)
-            .filter((index) => !combo.includes(index) && !selected.slice(0, 4 - slots).includes(index));
-
-        for (const index of availableIndices) {
-            result.push([...combo, index]);
+    for (let i = 0; i < arr.length; i++) {
+        const current = arr[i];
+        const remaining = arr.slice(0, i).concat(arr.slice(i + 1));
+        const remainingPermutations = getPermutations(remaining);
+        for (const permutation of remainingPermutations) {
+            result.push([current, ...permutation]);
         }
     }
-
     return result;
 };
 
 // 计算加护组合的概率
-const calculateCombinationProbability = (combination: number[], bonuses: Array<Array<number>>) => {
-    let probability = 1;
-
-    for (let i = 0; i < combination.length; i++) {
-        const attrIndex = combination[i];
-        const slotBonus = bonuses[3 - combination.length + 1 + i];
-
-        if (!slotBonus || slotBonus[attrIndex] === undefined) {
-            return 0;
-        }
-
-        probability *= slotBonus[attrIndex] / 100;
-    }
-
-    return probability;
-};
-
-// 加护组合概率计算结果
 const bonusCombinationProbabilities = computed(() => {
-    if (!currentEquipment.value?.bonus) return [];
-
-    interface ComboResult {
-        attributes: number[];
-        attributeNames: string[];
-        probability: number;
+    // 获取用户选择的加护属性（过滤null，保留顺序，忽略重复）
+    const selectedAttrs: number[] = [];
+    const usedAttrs = new Set<number>();
+    for (const attr of selectedAttributes.value) {
+        if (attr !== null && !usedAttrs.has(attr)) {
+            selectedAttrs.push(attr);
+            usedAttrs.add(attr);
+        }
     }
+    if (selectedAttrs.length === 0) return [];
 
-    interface ResultItem {
+    const results: Array<{
         totalSlots: number;
+        combinations: Array<{
+            positions: number[];
+            probability: number;
+            attributeNames: string[];
+        }>;
         totalProbability: number;
-        combinations: ComboResult[];
-    }
+    }> = [];
 
-    const result: ResultItem[] = [];
+    // 对于每种可能的总加护数量（从用户选择的数量到4）
+    for (let totalSlots = selectedAttrs.length; totalSlots <= 4; totalSlots++) {
+        if (totalSlots === 0) continue;
 
-    for (let totalSlots = 1; totalSlots <= 4; totalSlots++) {
-        if (!currentEquipment.value.bonus[totalSlots - 1]) continue;
+        // 生成所有可能的位置组合（从totalSlots个位置中选择selectedAttrs.length个位置）
+        const positionCombinations = getPositionCombinations(totalSlots, selectedAttrs.length);
 
-        const combinations = generateCombinations(totalSlots, selectedAttributes.value);
-        const comboResults: ComboResult[] = [];
-        let totalProbability = 0;
+        // 计算每种位置组合和属性排列的概率
+        const combinations: Array<{ positions: number[]; probability: number; attributeNames: string[] }> = [];
 
-        for (const combination of combinations) {
-            const probability = calculateCombinationProbability(combination, recalculatedBonuses.value);
-            if (probability > 0) {
-                const attributeNamesInCombo = combination.map((index) => attributeNames[index]);
-                comboResults.push({
-                    attributes: combination,
-                    attributeNames: attributeNamesInCombo,
-                    probability: probability * 100,
+        // 生成位置组合
+        for (const positions of positionCombinations) {
+            // 生成属性排列
+            const attributePermutations = getPermutations(selectedAttrs);
+
+            // 对于每种属性排列，计算概率
+            for (const permutedAttrs of attributePermutations) {
+                // 计算该位置组合和属性排列的概率
+                const probability = calculateCombinationProbability(positions, permutedAttrs, totalSlots);
+
+                // 获取属性名称：按位置顺序分配排列后的属性
+                const attrNames = new Array(totalSlots).fill('其他');
+                positions.forEach((pos, index) => {
+                    attrNames[pos] = attributeNames[permutedAttrs[index]];
                 });
-                totalProbability += probability;
+
+                combinations.push({
+                    positions,
+                    probability,
+                    attributeNames: attrNames,
+                });
             }
         }
 
-        if (comboResults.length > 0) {
-            result.push({
+        // 过滤掉概率为0的组合
+        const validCombinations = combinations.filter((comb) => comb.probability > 0.0001);
+
+        // 计算总概率
+        const totalProbability = validCombinations.reduce((sum, comb) => sum + comb.probability, 0);
+
+        if (validCombinations.length > 0) {
+            results.push({
                 totalSlots,
-                totalProbability: totalProbability * 100,
-                combinations: comboResults.sort((a, b) => b.probability - a.probability),
+                combinations: validCombinations,
+                totalProbability,
             });
         }
     }
 
-    return result;
+    return results;
 });
 
-// 判断加护槽是否禁用
+// 生成位置组合（从n个位置中选择k个位置的所有组合）
+const getPositionCombinations = (n: number, k: number): number[][] => {
+    const result: number[][] = [];
+    const temp: number[] = [];
+
+    const backtrack = (start: number) => {
+        if (temp.length === k) {
+            result.push([...temp]);
+            return;
+        }
+
+        for (let i = start; i < n; i++) {
+            temp.push(i);
+            backtrack(i + 1);
+            temp.pop();
+        }
+    };
+
+    backtrack(0);
+    return result;
+};
+
+// 计算特定位置组合的概率
+const calculateCombinationProbability = (positions: number[], selectedAttrs: number[], totalSlots: number): number => {
+    let probability = 1.0;
+    const usedAttrs = new Set<number>();
+
+    // 遍历每个槽位
+    for (let slot = 0; slot < totalSlots; slot++) {
+        const slotIndex = slot;
+        const slotData = currentEquipment.value?.bonus?.[slotIndex];
+        if (!slotData) return 0;
+
+        // 检查当前槽位是否在选择的位置中
+        const positionIndex = positions.indexOf(slot);
+        let targetAttr: number | null = null;
+
+        if (positionIndex !== -1) {
+            // 如果是选择的位置，获取对应的属性
+            targetAttr = selectedAttrs[positionIndex];
+        }
+
+        // 计算当前槽位的可用属性权重
+        let availableWeight = 0;
+        for (let attr = 0; attr < slotData.length; attr++) {
+            if (!usedAttrs.has(attr)) {
+                availableWeight += slotData[attr];
+            }
+        }
+
+        if (availableWeight <= 0.0001) {
+            // 如果没有可用权重，概率为0
+            return 0;
+        }
+
+        if (targetAttr !== null) {
+            // 如果当前槽位是选择的位置，计算该属性的概率
+            probability *= slotData[targetAttr] / availableWeight;
+            usedAttrs.add(targetAttr);
+        } else {
+            // 如果当前槽位不是选择的位置，计算非选择属性的总概率
+            let otherWeight = 0;
+            for (let attr = 0; attr < slotData.length; attr++) {
+                if (!usedAttrs.has(attr) && !selectedAttrs.includes(attr)) {
+                    otherWeight += slotData[attr];
+                }
+            }
+            probability *= otherWeight / availableWeight;
+        }
+    }
+
+    // 将概率转换为百分比
+    return probability * 100;
+};
+
+// 计算下拉框的禁用状态
 const isSelectDisabled = computed(() => {
-    return [false, false, false, false];
+    const disabled: boolean[] = [false, false, false, false];
+
+    // 检查每个槽位是否可以选择
+    for (let i = 1; i < 4; i++) {
+        // 如果前面的槽位没有选择，则当前槽位禁用
+        for (let j = 0; j < i; j++) {
+            if (selectedAttributes.value[j] === null) {
+                disabled[i] = true;
+                break;
+            }
+        }
+    }
+
+    return disabled;
 });
 </script>
