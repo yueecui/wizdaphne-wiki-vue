@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useMonsterModalStore } from '../stores/monsterModalStore';
 import { useMonsterStore } from '../views/DataSearcher/Monster/monsterStore';
 import type { RelicBrew } from '../views/DataSearcher/RelicBrew/RelicBrew';
@@ -18,6 +18,10 @@ const monsterStore = useMonsterStore();
 const monsterModalStore = useMonsterModalStore();
 const relic = computed(() => {
     return monsterStore.relicBrews.find((r) => r.name === props.relicName) as RelicBrew | undefined;
+});
+
+onMounted(() => {
+    monsterStore.loadAllData();
 });
 
 const handleClick = () => {

@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useMonsterModalStore } from '../stores/monsterModalStore';
 import { useMonsterStore } from '../views/DataSearcher/Monster/monsterStore';
 
@@ -23,6 +23,10 @@ const monster = computed(() => {
     } else {
         return monsterStore.monsters.find((m) => m.name === props.monsterName);
     }
+});
+
+onMounted(() => {
+    monsterStore.loadAllData();
 });
 
 const handleClick = () => {

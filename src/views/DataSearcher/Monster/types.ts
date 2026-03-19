@@ -8,6 +8,7 @@ export interface IGetMonsterResponse {
     relicbrews: IRelicBrew[];
     monsters: IMonster[];
     maps: IMap[];
+    map_category: string[];
 }
 
 export interface IMonster {

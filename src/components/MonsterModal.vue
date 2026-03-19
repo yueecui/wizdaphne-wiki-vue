@@ -217,6 +217,7 @@ const monsterMaps = computed(() => {
             });
         })
         .map((map) => ({
+            index: map.index,
             map: map,
             name: map.name,
             level: map.level,
@@ -231,7 +232,7 @@ const monsterMaps = computed(() => {
                 }
             }),
         }))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => a.index - b.index);
 });
 
 const formatComment = (comment: string) => convertDescription(comment);

@@ -25,7 +25,7 @@
                             </div>
                         </div>
                         <div class="flex gap-2 -mt-2">
-                            <NButton v-if="canEdit" size="small" type="error" class="mt-2" @click="openRawDataTable">
+                            <NButton size="small" type="primary" class="mt-2" @click="openRawDataTable">
                                 查看原始数据
                             </NButton>
                             <NButton v-if="canEdit" size="small" type="error" class="mt-2" @click="openEditModal">
@@ -527,14 +527,8 @@
                         </div>
 
                         <!-- 原始数据表格模态框 -->
-                        <NModal
-                            v-model:show="isShowRawData"
-                            size="huge"
-                            class="huiji-css-hook bg-transparent!"
-                            :mask-closable="true"
-                            :closable="true"
-                        >
-                            <div class="w-[95%] h-[90vh] m-auto huiji-css-hook bg-transparent!">
+                        <NModal v-model:show="isShowRawData" size="huge" class="huiji-css-hook bg-transparent!">
+                            <div class="w-[95%] 3xl:w-[1500px] h-[90vh] m-auto huiji-css-hook bg-transparent!">
                                 <RawDataTable :junkItem="currentJunk" :onClose="closeRawDataTable" />
                             </div>
                         </NModal>
@@ -576,6 +570,7 @@ import {
 import { useJunkStore } from '../views/DataSearcher/Junk/junkStore';
 import RawDataTable from '../views/DataSearcher/Junk/RawDataTable.vue';
 import type { IJunkItemData } from '../views/DataSearcher/Junk/types';
+import JunkEditor from './JunkEditor.vue';
 
 const store = useJunkModalStore();
 const { showModal, currentJunk } = storeToRefs(store);

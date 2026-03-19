@@ -15,8 +15,9 @@
                 <table class="wikitable w-full text-center">
                     <thead>
                         <tr>
-                            <th>地图名称</th>
                             <th class="md:w-20">等级</th>
+                            <th class="md:w-40">分类</th>
+                            <th>地图名称</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -27,8 +28,9 @@
                             @click="openMapModal(item)"
                             @contextmenu.prevent="showContextMenu($event, item)"
                         >
+                            <td :class="item.level <= 0 ? 'text-gray-500 text-sm' : ''">{{ item.levelText }}</td>
+                            <td>{{ item.category }}</td>
                             <td>{{ item.name }}</td>
-                            <td>{{ item.level }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -104,6 +106,11 @@ const filteredList = computed(() => {
         .filter((item) => {
             if (filter.value.searchText) {
                 if (!item.containsSearchText(filter.value.searchText)) {
+                    return false;
+                }
+            }
+            if (filter.value.category) {
+                if (item.category !== filter.value.category) {
                     return false;
                 }
             }

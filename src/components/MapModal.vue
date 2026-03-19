@@ -5,6 +5,9 @@
                 <div class="w-[90%] md:h-auto md:w-[800px] m-auto huiji-css-hook bg-transparent!">
                     <div class="p-4 bg-[#312721]! border! border-[#463d38]! rounded flex flex-col gap-4">
                         <div class="sticky top-0 bg-[#312721] z-10 py-2">
+                            <div class="text-sm text-light">
+                                {{ currentMap?.category }}
+                            </div>
                             <div class="text-3xl text-light font-bold">
                                 {{ currentMap?.name }}
                             </div>
@@ -20,13 +23,15 @@
                                             <th colspan="2">基础情报</th>
                                         </tr>
                                         <tr>
-                                            <th class="w-24">小怪等级</th>
-                                            <td>{{ currentMap?.level }}</td>
+                                            <th class="w-24">敌人等级</th>
+                                            <td :class="currentMap?.level <= 0 ? 'text-gray-500 text-sm' : ''">
+                                                {{ currentMap?.levelText }}
+                                            </td>
                                         </tr>
                                         <tr>
                                             <th>特殊掉落</th>
                                             <td>
-                                                <div class="flex flex-wrap gap-2">
+                                                <div class="flex flex-col">
                                                     <template v-if="currentMap?.drops?.length">
                                                         <EquipmentInline
                                                             v-for="(drop, index) in currentMap.drops"
@@ -41,9 +46,9 @@
                                             </td>
                                         </tr>
                                         <tr>
-                                            <th>特色杂物</th>
+                                            <th>掉落杂物</th>
                                             <td>
-                                                <div class="flex flex-wrap gap-2">
+                                                <div class="flex flex-col">
                                                     <template v-if="currentMap?.junk?.length">
                                                         <JunkInline
                                                             v-for="(junkName, index) in currentMap.junk"
@@ -154,11 +159,11 @@
                                                     <td>{{ enemy.element || '-' }}</td>
                                                     <td>{{ enemy.weakness.join(' / ') || '-' }}</td>
                                                     <td>
-                                                        <span v-if="enemy.isNoRelic" class="text-gray-500 text-sm">
-                                                            （不会发光）
-                                                        </span>
-                                                        <span v-else-if="!enemy.relic" class="text-gray-500 text-sm">
+                                                        <span v-if="!enemy.relic" class="text-gray-500 text-sm">
                                                             （无遗物）
+                                                        </span>
+                                                        <span v-else-if="enemy.isNoRelic" class="text-gray-500 text-sm">
+                                                            （不出现在前排）
                                                         </span>
                                                         <span v-else>{{ enemy.relic }}</span>
                                                     </td>

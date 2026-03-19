@@ -13,6 +13,7 @@ export const useMonsterStore = defineStore('monster', () => {
     const relicBrews = ref<RelicBrew[]>([]);
     const monsters = ref<Monster[]>([]);
     const maps = ref<GameMap[]>([]);
+    const mapCategoryList = ref<string[]>([]);
     const isInit = ref(false);
     const isLoading = ref(false);
     const monsterRaceList = ref<string[]>([]);
@@ -42,6 +43,7 @@ export const useMonsterStore = defineStore('monster', () => {
                 relicBrews.value = parseRelicBrewData(data.relicbrews || []);
                 monsters.value = parseMonsterData(data.monsters || []);
                 maps.value = parseMapData(data.maps || []);
+                mapCategoryList.value = data.map_category || [];
                 isInit.value = true;
             } else {
                 console.error('获取怪物数据失败');
@@ -72,6 +74,7 @@ export const useMonsterStore = defineStore('monster', () => {
         relicBrews,
         monsters,
         maps,
+        mapCategoryList,
         isInit,
         isLoading,
         monsterRaceList,

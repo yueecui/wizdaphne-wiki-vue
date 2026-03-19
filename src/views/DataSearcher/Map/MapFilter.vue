@@ -10,12 +10,28 @@
                     <NInput v-model:value="filter.searchText" placeholder="" size="small"></NInput>
                 </div>
             </div>
+
+            <!-- 分类筛选 -->
+            <div class="flex flex-col w-40">
+                <div class="flex justify-between items-center h-6">
+                    <label class="text-sm">分类</label>
+                </div>
+                <div class="flex items-center h-12">
+                    <NSelect
+                        v-model:value="filter.category"
+                        :options="categoryOptions"
+                        placeholder="全部"
+                        size="small"
+                        clearable
+                    />
+                </div>
+            </div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { NInput, SelectOption } from 'naive-ui';
+import { NInput, NSelect, SelectOption } from 'naive-ui';
 import { computed, onMounted, toRefs } from 'vue';
 import { useMonsterStore } from '../Monster/monsterStore';
 import type { IMapFilter } from './types';
@@ -26,26 +42,29 @@ const filter = defineModel<IMapFilter>('filter', {
 });
 
 const monsterStore = useMonsterStore();
-const { loadAllData, maps, monsters } = toRefs(monsterStore);
+const { loadAllData, maps, mapCategoryList } = toRefs(monsterStore);
 
 onMounted(() => {
     loadAllData.value();
 });
 
-const enemyOptions = computed<SelectOption[]>(() => {
-    const enemySet = new Set<string>();
-    maps.value.forEach((map) => {
-        map.enemies.forEach((enemy) => {
-            enemySet.add(enemy);
-        });
-    });
-    const sortedEnemies = Array.from(enemySet).sort();
-    return [
-        { label: '全部', value: '' },
-        ...sortedEnemies.map((enemy) => ({
-            label: enemy,
-            value: enemy,
-        })),
-    ];
+const categoryOptions = computed<SelectOption[]>(() => {
+    const categories = ['全部'];
+    if (mapCategoryList.value.length > 0) {
+        categories.push(...mapCategoryList.value);
+    } else {
+        categories.push(
+            ...maps.value.reduce((acc, map) => {
+                if (map.category && !acc.includes(map.category)) {
+                    acc.push(map.category);
+                }
+                return acc;
+            }, [] as string[]),
+        );
+    }
+    return categories.map((category) => ({
+        label: category,
+        value: category,
+    }));
 });
 </script>

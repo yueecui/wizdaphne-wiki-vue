@@ -2,6 +2,7 @@ export interface IMap {
     index: number;
     name: string;
     name_s: string;
+    cate: string;
     level: number;
     image: string[];
     image_label: string[];
@@ -15,4 +16,5 @@ export interface IMap {
 
 export interface IMapFilter {
     searchText: string;
+    category: string;
 }

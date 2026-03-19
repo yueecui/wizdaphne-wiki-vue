@@ -163,6 +163,7 @@ export const DEFAULT_SETTINGS: DataSearcherSettings = {
     // 地图过滤器默认值
     mapFilter: {
         searchText: '',
+        category: '',
     },
 
     // 特性值配置默认值

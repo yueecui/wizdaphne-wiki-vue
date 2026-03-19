@@ -13,9 +13,11 @@
         <!-- 编辑表单 -->
         <div v-if="junkItem" class="bg-[#2a231e]! p-4 rounded">
             <div class="mb-4">
-                <div class="flex items-center gap-2 mb-2">
-                    <NCheckbox v-model:checked="editedData.not_obt" @update:checked="onNotObtChange" />
-                    <label>无法获取</label>
+                <div class="flex">
+                    <label class="flex items-center gap-2 mb-2 cursor-pointer select-none" @click="onNotObtChange">
+                        <NCheckbox v-model:checked="editedData.not_obt" />
+                        <span>无法获取</span>
+                    </label>
                 </div>
             </div>
 
@@ -130,7 +132,7 @@ const loadCurrentJunkData = async () => {
 // 当not_obt值改变时
 const onNotObtChange = () => {
     // 确保not_obt是布尔值
-    editedData.not_obt = Boolean(editedData.not_obt);
+    editedData.not_obt = !editedData.not_obt;
 };
 
 // 合并数据到wiki数据

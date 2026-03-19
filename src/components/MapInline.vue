@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useMonsterModalStore } from '../stores/monsterModalStore';
 import { useMonsterStore } from '../views/DataSearcher/Monster/monsterStore';
 
@@ -21,6 +21,10 @@ const map = computed(() => {
         monsterStore.maps.find((m) => m.name === props.mapName) ||
         monsterStore.maps.find((m) => m.shortName === props.mapName)
     );
+});
+
+onMounted(() => {
+    monsterStore.loadAllData();
 });
 
 const handleClick = () => {

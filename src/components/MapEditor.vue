@@ -41,7 +41,7 @@
                         >
                             <div>{{ enemy.id }}: {{ enemy.name }}</div>
                             <div class="flex items-center gap-2">
-                                <NCheckbox v-model:checked="enemy.noRelic" class="mr-2">不掉落遗物</NCheckbox>
+                                <NCheckbox v-model:checked="enemy.noRelic" class="mr-2">不出现在前排</NCheckbox>
                                 <NButton size="small" type="error" @click="removeEnemy(index)">删除</NButton>
                             </div>
                         </div>
@@ -475,5 +475,6 @@ const handleCancel = () => {
 
 onMounted(() => {
     loadMapData();
+    junkStore.loadJunkData();
 });
 </script>

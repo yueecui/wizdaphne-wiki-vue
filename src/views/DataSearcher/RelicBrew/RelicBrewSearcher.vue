@@ -18,10 +18,10 @@
                 <table class="wikitable w-full text-center">
                     <thead>
                         <tr>
-                            <th class="xl:w-48">遗物名称</th>
-                            <th v-if="filter.showBrewName" class="xl:w-36 2xl:w-48">遗物酒名</th>
-                            <th v-if="filter.showRelicPower" class="xl:w-36 2xl:w-48">遗物之力</th>
-                            <th class="md:w-16">性格</th>
+                            <th class="xl:w-36">遗物名称</th>
+                            <th v-if="filter.showBrewName" class="xl:w-36">遗物酒名</th>
+                            <th v-if="filter.showRelicPower" class="xl:w-36">遗物之力</th>
+                            <th class="xl:w-16">性格</th>
                             <th class="xl:w-36">提升属性</th>
                             <th class="xl:w-36">降低属性</th>
                             <th class="xl:w-36">掉落怪物</th>

@@ -253,11 +253,12 @@ const relicMaps = computed(() => {
             });
         })
         .map((map) => ({
+            index: map.index,
             map: map,
             name: map.name,
             level: map.level,
         }))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => a.index - b.index);
 });
 
 const formatComment = (comment: string) => convertDescription(comment);

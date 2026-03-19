@@ -20,7 +20,19 @@ export class GameMap {
 
     // 获取等级
     get level(): number {
-        return this.data.level;
+        return this.data.level ?? 0;
+    }
+
+    get levelText(): string {
+        if (this.level === 0) return '?';
+        if (this.level === -1) return '无';
+        if (this.level === -2) return '动态';
+        return this.level.toString();
+    }
+
+    // 获取分类
+    get category(): string {
+        return this.data.cate;
     }
 
     // 获取图片
