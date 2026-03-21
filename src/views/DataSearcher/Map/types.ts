@@ -3,11 +3,14 @@ export interface IMap {
     name: string;
     name_s: string;
     cate: string;
-    level: number;
     image: string[];
     image_label: string[];
+    level: number;
+    rlv: number;
     enemy: string[];
-    no_relic_enemy: string[];
+    back: string[];
+    rlv1: string[];
+    boss: string[];
     drop: string[];
     junk: string[];
     junk_code: string[];

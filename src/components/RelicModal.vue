@@ -108,6 +108,7 @@
                                             <tr>
                                                 <th>地图名称</th>
                                                 <th class="w-20">等级</th>
+                                                <th class="w-20">遗物等级</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -122,6 +123,9 @@
                                             >
                                                 <td>{{ map.name }}</td>
                                                 <td>{{ map.level }}</td>
+                                                <td :class="map.relicText === '是' ? 'text-green-400' : ''">
+                                                    {{ map.relicText }}
+                                                </td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -252,12 +256,33 @@ const relicMaps = computed(() => {
                 return monster?.relic === currentRelic.value!.name;
             });
         })
-        .map((map) => ({
-            index: map.index,
-            map: map,
-            name: map.name,
-            level: map.level,
-        }))
+        .map((map) => {
+            const relevantEnemies = map.enemies.filter((enemyIdentifier) => {
+                let monster: Monster | undefined;
+                if (!isNaN(Number(enemyIdentifier))) {
+                    const enemyId = Number(enemyIdentifier);
+                    monster = monsters.value.find((m) => m.id === enemyId);
+                } else {
+                    monster = monsters.value.find((m) => m.name === enemyIdentifier);
+                }
+                return monster?.relic === currentRelic.value!.name;
+            });
+
+            const hasRLvPlus1Enemy = relevantEnemies.some((enemyIdentifier) => {
+                return map.rLvPlus1Enemies.includes(enemyIdentifier);
+            });
+
+            const displayRlv = hasRLvPlus1Enemy ? map.rlv + 1 : map.rlv;
+
+            return {
+                index: map.index,
+                map: map,
+                name: map.name,
+                level: map.level,
+                rlv: map.rlv,
+                relicText: map.rlv === 0 ? '是' : `★${displayRlv}`,
+            };
+        })
         .sort((a, b) => a.index - b.index);
 });
 

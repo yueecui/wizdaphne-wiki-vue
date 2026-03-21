@@ -28,24 +28,25 @@
                                                 {{ currentMap?.levelText }}
                                             </td>
                                         </tr>
-                                        <tr>
+                                        <tr v-if="currentMap?.level !== -1">
+                                            <th class="w-24">遗物星级</th>
+                                            <td :class="currentMap?.rlv <= 0 ? 'text-gray-500 text-sm' : ''">
+                                                {{ currentMap?.rlvText }}
+                                            </td>
+                                        </tr>
+                                        <tr v-if="currentMap?.drops?.length">
                                             <th>特殊掉落</th>
                                             <td>
                                                 <div class="flex flex-col">
-                                                    <template v-if="currentMap?.drops?.length">
-                                                        <EquipmentInline
-                                                            v-for="(drop, index) in currentMap.drops"
-                                                            :key="index"
-                                                            :equipmentName="drop"
-                                                        />
-                                                    </template>
-                                                    <template v-else>
-                                                        <span class="text-sm text-gray-500">无</span>
-                                                    </template>
+                                                    <EquipmentInline
+                                                        v-for="(drop, index) in currentMap.drops"
+                                                        :key="index"
+                                                        :equipmentName="drop"
+                                                    />
                                                 </div>
                                             </td>
                                         </tr>
-                                        <tr>
+                                        <tr v-if="currentMap?.level !== -1">
                                             <th>掉落杂物</th>
                                             <td>
                                                 <div class="flex flex-col">
@@ -154,22 +155,42 @@
                                                     @click="openMonsterModal(enemy.monster)"
                                                 >
                                                     <td>{{ enemy.idText }}</td>
-                                                    <td>{{ enemy.name }}</td>
+                                                    <td>
+                                                        {{ enemy.name }}
+                                                        <span v-if="enemy.isBoss" class="text-gray-500 text-xs">
+                                                            (定点)
+                                                        </span>
+                                                    </td>
                                                     <td>{{ enemy.race }}</td>
-                                                    <td>{{ enemy.element || '-' }}</td>
+                                                    <td>
+                                                        {{ enemy.element || '-' }}
+                                                    </td>
                                                     <td>{{ enemy.weakness.join(' / ') || '-' }}</td>
                                                     <td>
                                                         <span v-if="!enemy.relic" class="text-gray-500 text-sm">
                                                             （无遗物）
                                                         </span>
-                                                        <span v-else-if="enemy.isNoRelic" class="text-gray-500 text-sm">
+                                                        <span v-else-if="enemy.isBack" class="text-gray-500 text-sm">
                                                             （不出现在前排）
                                                         </span>
-                                                        <span v-else>{{ enemy.relic }}</span>
+                                                        <span v-else>
+                                                            {{ enemy.relic }}
+                                                            <span
+                                                                v-if="enemy.isRLvPlus1"
+                                                                class="text-xs ml-1 text-blue-300"
+                                                            >
+                                                                ★{{ currentMap.rlv === 0 ? '+1' : currentMap.rlv + 1 }}
+                                                            </span>
+                                                        </span>
                                                     </td>
                                                 </tr>
                                             </tbody>
                                         </table>
+                                        <div class="text-sm text-gray-400">
+                                            <span>
+                                                ※ 「定点」是指仅在特定位置才会出现的敌人，如灯怪、守口的固定敌人等
+                                            </span>
+                                        </div>
                                     </div>
 
                                     <!-- 无敌人数据提示 -->
@@ -350,7 +371,9 @@ const sortedEnemies = computed(() => {
                 element: monster.element,
                 weakness: monster.weakness,
                 relic: monster.relic,
-                isNoRelic: currentMap.value?.noRelicEnemies?.includes(enemyIdentifier) || false,
+                isBack: currentMap.value?.backEnemies?.includes(enemyIdentifier) || false,
+                isRLvPlus1: currentMap.value?.rLvPlus1Enemies?.includes(enemyIdentifier) || false,
+                isBoss: currentMap.value?.bossEnemies?.includes(enemyIdentifier) || false,
             };
         })
         .filter((enemy): enemy is NonNullable<typeof enemy> => enemy !== null)
@@ -368,11 +391,11 @@ const mapRelics = computed(() => {
 
     // 获取地图中所有敌人
     const mapEnemyIdentifiers = currentMap.value.enemies;
-    const noRelicEnemies = currentMap.value.noRelicEnemies || [];
+    const backEnemies = currentMap.value.backEnemies || [];
 
     // 过滤出这些敌人掉落的遗物（排除不会掉落遗物的敌人）
     const enemyRelics = mapEnemyIdentifiers
-        .filter((enemyIdentifier) => !noRelicEnemies.includes(enemyIdentifier))
+        .filter((enemyIdentifier) => !backEnemies.includes(enemyIdentifier))
         .map((enemyIdentifier) => {
             // 尝试通过ID或名称查找敌人
             let monster;

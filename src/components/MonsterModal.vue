@@ -99,8 +99,18 @@
                                         <td>{{ map.level }}</td>
                                         <td>
                                             <span v-if="!monsterRelic" class="text-gray-400">无</span>
-                                            <span v-else-if="map.dropsRelic" class="text-green-400">是</span>
-                                            <span v-else class="text-red-400">否</span>
+                                            <span
+                                                v-else
+                                                :class="
+                                                    map.relicText === '是'
+                                                        ? 'text-green-400'
+                                                        : map.relicText === '否'
+                                                          ? 'text-red-400'
+                                                          : ''
+                                                "
+                                            >
+                                                {{ map.relicText }}
+                                            </span>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -216,22 +226,34 @@ const monsterMaps = computed(() => {
                 }
             });
         })
-        .map((map) => ({
-            index: map.index,
-            map: map,
-            name: map.name,
-            level: map.level,
-            dropsRelic: !map.noRelicEnemies.some((enemyIdentifier) => {
-                // 检查是否在不掉落遗物的敌人列表中（支持ID或名称）
+        .map((map) => {
+            const isInBackEnemies = map.backEnemies.some((enemyIdentifier) => {
                 if (!isNaN(Number(enemyIdentifier))) {
-                    // 如果是数字，比较ID
                     return Number(enemyIdentifier) === monsterId;
                 } else {
-                    // 否则比较名称
                     return enemyIdentifier === monsterName;
                 }
-            }),
-        }))
+            });
+
+            const isInRLvPlus1Enemies = map.rLvPlus1Enemies.some((enemyIdentifier) => {
+                if (!isNaN(Number(enemyIdentifier))) {
+                    return Number(enemyIdentifier) === monsterId;
+                } else {
+                    return enemyIdentifier === monsterName;
+                }
+            });
+
+            const displayRlv = isInRLvPlus1Enemies ? map.rlv + 1 : map.rlv;
+
+            return {
+                index: map.index,
+                map: map,
+                name: map.name,
+                level: map.level,
+                rlv: map.rlv,
+                relicText: map.rlv === 0 ? '是' : isInBackEnemies ? '否' : `★${displayRlv}`,
+            };
+        })
         .sort((a, b) => a.index - b.index);
 });
 

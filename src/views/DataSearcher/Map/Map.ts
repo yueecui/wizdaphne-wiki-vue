@@ -23,6 +23,10 @@ export class GameMap {
         return this.data.level ?? 0;
     }
 
+    set level(value: number) {
+        this.data.level = value;
+    }
+
     get levelText(): string {
         if (this.level === 0) return '?';
         if (this.level === -1) return '无';
@@ -55,14 +59,47 @@ export class GameMap {
     }
 
     // 获取无遗物敌人列表
-    get noRelicEnemies(): string[] {
-        return this.data.no_relic_enemy;
+    get backEnemies(): string[] {
+        return this.data.back ?? [];
     }
 
-    set noRelicEnemies(value: string[]) {
-        this.data.no_relic_enemy = value;
+    set backEnemies(value: string[]) {
+        this.data.back = value;
     }
 
+    // 精英敌人列表
+    get rLvPlus1Enemies(): string[] {
+        return this.data.rlv1 ?? [];
+    }
+
+    set rLvPlus1Enemies(value: string[]) {
+        this.data.rlv1 = value;
+    }
+
+    // boss敌人列表
+    get bossEnemies(): string[] {
+        return this.data.boss ?? [];
+    }
+
+    set bossEnemies(value: string[]) {
+        this.data.boss = value;
+    }
+
+    // 获取遗物等级
+    get rlv(): number {
+        return this.data.rlv ?? 0;
+    }
+
+    set rlv(value: number) {
+        this.data.rlv = value;
+    }
+
+    get rlvText(): string {
+        if (this.rlv === 0) return '？';
+        return `★${this.rlv.toString()}`;
+    }
+
+    // 获取掉落列表
     // 获取掉落列表
     get drops(): string[] {
         return this.data.drop;

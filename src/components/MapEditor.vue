@@ -3,6 +3,18 @@
         <div v-if="map">
             <div class="text-lg text-light font-bold mb-4">编辑地图信息</div>
 
+            <!-- 等级编辑 -->
+            <div class="flex gap-4 mb-4">
+                <div class="flex flex-col w-32">
+                    <div class="text-sm text-gray-400 mb-2">地图等级</div>
+                    <NInputNumber v-model:value="level" :min="0" placeholder="地图等级" />
+                </div>
+                <div class="flex flex-col w-32">
+                    <div class="text-sm text-gray-400 mb-2">遗物等级</div>
+                    <NInputNumber v-model:value="rlv" :min="0" placeholder="遗物等级" />
+                </div>
+            </div>
+
             <!-- 备注编辑 -->
             <div class="mb-4">
                 <div class="text-sm text-gray-400 mb-2">备注</div>
@@ -39,9 +51,13 @@
                             :key="enemy.id"
                             class="flex items-center justify-between p-2 hover:bg-[#3a312a] border-b border-[#463d38]"
                         >
-                            <div>{{ enemy.id }}: {{ enemy.name }}</div>
                             <div class="flex items-center gap-2">
-                                <NCheckbox v-model:checked="enemy.noRelic" class="mr-2">不出现在前排</NCheckbox>
+                                <span>{{ enemy.id }}: {{ enemy.name }}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <NCheckbox v-model:checked="enemy.back">后排</NCheckbox>
+                                <NCheckbox v-model:checked="enemy.rLvPlus1">遗+1</NCheckbox>
+                                <NCheckbox v-model:checked="enemy.boss">定点</NCheckbox>
                                 <NButton size="small" type="error" @click="removeEnemy(index)">删除</NButton>
                             </div>
                         </div>
@@ -149,7 +165,7 @@
     </div>
 </template>
 <script setup lang="ts">
-import { NButton, NCheckbox, NInput, NSelect } from 'naive-ui';
+import { NButton, NCheckbox, NInput, NInputNumber, NSelect } from 'naive-ui';
 import { storeToRefs } from 'pinia';
 import { computed, onMounted, ref } from 'vue';
 import { edit } from '../api/editPage';
@@ -178,8 +194,10 @@ const equipmentStore = useEquipmentStore();
 const junkStore = useJunkStore();
 
 const map = ref<GameMap | null>(null);
+const level = ref<number>(0);
+const rlv = ref<number>(0);
 const comment = ref('');
-const enemies = ref<Array<{ id: string; name: string; noRelic: boolean }>>([]);
+const enemies = ref<Array<{ id: string; name: string; back: boolean; rLvPlus1: boolean; boss: boolean }>>([]);
 const selectedMonster = ref<string>('');
 const specialDrops = ref<string[]>([]);
 const selectedSpecialDrop = ref<string>('');
@@ -213,6 +231,8 @@ const loadMapData = () => {
     const mapData = monsterStore.maps.find((m) => m.index.toString() === props.mapIndex);
     if (mapData) {
         map.value = mapData;
+        level.value = mapData.level || 0;
+        rlv.value = mapData.rlv || 0;
         comment.value = mapData.comment || '';
 
         // 初始化敌人列表
@@ -233,7 +253,9 @@ const loadMapData = () => {
                     return {
                         id: monster?.id.toString() || enemyIdentifier,
                         name: monster?.name || enemyIdentifier,
-                        noRelic: mapData.noRelicEnemies?.includes(enemyIdentifier) || false,
+                        back: mapData.backEnemies?.includes(enemyIdentifier) || false,
+                        rLvPlus1: mapData.rLvPlus1Enemies?.includes(enemyIdentifier) || false,
+                        boss: mapData.bossEnemies?.includes(enemyIdentifier) || false,
                     };
                 })
                 .filter((e) => e.name !== '？？？？')
@@ -321,7 +343,9 @@ const addEnemy = () => {
             enemies.value.push({
                 id: monster.id.toString(),
                 name: monster.name,
-                noRelic: false,
+                back: false,
+                rLvPlus1: false,
+                boss: false,
             });
             // 按ID排序
             enemies.value.sort((a, b) => Number(a.id) - Number(b.id));
@@ -348,8 +372,10 @@ const fetchWikiData = async () => {
 const mergeData = (
     wikiData: TabxSchema,
     mapIndex: string,
+    newLevel: number,
+    newRlv: number,
     newComment: string,
-    newEnemies: Array<{ id: string; name: string; noRelic: boolean }>,
+    newEnemies: Array<{ id: string; name: string; back: boolean; rLvPlus1: boolean; boss: boolean }>,
     newDrops: string[],
     newJunks: Array<{ name: string; uniqueCode: string }>,
 ) => {
@@ -358,9 +384,13 @@ const mergeData = (
     }
 
     // 动态获取字段索引
+    const levelIndex = getFieldIndex(wikiData, 'level');
+    const rlvIndex = getFieldIndex(wikiData, 'rlv');
     const commentIndex = getFieldIndex(wikiData, 'comment');
     const enemyIndex = getFieldIndex(wikiData, 'enemy');
-    const noRelicEnemyIndex = getFieldIndex(wikiData, 'no_relic_enemy');
+    const backEnemyIndex = getFieldIndex(wikiData, 'back');
+    const rLvPlus1EnemyIndex = getFieldIndex(wikiData, 'rlv1');
+    const bossEnemyIndex = getFieldIndex(wikiData, 'boss');
     const dropIndex = getFieldIndex(wikiData, 'drop');
     const junkIndex = getFieldIndex(wikiData, 'junk');
     const junkCodeIndex = getFieldIndex(wikiData, 'junk_code');
@@ -369,6 +399,16 @@ const mergeData = (
     const index = mergedData.findIndex((record: any[]) => record[0].toString() === mapIndex);
 
     if (index !== -1) {
+        // 更新地图等级
+        if (levelIndex !== -1) {
+            mergedData[index][levelIndex] = newLevel || null;
+        }
+
+        // 更新遗物等级
+        if (rlvIndex !== -1) {
+            mergedData[index][rlvIndex] = newRlv || null;
+        }
+
         // 更新备注
         if (commentIndex !== -1) {
             mergedData[index][commentIndex] = newComment || null;
@@ -381,9 +421,21 @@ const mergeData = (
         }
 
         // 更新不掉落遗物的敌人列表（使用ID）
-        if (noRelicEnemyIndex !== -1) {
-            const noRelicEnemyIds = newEnemies.filter((e) => e.noRelic).map((e) => e.id);
-            mergedData[index][noRelicEnemyIndex] = noRelicEnemyIds.length > 0 ? noRelicEnemyIds.join(';') : null;
+        if (backEnemyIndex !== -1) {
+            const backEnemyIds = newEnemies.filter((e) => e.back).map((e) => e.id);
+            mergedData[index][backEnemyIndex] = backEnemyIds.length > 0 ? backEnemyIds.join(';') : null;
+        }
+
+        // 更新精英敌人列表（使用ID）
+        if (rLvPlus1EnemyIndex !== -1) {
+            const rLvPlus1EnemyIds = newEnemies.filter((e) => e.rLvPlus1).map((e) => e.id);
+            mergedData[index][rLvPlus1EnemyIndex] = rLvPlus1EnemyIds.length > 0 ? rLvPlus1EnemyIds.join(';') : null;
+        }
+
+        // 更新boss敌人列表（使用ID）
+        if (bossEnemyIndex !== -1) {
+            const bossEnemyIds = newEnemies.filter((e) => e.boss).map((e) => e.id);
+            mergedData[index][bossEnemyIndex] = bossEnemyIds.length > 0 ? bossEnemyIds.join(';') : null;
         }
 
         // 更新特殊掉落列表
@@ -414,6 +466,8 @@ const handleSave = async () => {
     if (IS_DEV) {
         console.log('提交的数据:', {
             mapIndex: props.mapIndex,
+            level: level.value,
+            rlv: rlv.value,
             comment: comment.value,
             enemies: enemies.value,
             drops: specialDrops.value,
@@ -432,6 +486,8 @@ const handleSave = async () => {
         const mergedData = mergeData(
             wikiData,
             props.mapIndex,
+            level.value,
+            rlv.value,
             comment.value,
             enemies.value,
             specialDrops.value,
@@ -453,9 +509,13 @@ const handleSave = async () => {
         }
 
         // 更新本地数据
+        map.value.level = level.value;
+        map.value.rlv = rlv.value;
         map.value.comment = comment.value;
         map.value.enemies = enemies.value.map((e) => e.id);
-        map.value.noRelicEnemies = enemies.value.filter((e) => e.noRelic).map((e) => e.id);
+        map.value.backEnemies = enemies.value.filter((e) => e.back).map((e) => e.id);
+        map.value.rLvPlus1Enemies = enemies.value.filter((e) => e.rLvPlus1).map((e) => e.id);
+        map.value.bossEnemies = enemies.value.filter((e) => e.boss).map((e) => e.id);
         map.value.drops = [...specialDrops.value];
         map.value.setJunks(featuredJunks.value);
 
