@@ -149,7 +149,7 @@
                                 >
                                     ↓
                                 </NButton>
-                                <span>{{ junk.name }}</span>
+                                <span>{{ junk.name }} [{{ junk.uniqueCode }}]</span>
                             </div>
                             <NButton size="small" type="error" @click="removeFeaturedJunk(index)">删除</NButton>
                         </div>
@@ -216,14 +216,14 @@ const filteredEquipments = computed(() => {
         }));
 });
 
-// 过滤杂物列表（排除已添加的特色杂物）
+// 过滤杂物列表（排除已添加的特色杂物，只显示可获取的）
 const filteredJunks = computed(() => {
-    const addedJunkNames = featuredJunks.value.map((j) => j.name);
+    const addedJunkCodes = featuredJunks.value.map((j) => j.uniqueCode);
     return junkStore.junkItems
-        .filter((j) => !addedJunkNames.includes(j.name))
+        .filter((j) => !addedJunkCodes.includes(j.uniqueCode) && !j.notObt)
         .map((j) => ({
-            label: j.name,
-            value: j.name,
+            label: `${j.name} [${j.uniqueCode}]`,
+            value: j.uniqueCode,
         }));
 });
 
@@ -298,8 +298,8 @@ const moveSpecialDrop = (index: number, direction: number) => {
 };
 
 const addFeaturedJunk = () => {
-    if (selectedJunk.value && !featuredJunks.value.some((j) => j.name === selectedJunk.value)) {
-        const junkItem = junkStore.junkItems.find((j) => j.name === selectedJunk.value);
+    if (selectedJunk.value && !featuredJunks.value.some((j) => j.uniqueCode === selectedJunk.value)) {
+        const junkItem = junkStore.junkItems.find((j) => j.uniqueCode === selectedJunk.value);
         if (junkItem) {
             featuredJunks.value.push({
                 name: junkItem.name,

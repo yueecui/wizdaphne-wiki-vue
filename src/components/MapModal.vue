@@ -55,6 +55,7 @@
                                                             v-for="(junkName, index) in currentMap.junk"
                                                             :key="index"
                                                             :junkName="junkName"
+                                                            :junkHash="currentMap.junkCodes[index] || ''"
                                                         />
                                                     </template>
                                                     <template v-else>
