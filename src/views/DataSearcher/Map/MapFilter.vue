@@ -22,7 +22,6 @@
                         :options="categoryOptions"
                         placeholder="全部"
                         size="small"
-                        clearable
                     />
                 </div>
             </div>
@@ -42,29 +41,30 @@ const filter = defineModel<IMapFilter>('filter', {
 });
 
 const monsterStore = useMonsterStore();
-const { loadAllData, maps, mapCategoryList } = toRefs(monsterStore);
+const { maps, mapCategoryList } = toRefs(monsterStore);
+const { loadAllData } = monsterStore;
 
 onMounted(() => {
-    loadAllData.value();
+    loadAllData();
 });
 
 const categoryOptions = computed<SelectOption[]>(() => {
-    const categories = ['全部'];
+    const categorySet = new Set<string>();
     if (mapCategoryList.value.length > 0) {
-        categories.push(...mapCategoryList.value);
+        mapCategoryList.value.forEach((c) => categorySet.add(c));
     } else {
-        categories.push(
-            ...maps.value.reduce((acc, map) => {
-                if (map.category && !acc.includes(map.category)) {
-                    acc.push(map.category);
-                }
-                return acc;
-            }, [] as string[]),
-        );
+        maps.value.forEach((map) => {
+            if (map.category) {
+                categorySet.add(map.category);
+            }
+        });
     }
-    return categories.map((category) => ({
-        label: category,
-        value: category,
-    }));
+    const options: SelectOption[] = [{ label: '全部', value: '' }];
+    Array.from(categorySet)
+        .sort()
+        .forEach((category) => {
+            options.push({ label: category, value: category });
+        });
+    return options;
 });
 </script>

@@ -138,10 +138,9 @@ export class GameMap {
         if (!searchText) return true;
 
         const lowerSearchText = searchText.toLowerCase();
-        return (
-            this.name.toLowerCase().includes(lowerSearchText) ||
-            this.shortName.toLowerCase().includes(lowerSearchText) ||
-            this.enemies.some((e) => e.toLowerCase().includes(lowerSearchText))
+        return Boolean(
+            (this.name && this.name.toLowerCase().includes(lowerSearchText)) ||
+                (this.shortName && this.shortName.toLowerCase().includes(lowerSearchText)),
         );
     }
 }
