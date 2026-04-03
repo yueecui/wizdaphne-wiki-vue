@@ -182,6 +182,12 @@
                                                             >
                                                                 ★{{ currentMap.rlv === 0 ? '+1' : currentMap.rlv + 1 }}
                                                             </span>
+                                                            <span
+                                                                v-if="enemy.isRLvPlus2"
+                                                                class="text-xs ml-1 text-purple-300"
+                                                            >
+                                                                ★{{ currentMap.rlv === 0 ? '+2' : currentMap.rlv + 2 }}
+                                                            </span>
                                                         </span>
                                                     </td>
                                                 </tr>
@@ -258,7 +264,7 @@
                         </div>
 
                         <NModal v-model:show="editorModalVisible">
-                            <div class="w-[90%] md:h-auto md:w-[600px] m-auto huiji-css-hook bg-transparent!">
+                            <div class="w-[90%] md:h-auto md:w-[800px] m-auto huiji-css-hook bg-transparent!">
                                 <MapEditor
                                     :mapIndex="currentMap.index.toString()"
                                     @cancel="closeEditorModal"
@@ -374,6 +380,7 @@ const sortedEnemies = computed(() => {
                 relic: monster.relic,
                 isBack: currentMap.value?.backEnemies?.includes(enemyIdentifier) || false,
                 isRLvPlus1: currentMap.value?.rLvPlus1Enemies?.includes(enemyIdentifier) || false,
+                isRLvPlus2: currentMap.value?.rLvPlus2Enemies?.includes(enemyIdentifier) || false,
                 isBoss: currentMap.value?.bossEnemies?.includes(enemyIdentifier) || false,
             };
         })

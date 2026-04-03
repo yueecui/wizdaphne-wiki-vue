@@ -272,7 +272,16 @@ const relicMaps = computed(() => {
                 return map.rLvPlus1Enemies.includes(enemyIdentifier);
             });
 
-            const displayRlv = hasRLvPlus1Enemy ? map.rlv + 1 : map.rlv;
+            const hasRLvPlus2Enemy = relevantEnemies.some((enemyIdentifier) => {
+                return map.rLvPlus2Enemies.includes(enemyIdentifier);
+            });
+
+            let displayRlv = map.rlv;
+            if (hasRLvPlus2Enemy) {
+                displayRlv = map.rlv + 2;
+            } else if (hasRLvPlus1Enemy) {
+                displayRlv = map.rlv + 1;
+            }
 
             return {
                 index: map.index,

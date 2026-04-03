@@ -76,6 +76,15 @@ export class GameMap {
         this.data.rlv1 = value;
     }
 
+    // 精英敌人列表2
+    get rLvPlus2Enemies(): string[] {
+        return this.data.rlv2 ?? [];
+    }
+
+    set rLvPlus2Enemies(value: string[]) {
+        this.data.rlv2 = value;
+    }
+
     // boss敌人列表
     get bossEnemies(): string[] {
         return this.data.boss ?? [];

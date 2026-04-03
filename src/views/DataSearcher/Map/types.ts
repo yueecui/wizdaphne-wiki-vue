@@ -10,6 +10,7 @@ export interface IMap {
     enemy: string[];
     back: string[];
     rlv1: string[];
+    rlv2: string[];
     boss: string[];
     drop: string[];
     junk: string[];

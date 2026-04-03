@@ -57,6 +57,7 @@
                             <div class="flex items-center gap-2">
                                 <NCheckbox v-model:checked="enemy.back">后排</NCheckbox>
                                 <NCheckbox v-model:checked="enemy.rLvPlus1">遗+1</NCheckbox>
+                                <NCheckbox v-model:checked="enemy.rLvPlus2">遗+2</NCheckbox>
                                 <NCheckbox v-model:checked="enemy.boss">定点</NCheckbox>
                                 <NButton size="small" type="error" @click="removeEnemy(index)">删除</NButton>
                             </div>
@@ -197,7 +198,9 @@ const map = ref<GameMap | null>(null);
 const level = ref<number>(0);
 const rlv = ref<number>(0);
 const comment = ref('');
-const enemies = ref<Array<{ id: string; name: string; back: boolean; rLvPlus1: boolean; boss: boolean }>>([]);
+const enemies = ref<
+    Array<{ id: string; name: string; back: boolean; rLvPlus1: boolean; rLvPlus2: boolean; boss: boolean }>
+>([]);
 const selectedMonster = ref<string>('');
 const specialDrops = ref<string[]>([]);
 const selectedSpecialDrop = ref<string>('');
@@ -255,6 +258,7 @@ const loadMapData = () => {
                         name: monster?.name || enemyIdentifier,
                         back: mapData.backEnemies?.includes(enemyIdentifier) || false,
                         rLvPlus1: mapData.rLvPlus1Enemies?.includes(enemyIdentifier) || false,
+                        rLvPlus2: mapData.rLvPlus2Enemies?.includes(enemyIdentifier) || false,
                         boss: mapData.bossEnemies?.includes(enemyIdentifier) || false,
                     };
                 })
@@ -345,6 +349,7 @@ const addEnemy = () => {
                 name: monster.name,
                 back: false,
                 rLvPlus1: false,
+                rLvPlus2: false,
                 boss: false,
             });
             // 按ID排序
@@ -375,7 +380,7 @@ const mergeData = (
     newLevel: number,
     newRlv: number,
     newComment: string,
-    newEnemies: Array<{ id: string; name: string; back: boolean; rLvPlus1: boolean; boss: boolean }>,
+    newEnemies: Array<{ id: string; name: string; back: boolean; rLvPlus1: boolean; rLvPlus2: boolean; boss: boolean }>,
     newDrops: string[],
     newJunks: Array<{ name: string; uniqueCode: string }>,
 ) => {
@@ -390,6 +395,7 @@ const mergeData = (
     const enemyIndex = getFieldIndex(wikiData, 'enemy');
     const backEnemyIndex = getFieldIndex(wikiData, 'back');
     const rLvPlus1EnemyIndex = getFieldIndex(wikiData, 'rlv1');
+    const rLvPlus2EnemyIndex = getFieldIndex(wikiData, 'rlv2');
     const bossEnemyIndex = getFieldIndex(wikiData, 'boss');
     const dropIndex = getFieldIndex(wikiData, 'drop');
     const junkIndex = getFieldIndex(wikiData, 'junk');
@@ -430,6 +436,12 @@ const mergeData = (
         if (rLvPlus1EnemyIndex !== -1) {
             const rLvPlus1EnemyIds = newEnemies.filter((e) => e.rLvPlus1).map((e) => e.id);
             mergedData[index][rLvPlus1EnemyIndex] = rLvPlus1EnemyIds.length > 0 ? rLvPlus1EnemyIds.join(';') : null;
+        }
+
+        // 更新精英敌人列表2（使用ID）
+        if (rLvPlus2EnemyIndex !== -1) {
+            const rLvPlus2EnemyIds = newEnemies.filter((e) => e.rLvPlus2).map((e) => e.id);
+            mergedData[index][rLvPlus2EnemyIndex] = rLvPlus2EnemyIds.length > 0 ? rLvPlus2EnemyIds.join(';') : null;
         }
 
         // 更新boss敌人列表（使用ID）
@@ -515,6 +527,7 @@ const handleSave = async () => {
         map.value.enemies = enemies.value.map((e) => e.id);
         map.value.backEnemies = enemies.value.filter((e) => e.back).map((e) => e.id);
         map.value.rLvPlus1Enemies = enemies.value.filter((e) => e.rLvPlus1).map((e) => e.id);
+        map.value.rLvPlus2Enemies = enemies.value.filter((e) => e.rLvPlus2).map((e) => e.id);
         map.value.bossEnemies = enemies.value.filter((e) => e.boss).map((e) => e.id);
         map.value.drops = [...specialDrops.value];
         map.value.setJunks(featuredJunks.value);

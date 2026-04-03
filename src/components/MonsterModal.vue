@@ -243,7 +243,20 @@ const monsterMaps = computed(() => {
                 }
             });
 
-            const displayRlv = isInRLvPlus1Enemies ? map.rlv + 1 : map.rlv;
+            const isInRLvPlus2Enemies = map.rLvPlus2Enemies.some((enemyIdentifier) => {
+                if (!isNaN(Number(enemyIdentifier))) {
+                    return Number(enemyIdentifier) === monsterId;
+                } else {
+                    return enemyIdentifier === monsterName;
+                }
+            });
+
+            let displayRlv = map.rlv;
+            if (isInRLvPlus2Enemies) {
+                displayRlv = map.rlv + 2;
+            } else if (isInRLvPlus1Enemies) {
+                displayRlv = map.rlv + 1;
+            }
 
             return {
                 index: map.index,
