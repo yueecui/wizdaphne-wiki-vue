@@ -262,7 +262,7 @@ const monsterMaps = computed(() => {
                 index: map.index,
                 map: map,
                 name: map.name,
-                level: map.level,
+                level: map.levelText,
                 rlv: map.rlv,
                 relicText: map.rlv === 0 ? '是' : isInBackEnemies ? '否' : `★${displayRlv}`,
             };

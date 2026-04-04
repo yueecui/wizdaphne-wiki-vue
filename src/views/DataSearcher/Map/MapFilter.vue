@@ -52,6 +52,11 @@ const categoryOptions = computed<SelectOption[]>(() => {
     const categorySet = new Set<string>();
     if (mapCategoryList.value.length > 0) {
         mapCategoryList.value.forEach((c) => categorySet.add(c));
+        maps.value.forEach((map) => {
+            if (map.category && !categorySet.has(map.category)) {
+                categorySet.add(map.category);
+            }
+        });
     } else {
         maps.value.forEach((map) => {
             if (map.category) {
@@ -60,11 +65,22 @@ const categoryOptions = computed<SelectOption[]>(() => {
         });
     }
     const options: SelectOption[] = [{ label: '全部', value: '' }];
-    Array.from(categorySet)
-        .sort()
-        .forEach((category) => {
+    if (mapCategoryList.value.length > 0) {
+        mapCategoryList.value.forEach((category) => {
             options.push({ label: category, value: category });
         });
+        categorySet.forEach((category) => {
+            if (!mapCategoryList.value.includes(category)) {
+                options.push({ label: category, value: category });
+            }
+        });
+    } else {
+        Array.from(categorySet)
+            .sort()
+            .forEach((category) => {
+                options.push({ label: category, value: category });
+            });
+    }
     return options;
 });
 </script>

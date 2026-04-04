@@ -5,7 +5,8 @@ export interface IMap {
     cate: string;
     image: string[];
     image_label: string[];
-    level: number;
+    min_lv: number;
+    max_lv: number;
     rlv: number;
     enemy: string[];
     back: string[];

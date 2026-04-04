@@ -24,11 +24,11 @@
                                         </tr>
                                         <tr>
                                             <th class="w-24">敌人等级</th>
-                                            <td :class="currentMap?.level <= 0 ? 'text-gray-500 text-sm' : ''">
+                                            <td :class="currentMap?.minLv <= 0 ? 'text-gray-500 text-sm' : ''">
                                                 {{ currentMap?.levelText }}
                                             </td>
                                         </tr>
-                                        <tr v-if="currentMap?.level !== -1">
+                                        <tr v-if="currentMap?.minLv !== -1">
                                             <th class="w-24">遗物星级</th>
                                             <td :class="currentMap?.rlv <= 0 ? 'text-gray-500 text-sm' : ''">
                                                 {{ currentMap?.rlvText }}
@@ -46,7 +46,7 @@
                                                 </div>
                                             </td>
                                         </tr>
-                                        <tr v-if="currentMap?.level !== -1">
+                                        <tr v-if="currentMap?.minLv !== -1">
                                             <th>掉落杂物</th>
                                             <td>
                                                 <div class="flex flex-col">

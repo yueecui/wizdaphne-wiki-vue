@@ -6,8 +6,12 @@
             <!-- 等级编辑 -->
             <div class="flex gap-4 mb-4">
                 <div class="flex flex-col w-32">
-                    <div class="text-sm text-gray-400 mb-2">地图等级</div>
-                    <NInputNumber v-model:value="level" :min="0" placeholder="地图等级" />
+                    <div class="text-sm text-gray-400 mb-2">最低等级</div>
+                    <NInputNumber v-model:value="minLevel" :min="0" placeholder="最低等级" />
+                </div>
+                <div class="flex flex-col w-32">
+                    <div class="text-sm text-gray-400 mb-2">最高等级</div>
+                    <NInputNumber v-model:value="maxLevel" :min="0" placeholder="最高等级" />
                 </div>
                 <div class="flex flex-col w-32">
                     <div class="text-sm text-gray-400 mb-2">遗物等级</div>
@@ -195,7 +199,8 @@ const equipmentStore = useEquipmentStore();
 const junkStore = useJunkStore();
 
 const map = ref<GameMap | null>(null);
-const level = ref<number>(0);
+const minLevel = ref<number>(0);
+const maxLevel = ref<number>(0);
 const rlv = ref<number>(0);
 const comment = ref('');
 const enemies = ref<
@@ -234,7 +239,8 @@ const loadMapData = () => {
     const mapData = monsterStore.maps.find((m) => m.index.toString() === props.mapIndex);
     if (mapData) {
         map.value = mapData;
-        level.value = mapData.level || 0;
+        minLevel.value = mapData.minLv || 0;
+        maxLevel.value = mapData.maxLv || 0;
         rlv.value = mapData.rlv || 0;
         comment.value = mapData.comment || '';
 
@@ -377,7 +383,8 @@ const fetchWikiData = async () => {
 const mergeData = (
     wikiData: TabxSchema,
     mapIndex: string,
-    newLevel: number,
+    newMinLevel: number,
+    newMaxLevel: number,
     newRlv: number,
     newComment: string,
     newEnemies: Array<{ id: string; name: string; back: boolean; rLvPlus1: boolean; rLvPlus2: boolean; boss: boolean }>,
@@ -389,7 +396,8 @@ const mergeData = (
     }
 
     // 动态获取字段索引
-    const levelIndex = getFieldIndex(wikiData, 'level');
+    const minLvIndex = getFieldIndex(wikiData, 'min_lv');
+    const maxLvIndex = getFieldIndex(wikiData, 'max_lv');
     const rlvIndex = getFieldIndex(wikiData, 'rlv');
     const commentIndex = getFieldIndex(wikiData, 'comment');
     const enemyIndex = getFieldIndex(wikiData, 'enemy');
@@ -405,9 +413,14 @@ const mergeData = (
     const index = mergedData.findIndex((record: any[]) => record[0].toString() === mapIndex);
 
     if (index !== -1) {
-        // 更新地图等级
-        if (levelIndex !== -1) {
-            mergedData[index][levelIndex] = newLevel || null;
+        // 更新最低等级
+        if (minLvIndex !== -1) {
+            mergedData[index][minLvIndex] = newMinLevel || null;
+        }
+
+        // 更新最高等级
+        if (maxLvIndex !== -1) {
+            mergedData[index][maxLvIndex] = newMaxLevel || null;
         }
 
         // 更新遗物等级
@@ -478,7 +491,8 @@ const handleSave = async () => {
     if (IS_DEV) {
         console.log('提交的数据:', {
             mapIndex: props.mapIndex,
-            level: level.value,
+            minLevel: minLevel.value,
+            maxLevel: maxLevel.value,
             rlv: rlv.value,
             comment: comment.value,
             enemies: enemies.value,
@@ -498,7 +512,8 @@ const handleSave = async () => {
         const mergedData = mergeData(
             wikiData,
             props.mapIndex,
-            level.value,
+            minLevel.value,
+            maxLevel.value,
             rlv.value,
             comment.value,
             enemies.value,
@@ -521,7 +536,8 @@ const handleSave = async () => {
         }
 
         // 更新本地数据
-        map.value.level = level.value;
+        map.value.minLv = minLevel.value;
+        map.value.maxLv = maxLevel.value;
         map.value.rlv = rlv.value;
         map.value.comment = comment.value;
         map.value.enemies = enemies.value.map((e) => e.id);

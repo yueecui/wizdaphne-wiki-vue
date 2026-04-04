@@ -18,20 +18,42 @@ export class GameMap {
         return this.data.name_s;
     }
 
-    // 获取等级
+    // 获取最低等级
+    get minLv(): number {
+        return this.data.min_lv ?? 0;
+    }
+
+    set minLv(value: number) {
+        this.data.min_lv = value;
+    }
+
+    // 获取最高等级
+    get maxLv(): number {
+        return this.data.max_lv ?? 0;
+    }
+
+    set maxLv(value: number) {
+        this.data.max_lv = value;
+    }
+
+    // 获取等级（兼容旧版）
     get level(): number {
-        return this.data.level ?? 0;
+        return this.data.min_lv ?? 0;
     }
 
     set level(value: number) {
-        this.data.level = value;
+        this.data.min_lv = value;
+        this.data.max_lv = value;
     }
 
     get levelText(): string {
-        if (this.level === 0) return '?';
-        if (this.level === -1) return '无';
-        if (this.level === -2) return '动态';
-        return this.level.toString();
+        const min = this.minLv;
+        const max = this.maxLv;
+        if (min === 0 && max === 0) return '?';
+        if (min === -1 && max === -1) return '无';
+        if (min === -2 && max === -2) return '动态';
+        if (min === max) return min.toString();
+        return `${min}~${max}`;
     }
 
     // 获取分类

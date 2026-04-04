@@ -28,7 +28,7 @@
                             @click="openMapModal(item)"
                             @contextmenu.prevent="showContextMenu($event, item)"
                         >
-                            <td :class="item.level <= 0 ? 'text-gray-500 text-sm' : ''">{{ item.levelText }}</td>
+                            <td :class="item.minLv <= 0 ? 'text-gray-500 text-sm' : ''">{{ item.levelText }}</td>
                             <td>{{ item.category }}</td>
                             <td>{{ item.name }}</td>
                         </tr>
