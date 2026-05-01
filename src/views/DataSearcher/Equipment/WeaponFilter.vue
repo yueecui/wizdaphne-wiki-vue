@@ -61,6 +61,23 @@
         </div>
         <div class="flex flex-col">
             <div class="flex justify-between items-center h-6">
+                <label class="text-sm">妖精</label>
+            </div>
+            <div class="flex flex-row gap-2 items-center h-12">
+                <NSelect
+                    v-model:value="filter.fairyFilter"
+                    :options="[
+                        { label: '全部', value: '' },
+                        { label: '非妖精', value: '0' },
+                        { label: '可装备', value: '1' },
+                        { label: '限定妖精', value: '2' },
+                    ]"
+                    class="w-40!"
+                ></NSelect>
+            </div>
+        </div>
+        <div class="flex flex-col">
+            <div class="flex justify-between items-center h-6">
                 <label class="text-sm">&nbsp;</label>
             </div>
             <div class="flex flex-row gap-2 items-center h-12">

@@ -76,6 +76,26 @@ export class Equipment {
             }
         }
 
+        // 妖精过滤
+        if (filter.fairyFilter) {
+            const fairyCan = this.data.fa_can ?? 0;
+            if (filter.fairyFilter === '0') {
+                if (fairyCan !== 0) return false;
+            } else if (filter.fairyFilter === '1') {
+                if (fairyCan !== 1 && fairyCan !== 2) return false;
+            } else if (filter.fairyFilter === '2') {
+                if (fairyCan !== 2) return false;
+            }
+        }
+
+        // 妖精技能过滤
+        if (filter.fairySkillFilter) {
+            const fairySkill = this.data.fa_sk ?? '';
+            if (!fairySkill.includes(filter.fairySkillFilter)) {
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -157,11 +177,11 @@ export class Equipment {
         return '';
     }
 
-    fairyCan(): number {
+    get fairyCan(): number {
         return this.data.fa_can ?? 0;
     }
 
-    fairySkill(): string {
+    get fairySkill(): string {
         return this.data.fa_sk ?? '';
     }
 }

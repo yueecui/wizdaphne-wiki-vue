@@ -4,6 +4,8 @@ export interface IEquipmentFilter {
     skill: string;
     showMaxLv: boolean;
     soucateFilter?: 'all' | 'show' | 'hide';
+    fairyFilter?: '' | '0' | '1' | '2';
+    fairySkillFilter?: string;
 }
 
 // 配置文件
@@ -11,6 +13,7 @@ export interface IEquipmentJson {
     equipments: IEquipmentBase[];
     levels: Record<string, IEquipmentStatLevel[]>;
     skill: IEquipmentSkill[];
+    setsk: ISetSkill[];
     bonus: Array<[name: string, rates: Array<Array<number>>]>;
     baseStat: Record<string, IEquipmentBaseStat & { i: number }>; // key是装备类型，i是排序用索引
 }
@@ -70,6 +73,11 @@ export interface IEquipmentStat {
 }
 
 export interface IEquipmentSkill {
+    n: string;
+    d: string;
+}
+
+export interface ISetSkill {
     n: string;
     d: string;
 }

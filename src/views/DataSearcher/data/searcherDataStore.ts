@@ -105,6 +105,7 @@ export const DEFAULT_SETTINGS: DataSearcherSettings = {
         skill: '',
         showMaxLv: false,
         soucateFilter: 'all',
+        fairyFilter: '',
     },
 
     // 防具过滤器默认值
@@ -114,6 +115,8 @@ export const DEFAULT_SETTINGS: DataSearcherSettings = {
         skill: '',
         showMaxLv: false,
         soucateFilter: 'all',
+        fairyFilter: '',
+        fairySkillFilter: '',
     },
 
     // 杂物过滤器默认值

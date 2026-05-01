@@ -61,6 +61,38 @@
         </div>
         <div class="flex flex-col">
             <div class="flex justify-between items-center h-6">
+                <label class="text-sm">妖精</label>
+            </div>
+            <div class="flex flex-row gap-2 items-center h-12">
+                <NSelect
+                    v-model:value="filter.fairyFilter"
+                    :options="[
+                        { label: '全部', value: '' },
+                        { label: '非妖精', value: '0' },
+                        { label: '可装备', value: '1' },
+                        { label: '限定妖精', value: '2' },
+                    ]"
+                    class="w-40!"
+                ></NSelect>
+            </div>
+        </div>
+        <div class="flex flex-col">
+            <div class="flex justify-between items-center h-6">
+                <label class="text-sm">妖精技能</label>
+            </div>
+            <div class="flex flex-row gap-2 items-center h-12">
+                <NSelect
+                    clearable
+                    filterable
+                    :options="fairySkillOptions"
+                    v-model:value="filter.fairySkillFilter"
+                    class="w-40!"
+                    maxTagCount="responsive"
+                ></NSelect>
+            </div>
+        </div>
+        <div class="flex flex-col">
+            <div class="flex justify-between items-center h-6">
                 <label class="text-sm">&nbsp;</label>
             </div>
             <div class="flex flex-row gap-2 items-center h-12">
@@ -82,7 +114,7 @@ const filter = defineModel<IEquipmentFilter>('filter', {
     required: true,
 });
 
-const { equipments, equipmentSkills, armorSortOrder } = toRefs(useEquipmentStore());
+const { equipments, equipmentSkills, armorSortOrder, setSkills } = toRefs(useEquipmentStore());
 
 const allWeapon = computed(() => {
     return equipments.value.filter((equipment) => equipment.data.cate !== '武器');
@@ -119,4 +151,15 @@ const skillOptions = computed<SelectOption[]>(() => [
         value: r,
     })),
 ]);
+
+const fairySkillOptions = computed<SelectOption[]>(() => {
+    const sortedSkills = setSkills.value.map((skill) => skill.n).sort();
+    return [
+        { label: '-', value: '' },
+        ...sortedSkills.map((r) => ({
+            label: r,
+            value: r,
+        })),
+    ];
+});
 </script>

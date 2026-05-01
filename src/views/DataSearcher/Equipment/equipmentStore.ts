@@ -2,12 +2,13 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { IS_DEV } from '../../../util';
 import { Equipment } from './Equipment';
-import { IEquipmentBaseStat, IEquipmentSkill, type IEquipmentJson } from './types';
+import { IEquipmentBaseStat, IEquipmentSkill, ISetSkill, type IEquipmentJson } from './types';
 
 export const useEquipmentStore = defineStore('equipment', () => {
     // 配置数据
     const equipments = ref<Equipment[]>([]);
     const equipmentSkills = ref<IEquipmentSkill[]>([]);
+    const setSkills = ref<ISetSkill[]>([]);
     const baseStats = ref<Record<string, IEquipmentBaseStat & { i: number }>>({});
 
     // 初始化状态
@@ -22,6 +23,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
                         const base = data.equipments;
                         const levels = data.levels;
                         equipmentSkills.value = data.skill;
+                        setSkills.value = data.setsk || [];
 
                         baseStats.value = data.baseStat || {};
                         Equipment.baseStats = baseStats.value;
@@ -134,6 +136,7 @@ export const useEquipmentStore = defineStore('equipment', () => {
     return {
         equipments,
         equipmentSkills,
+        setSkills,
         isInit,
         initPromise,
         waitForInit,

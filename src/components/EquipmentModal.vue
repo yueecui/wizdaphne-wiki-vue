@@ -52,6 +52,12 @@
                                                     >
                                                         职业限制：{{ currentEquipment.data.req.join('、') }}
                                                     </div>
+                                                    <div class="text-light" v-if="currentEquipment.fairyCan === 1">
+                                                        妖精可装备
+                                                    </div>
+                                                    <div class="text-light" v-if="currentEquipment.fairyCan === 2">
+                                                        仅可由妖精装备
+                                                    </div>
                                                     <div
                                                         v-if="currentEquipment.data.desc"
                                                         v-html="convertDescription(currentEquipment.data.desc)"
@@ -76,8 +82,9 @@
                                 </table>
                             </div>
 
-                            <!-- 右边表格：特效 -->
-                            <div class="flex-1">
+                            <!-- 右边：特效+妖精技能（上下排列） -->
+                            <div class="flex-1 flex flex-col gap-4">
+                                <!-- 特效表格 -->
                                 <table
                                     class="wikitable w-full text-center m-0!"
                                     v-if="
@@ -106,6 +113,24 @@
                                                         ></div>
                                                     </div>
                                                 </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                <!-- 妖精技能表格 -->
+                                <table class="wikitable w-full text-center m-0!" v-if="currentEquipment.fairySkill">
+                                    <tbody>
+                                        <tr>
+                                            <th>妖精技能</th>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-left">
+                                                <div class="text-light">{{ currentEquipment.fairySkill }}</div>
+                                                <div
+                                                    class="text-sm text-gray-300"
+                                                    v-html="getFairySkillDescription(currentEquipment.fairySkill)"
+                                                ></div>
                                             </td>
                                         </tr>
                                     </tbody>
@@ -567,7 +592,7 @@ const store = useEquipmentModalStore();
 const { showModal, currentEquipment } = storeToRefs(store);
 const { closeModal } = store;
 
-const { equipmentSkills } = storeToRefs(useEquipmentStore());
+const { equipmentSkills, setSkills } = storeToRefs(useEquipmentStore());
 const activeTab = ref('attributes');
 
 // 编辑模态框状态
@@ -682,6 +707,15 @@ const getSkillDescription = (skillName: string) => {
         return convertDescription(skill.d);
     } else {
         return '技能描述未找到';
+    }
+};
+
+const getFairySkillDescription = (skillName: string) => {
+    const skill = setSkills.value.find((item) => item.n === skillName);
+    if (skill) {
+        return convertDescription(skill.d);
+    } else {
+        return '';
     }
 };
 
