@@ -260,7 +260,7 @@ export class CustomConfig implements AbstractRecordConfig {
         if (differenceTime > 0) {
             return formatTimeFromMilliseconds(differenceTime);
         } else {
-            return '已刷新 ' + formatTimeFromMilliseconds(-differenceTime);
+            return '已过 ' + formatTimeFromMilliseconds(-differenceTime);
         }
     }
 

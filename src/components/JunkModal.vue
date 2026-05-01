@@ -16,7 +16,10 @@
                                 Unique Code: {{ currentJunk.uniqueCode }}
                             </div>
                             <div class="mt-2 p-3 bg-gray-800/50 rounded" v-if="currentJunk.description">
-                                <div class="text-sm text-gray-300">{{ currentJunk.description }}</div>
+                                <div
+                                    class="text-sm text-gray-300"
+                                    v-html="convertDescription(currentJunk.description)"
+                                ></div>
                             </div>
                             <div class="mt-2 p-3 bg-gray-800/50 rounded" v-else-if="currentJunk.notObt">
                                 <div class="text-sm text-gray-300">
@@ -570,6 +573,7 @@ import {
 import { useJunkStore } from '../views/DataSearcher/Junk/junkStore';
 import RawDataTable from '../views/DataSearcher/Junk/RawDataTable.vue';
 import type { IJunkItemData } from '../views/DataSearcher/Junk/types';
+import { convertDescription } from '../views/DataSearcher/utils/convertDescription';
 import JunkEditor from './JunkEditor.vue';
 
 const store = useJunkModalStore();

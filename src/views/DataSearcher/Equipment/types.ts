@@ -27,6 +27,8 @@ export type IEquipmentBase = IEquipmentBaseStat & {
     csk?: string[];
     desc?: string;
     req?: string[];
+    fa_can: number;
+    fa_sk?: string;
     soucate: number;
     sou?: string[];
 };

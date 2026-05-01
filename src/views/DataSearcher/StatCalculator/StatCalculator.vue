@@ -442,6 +442,7 @@ const getStatSet = (kind: string, key: string, stat: string) => {
             return data[key][stat] ?? 0;
         }
     }
+    return 0;
 };
 
 // 使用计算属性获取和设置角色配置

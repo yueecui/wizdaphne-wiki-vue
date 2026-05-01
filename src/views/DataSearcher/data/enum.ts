@@ -13,11 +13,13 @@ export enum RACE_TYPE {
     '兽人' = '兽人',
     '精灵' = '精灵',
     '矮人' = '矮人',
+    '妖精' = '妖精',
 }
 
 export enum GENDER_TYPE {
     '男' = '男',
     '女' = '女',
+    '-' = '-',
 }
 
 export enum RARITY_TYPE {

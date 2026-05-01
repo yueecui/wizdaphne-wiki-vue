@@ -156,4 +156,12 @@ export class Equipment {
         }
         return '';
     }
+
+    fairyCan(): number {
+        return this.data.fa_can ?? 0;
+    }
+
+    fairySkill(): string {
+        return this.data.fa_sk ?? '';
+    }
 }
