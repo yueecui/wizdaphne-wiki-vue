@@ -18,6 +18,7 @@
             <StatCalculator v-if="activeKey == 'StatCalculator'" v-model:character="calcStatCharacterConfig" />
             <WeaponSearcher v-if="activeKey == 'Weapon'" />
             <ArmorSearcher v-if="activeKey == 'Armor'" />
+            <FairySearcher v-if="activeKey == 'Fairy'" />
             <JunkSearcher v-if="activeKey == 'Junk'" />
             <AchievementSearcher v-if="activeKey == 'Achievement'" />
             <ItemSearcher v-if="activeKey == 'Item'" />
@@ -35,6 +36,7 @@ import AbilityCalculator from './AbilityCalculator/AbilityCalculator.vue';
 import AchievementSearcher from './Achievement/AchievementSearcher.vue';
 import CharacterSearcher from './Character/CharacterSearcher.vue';
 import ArmorSearcher from './Equipment/ArmorSearcher.vue';
+import FairySearcher from './Equipment/FairySearcher.vue';
 import WeaponSearcher from './Equipment/WeaponSearcher.vue';
 import InheritSkill from './InheritSkill/InheritSkill.vue';
 import ItemSearcher from './Item/ItemSearcher.vue';
@@ -117,7 +119,10 @@ const tabs = [
         key: 'RelicBrew',
         label: '遗物',
     },
-
+    {
+        key: 'Fairy',
+        label: '妖精',
+    },
     {
         key: 'Map',
         label: '地图',

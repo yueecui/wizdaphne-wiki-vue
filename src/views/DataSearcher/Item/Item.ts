@@ -14,10 +14,10 @@ export class Item {
         this.id = item.id;
         this.cate = item.cate ?? 0;
         this.i = item.i;
-        this.name = item.name;
-        this.sell = item.sell;
+        this.name = item.name || '';
+        this.sell = item.sell ?? 0;
         this.desc = item.desc || '';
-        this.buy = item.buy;
+        this.buy = item.buy ?? 0;
         this.comment = item.comment;
     }
 

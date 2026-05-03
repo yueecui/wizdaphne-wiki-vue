@@ -78,6 +78,7 @@ export interface IEquipmentSkill {
 }
 
 export interface ISetSkill {
-    n: string;
-    d: string;
+    n: string; // 套装技能名
+    it: string[]; // 套装对应的装备组的名字
+    d: string; // 描述
 }
