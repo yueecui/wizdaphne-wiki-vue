@@ -11,6 +11,7 @@ const API_URLS = {
     relicbrew: 'https://wizdaphne.huijiwiki.com/api.php?action=lua&module=Api/GetRelicbrew&format=json&utf8=1',
     items: 'https://wizdaphne.huijiwiki.com/api.php?action=lua&module=Api/GetItem&format=json&utf8=1',
     monster: 'https://wizdaphne.huijiwiki.com/api.php?action=lua&module=Api/GetMonster&format=json&utf8=1',
+    talent: 'https://wizdaphne.huijiwiki.com/wiki/Data:Talent.json?action=raw&t=' + Date.now(),
 };
 
 // 请求头配置
@@ -30,6 +31,7 @@ const OUTPUT_PATHS = {
     relicbrew: 'd:\\WizardyDaphne\\wizdaphne-wiki-vue\\public\\relicbrew.json',
     items: 'd:\\WizardyDaphne\\wizdaphne-wiki-vue\\public\\items.json',
     monster: 'd:\\WizardyDaphne\\wizdaphne-wiki-vue\\public\\monster.json',
+    talent: 'd:\\WizardyDaphne\\wizdaphne-wiki-vue\\public\\talent.json',
 };
 
 // 抓取数据函数
@@ -73,6 +75,7 @@ const main = async () => {
             fetchData(API_URLS.relicbrew, OUTPUT_PATHS.relicbrew),
             fetchData(API_URLS.items, OUTPUT_PATHS.items),
             fetchData(API_URLS.monster, OUTPUT_PATHS.monster),
+            fetchData(API_URLS.talent, OUTPUT_PATHS.talent),
         ]);
 
         console.log('所有数据抓取完成！');

@@ -467,6 +467,19 @@ const scrapeGachaRates = async () => {
             const compactOutputPath = './public/junkrates.json';
             fs.writeFileSync(compactOutputPath, JSON.stringify(compactData, null, 0), 'utf-8');
 
+            // 生成人类可读版本（带时间戳和缩进）
+            const now = new Date();
+            const year = now.getFullYear().toString().slice(-2);
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const humanReadableFileName = `JunkRates_${year}${month}${day}_${hours}${minutes}${seconds}.json`;
+            const humanReadableOutputPath = `./public/${humanReadableFileName}`;
+            fs.writeFileSync(humanReadableOutputPath, JSON.stringify(compactData, null, 2), 'utf-8');
+            console.log(`人类可读版本已成功保存到 ${humanReadableOutputPath}`);
+
             // 计算压缩率
             const originalSize = Buffer.byteLength(JSON.stringify(gachaData, null, 2), 'utf-8');
             const compactSize = Buffer.byteLength(JSON.stringify(compactData, null, 0), 'utf-8');

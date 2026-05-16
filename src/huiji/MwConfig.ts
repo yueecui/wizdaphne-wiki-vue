@@ -59,4 +59,9 @@ export class MwConfig {
         if (IS_DEV) return true;
         return this.isVerified;
     }
+
+    public get canEditTalent(): boolean {
+        if (IS_DEV) return true;
+        return this.isSystemAdmin || this.isAdvanced;
+    }
 }
