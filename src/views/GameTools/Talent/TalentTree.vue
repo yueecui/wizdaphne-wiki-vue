@@ -44,7 +44,7 @@
                 @click.stop="onNodeClick($event, node)"
                 @contextmenu.stop="onNodeRightClick($event, node)"
                 @mouseenter="onMouseEnter($event, node)"
-                @mousemove.stop="onMouseMove($event, node)"
+                @mousemove="onMouseMove($event, node)"
                 @mouseleave="onMouseLeave"
             >
                 <circle
