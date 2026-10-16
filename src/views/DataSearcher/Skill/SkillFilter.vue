@@ -42,29 +42,29 @@ import { NInput, NSelect, SelectOption } from 'naive-ui';
 
 import { computed } from 'vue';
 import { ISkillFilter } from './types';
+import { useSearcherDataStore } from '../data/searcherDataStore';
 
 const filter = defineModel<ISkillFilter>('filter', {
     type: Object,
     required: true,
 });
 
-const CATEGORY_LIST = [
-    '战士',
-    '盗贼',
-    '僧侣',
-    '法师',
-    '忍者',
-    '角色特殊技能',
-    '角色固有被动',
-    '角色克己被动',
-    '其他被动',
-];
+// 使用store中的职业数据
+const store = useSearcherDataStore();
+
+// 职业以外的固定分类
+const EXTRA_CATEGORY_LIST = ['角色特殊技能', '角色固有被动', '角色克己被动', '其他被动'];
+
 const categoryOptions = computed<SelectOption[]>(() => [
     {
         label: '全部',
         value: '',
     },
-    ...Object.values(CATEGORY_LIST).map((r) => ({
+    ...store.allStandardClass.map((r) => ({
+        label: r,
+        value: r,
+    })),
+    ...EXTRA_CATEGORY_LIST.map((r) => ({
         label: r,
         value: r,
     })),

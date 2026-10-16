@@ -73,4 +73,5 @@ export const DISCIPLINE_TAGS_LIST = [
     '即死耐性',
     '恐惧耐性',
     '暴击耐性',
+    '诅咒耐性'
 ];
