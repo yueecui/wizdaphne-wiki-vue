@@ -33,3 +33,10 @@ coverage
 # 抓取生成的数据文件
 /public/*.json
 /public/*.xlsx
+data
+
+# 解包数据生成物：第一轮 data/ 已忽略，第二轮 mock 也不入库
+public/mock
+
+# 清洗脚本的中间产物（local_scripts/clean 每次全量重写）
+local_scripts/work

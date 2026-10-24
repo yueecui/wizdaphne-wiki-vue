@@ -1,0 +1,15 @@
+---
+description: 
+alwaysApply: true
+enabled: true
+updatedAt: 2026-10-21T13:28:39.002Z
+provider: 
+---
+
+尽可能使用tailwindcss作为样式
+由于线上环境的限制，需要注意以下内容
+1.preflight和container均为false
+2.所有border类加!来生效
+3.不要使用button元素，容易被线上环境的样式干扰
+
+不用进行渲染测试，我来进行测试即可，节省token

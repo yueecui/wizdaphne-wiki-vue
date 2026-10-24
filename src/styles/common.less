@@ -1,3 +1,32 @@
 .character-item {
     display: inline-block;
 }
+
+/// 细滚动条：Modal 正文区（技能 / 角色等），深色轨道 + 圆角滑块
+.thin-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #5b4d44 transparent;
+
+    &::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: #5b4d44;
+        border-radius: 999px;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background: #7a675b;
+    }
+
+    // 表格横向滚动时不要出现两块滑块叠在一起
+    &::-webkit-scrollbar-corner {
+        background: transparent;
+    }
+}
