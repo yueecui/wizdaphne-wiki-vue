@@ -15,7 +15,13 @@
                     <label class="text-sm">稀有度</label>
                 </div>
                 <div class="flex flex-row gap-2 items-center h-12">
-                    <NSelect v-model:value="rarity" :options="rarityOptions" clearable placeholder="全部" class="w-40!" />
+                    <NSelect
+                        v-model:value="rarity"
+                        :options="rarityOptions"
+                        clearable
+                        placeholder="全部"
+                        class="w-40!"
+                    />
                 </div>
             </div>
             <div class="flex flex-col">
@@ -23,7 +29,13 @@
                     <label class="text-sm">组别</label>
                 </div>
                 <div class="flex flex-row gap-2 items-center h-12">
-                    <NSelect v-model:value="poolGroup" :options="poolGroupOptions" clearable placeholder="全部" class="w-24!" />
+                    <NSelect
+                        v-model:value="poolGroup"
+                        :options="poolGroupOptions"
+                        clearable
+                        placeholder="全部"
+                        class="w-24!"
+                    />
                 </div>
             </div>
             <div class="flex flex-col">
@@ -74,7 +86,13 @@
                     <label class="text-sm">性别</label>
                 </div>
                 <div class="flex flex-row gap-2 items-center h-12">
-                    <NSelect v-model:value="gender" :options="genderOptions" clearable placeholder="全部" class="w-20!" />
+                    <NSelect
+                        v-model:value="gender"
+                        :options="genderOptions"
+                        clearable
+                        placeholder="全部"
+                        class="w-20!"
+                    />
                 </div>
             </div>
             <div class="flex flex-col">
@@ -226,7 +244,7 @@
 
         <NModal v-model:show="drawer">
             <div
-                class="w-[90%] md:h-auto md:w-[600px] m-auto huiji-css-hook bg-transparent! max-h-[88vh] overflow-y-auto thin-scrollbar"
+                class="w-[90%] md:w-[min(960px,94vw)] m-auto huiji-css-hook bg-transparent! max-h-[88vh] overflow-y-auto thin-scrollbar md:max-h-none md:overflow-visible"
             >
                 <CharacterDetail v-if="currentId" :id="currentId" :onClose="closeDetail" />
             </div>
@@ -295,8 +313,7 @@ const poolBadge = (value: number) => POOL_BADGE[String(value)] ?? { text: '', co
 /** 主职业在前，第二职业在后（与 V1 的 class[] 一致） */
 const jobText = (c: CharacterListItem) => c.jobs.map((j) => j.name).join(' / ');
 
-const optionsOf = (values: Array<{ id: number; name: string }>) =>
-    values.map((v) => ({ label: v.name, value: v.id }));
+const optionsOf = (values: Array<{ id: number; name: string }>) => values.map((v) => ({ label: v.name, value: v.id }));
 
 const uniq = (list: CharacterListItem[], pick: (c: CharacterListItem) => { id: number; name?: string | null }) => {
     const map = new Map<number, string>();
@@ -313,25 +330,42 @@ const rarityOptions = computed(() =>
 const raceOptions = computed(() => optionsOf(uniq(store.characters, (c) => c.race)));
 const genderOptions = computed(() => optionsOf(uniq(store.characters, (c) => c.gender)));
 const alignmentOptions = computed(() => optionsOf(uniq(store.characters, (c) => c.alignment)));
-const attributeOptions = computed(() =>
-    uniq(store.characters, (c) => c.attribute).sort((a, b) => a.id - b.id),
-);
+const attributeOptions = computed(() => uniq(store.characters, (c) => c.attribute).sort((a, b) => a.id - b.id));
 
 /** 缘的才能类型，顺序沿用 V1 的 FATE_TYPE */
 const FATE_TYPES = ['力量', '智慧', '信仰心', '生命力', '灵巧', '敏捷'];
 
 /** 克己标签，顺序沿用 V1 的 DISCIPLINE_TAGS_LIST */
 const DISCIPLINE_TAGS = [
-    'HP', 'MP', 'SP',
-    '攻击力', '魔力', '神力', '信仰心',
-    '防御力', '法术防御力',
-    '抵抗', '会心', '探知',
-    '陷阱解除', '陷阱回避', '行动速度',
-    '命中', '回避',
-    '毒耐性', '麻痹耐性', '气绝耐性', '睡眠耐性',
-    '封印耐性', '混乱耐性', '魅惑耐性',
-    '石化耐性', '即死耐性',
-    '恐惧耐性', '暴击耐性', '诅咒耐性',
+    'HP',
+    'MP',
+    'SP',
+    '攻击力',
+    '魔力',
+    '神力',
+    '信仰心',
+    '防御力',
+    '法术防御力',
+    '抵抗',
+    '会心',
+    '探知',
+    '陷阱解除',
+    '陷阱回避',
+    '行动速度',
+    '命中',
+    '回避',
+    '毒耐性',
+    '麻痹耐性',
+    '气绝耐性',
+    '睡眠耐性',
+    '封印耐性',
+    '混乱耐性',
+    '魅惑耐性',
+    '石化耐性',
+    '即死耐性',
+    '恐惧耐性',
+    '暴击耐性',
+    '诅咒耐性',
 ];
 
 /** 固定顺序打底，数据里新出现的项追加到末尾 */

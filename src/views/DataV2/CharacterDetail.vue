@@ -1,23 +1,16 @@
 <template>
     <NSpin :show="loading">
-        <div v-if="data" class="p-4 bg-[#312721]! border! border-[#463d38]! rounded">
-            <div
-                class="grid md:grid-flow-col grid-rows-[127px_auto] grid-cols-[128px_auto] md:grid-cols-[200px_auto] gap-4"
-            >
-                <!-- 角色卡 -->
-                <div class="col-span-2 md:col-auto flex justify-center items-center">
-                    <div class="w-full">
-                        <div class="relative">
-                            <WikiImg
-                                v-if="thumb"
-                                :imageName="thumb"
-                                :isLazy="true"
-                                class="block w-full rounded-sm"
-                            />
-                            <div
-                                v-else
-                                class="w-full py-8 flex items-center justify-center text-xs opacity-40 bg-black/40"
-                            >
+        <div
+            v-if="data"
+            class="p-4 bg-[#312721]! border! border-[#463d38]! rounded md:h-[min(86vh,550px)] md:overflow-y-auto thin-scrollbar"
+        >
+            <div class="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-4">
+                <!-- 角色卡 + 翻页 -->
+                <div class="flex flex-col gap-3 w-full max-w-[360px] mx-auto md:max-w-none md:mx-0">
+                    <div>
+                        <div class="relative overflow-hidden rounded bg-black/40">
+                            <WikiImg v-if="thumb" :imageName="thumb" :isLazy="true" class="block w-full" />
+                            <div v-else class="w-full py-8 flex items-center justify-center text-xs opacity-40">
                                 无图
                             </div>
                             <div class="absolute right-1 top-1 flex gap-1">
@@ -50,159 +43,380 @@
                             </div>
                         </div>
                         <div class="bg-black/50 py-1 text-center text-light truncate">{{ data.name }}</div>
-                        <div class="bg-black/30 text-sm flex">
-                            <div class="flex-1 text-center whitespace-nowrap overflow-hidden text-ellipsis">
-                                {{ data.race.name }} / {{ data.alignment.name }}
+                    </div>
+
+                    <!-- 翻页 -->
+                    <div class="flex md:flex-col gap-2">
+                        <div
+                            v-for="item in TABS"
+                            :key="item.value"
+                            class="flex-1 md:flex-none text-center cursor-pointer select-none px-3 py-1 text-sm rounded border! border-solid"
+                            :class="
+                                tab === item.value
+                                    ? 'bg-black/60 text-light border-light/40 font-bold'
+                                    : 'bg-black/20 border-transparent opacity-70 hover:opacity-100'
+                            "
+                            @click="tab = item.value"
+                        >
+                            {{ item.label }}
+                        </div>
+                    </div>
+
+                    <!-- 底部操作 -->
+                    <div class="flex flex-col gap-1 mt-1 opacity-70 hover:opacity-100">
+                        <NButton size="tiny" secondary block @click="gotoDetail">查看详情页</NButton>
+                        <NButton v-if="onClose" size="tiny" quaternary block @click="onClose">关闭</NButton>
+                    </div>
+                </div>
+
+                <!-- 右侧内容 -->
+                <div class="flex flex-col gap-3 min-w-0">
+                    <!-- 第一页：基本信息 -->
+                    <div v-if="tab === 'basic'" class="grid gap-4 md:grid-cols-[minmax(0,16rem)_minmax(0,1fr)]">
+                        <!-- 信息 -->
+                        <div>
+                            <table class="wikitable my-0! w-full text-center">
+                                <tbody>
+                                    <tr>
+                                        <th colspan="3">信息</th>
+                                    </tr>
+                                    <tr>
+                                        <th class="w-20 md:w-1/3">风格</th>
+                                        <td colspan="2" class="md:w-2/3">{{ data.style || '基本' }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>种族</th>
+                                        <td colspan="2">{{ data.race.name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>性别</th>
+                                        <td colspan="2">{{ data.gender.name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>性格</th>
+                                        <td colspan="2">{{ data.alignment.name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>缘类型</th>
+                                        <td colspan="2">{{ fateText }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="md:w-1/3">特性</th>
+                                        <th colspan="2" class="md:w-2/3">
+                                            <div class="flex gap-1 justify-center">
+                                                <div>
+                                                    1级
+                                                    <span class="hidden md:inline!">数值</span>
+                                                </div>
+                                                <!-- NModal 内的浮层默认挂到 modal 元素上，会被滚动容器的 overflow 裁掉，这里强制挂到 body -->
+                                                <NTooltip trigger="hover" to="body">
+                                                    <template #trigger>
+                                                        <div
+                                                            class="hidden md:flex! items-center justify-center gap-1 leading-none"
+                                                        >
+                                                            <NIcon><QuestionIcon /></NIcon>
+                                                        </div>
+                                                    </template>
+                                                    1级基准特性值是用来对比检查角色的个体情况
+                                                    <br />
+                                                    <span>
+                                                        <span class="bg-red-800/70 font-bold">亮红色背景</span>
+                                                        为根据官方数据，该特性个体，确定无法在1级看出
+                                                    </span>
+                                                    <br />
+                                                    <span>
+                                                        <span class="bg-violet-800/70 font-bold">亮紫色背景</span>
+                                                        为根据官方数据，该特性个体，有一部分无法在1级时看出
+                                                    </span>
+                                                    <br />
+                                                    <span>
+                                                        <span class="bg-red-800/30 font-bold">暗红色背景</span>
+                                                        为根据其他数据推断，该特性个体，可能无法在1级看出
+                                                    </span>
+                                                    <br />
+                                                    <span>
+                                                        <span class="bg-violet-800/30 font-bold">暗紫色背景</span>
+                                                        为根据其他数据推断，该特性个体，有一部分可能无法在1级时看出
+                                                    </span>
+                                                    <br />
+                                                    具体可参考
+                                                    <a href="/wiki/能力值#个体的识别" target="_blank">这里</a>
+                                                </NTooltip>
+                                            </div>
+                                        </th>
+                                    </tr>
+                                    <tr>
+                                        <th class="md:w-1/3">职业</th>
+                                        <th :class="hasSubJob ? 'md:w-1/3' : 'md:w-2/3'">
+                                            {{ primaryJob?.name ?? '—' }}
+                                        </th>
+                                        <th v-if="hasSubJob" class="md:w-1/3">{{ subJob?.name }}</th>
+                                    </tr>
+                                    <tr v-for="row in STAT_ROWS" :key="row.key">
+                                        <th class="md:w-1/3">{{ row.label }}</th>
+                                        <td :class="[hasSubJob ? 'md:w-1/3' : 'md:w-2/3', mainBg(row.key)]">
+                                            {{ levelStat(row.key, primaryJob) }}
+                                        </td>
+                                        <td v-if="hasSubJob" :class="['md:w-1/3', staticBg(subJob, row.key)]">
+                                            {{ levelStat(row.key, subJob) }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div v-if="showRateButton" class="mt-2 flex items-center justify-center">
+                                <NButton size="tiny" @click="rateModal = true">查看个体概率</NButton>
                             </div>
-                            <div class="flex-1 text-center whitespace-nowrap overflow-hidden text-ellipsis">
-                                {{ jobText }}
+                        </div>
+
+                        <!-- 技能 -->
+                        <div>
+                            <table class="wikitable my-0! w-full">
+                                <tbody>
+                                    <template v-for="group in skillGroups" :key="group.label">
+                                        <template v-for="s in group.skills" :key="`${group.label}-${s.identification}`">
+                                            <tr>
+                                                <th class="text-center">
+                                                    {{ group.label }}
+                                                    <WikiImg
+                                                        v-if="group.label === '潜在继承技能'"
+                                                        imageName="icon_RareSkills.png"
+                                                        class="w-5 h-5 inline-block align-middle"
+                                                    />
+                                                    <span
+                                                        v-if="group.label === '潜在继承技能' && data.potential_grade"
+                                                        class="text-xs opacity-60"
+                                                    >
+                                                        (Lv{{ data.potential_grade }} 解锁)
+                                                    </span>
+                                                </th>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <div class="p-2">
+                                                        <div
+                                                            class="text-light pb-0.5 border-b! mb-2 relative cursor-pointer hover:opacity-80"
+                                                            @click="openSkill(s.identification)"
+                                                        >
+                                                            {{ s.name }}
+                                                            <span v-if="s.level" class="text-xs opacity-60">
+                                                                Lv{{ s.level }}
+                                                            </span>
+                                                        </div>
+                                                        <div class="whitespace-pre-line">
+                                                            {{ descOf(s.identification) }}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </template>
+                                    <tr v-if="!skillGroups.length">
+                                        <td class="text-center py-2 opacity-40">—</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 第二页：特性值 -->
+                    <div v-else class="flex flex-col gap-3">
+                        <!-- 参数 -->
+                        <div class="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-sm">
+                            <div class="flex items-center gap-1.5 h-8">
+                                <span class="shrink-0">等级</span>
+                                <NSlider
+                                    class="w-20!"
+                                    :value="calcLevel"
+                                    :min="CALC_LEVEL_MIN"
+                                    :max="CALC_LEVEL_MAX"
+                                    :step="1"
+                                    @update:value="onSlide"
+                                />
+                                <NInputNumber
+                                    size="small"
+                                    class="w-12!"
+                                    :value="calcLevel"
+                                    :min="CALC_LEVEL_MIN"
+                                    :max="CALC_LEVEL_MAX"
+                                    :show-button="false"
+                                    @update:value="setCalcLevel"
+                                />
+                            </div>
+                            <div class="flex items-center gap-1.5 h-8">
+                                <span class="shrink-0">阶级</span>
+                                <NSelect
+                                    size="small"
+                                    class="w-28!"
+                                    :value="calcGrade"
+                                    :options="gradeOptions"
+                                    :consistent-menu-width="false"
+                                    @update:value="setGrade"
+                                />
+                            </div>
+                            <div class="flex items-center gap-1.5 h-8">
+                                <span class="shrink-0">个体</span>
+                                <NSelect
+                                    size="small"
+                                    class="w-24!"
+                                    :value="calcIndividual"
+                                    :options="individualOptions"
+                                    :consistent-menu-width="false"
+                                    @update:value="setIndividual"
+                                />
+                            </div>
+                            <div class="flex items-center gap-1.5 h-8">
+                                <span class="shrink-0">意志力</span>
+                                <NSelect
+                                    size="small"
+                                    class="w-20!"
+                                    :value="calcMental"
+                                    :options="mentalOptions"
+                                    :consistent-menu-width="false"
+                                    @update:value="setMental"
+                                />
+                            </div>
+                            <div v-if="hasSubJob" class="flex items-center gap-1.5 h-8">
+                                <span class="shrink-0">职业</span>
+                                <NSelect
+                                    size="small"
+                                    class="w-20!"
+                                    :value="calcJob?.id ?? null"
+                                    :options="calcJobOptions"
+                                    :consistent-menu-width="false"
+                                    @update:value="setCalcJob"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- 数值表 -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <table class="wikitable my-0! w-full text-center text-sm">
+                                    <thead>
+                                        <tr>
+                                            <th class="md:w-[5em]">特性</th>
+                                            <th>成长率</th>
+                                            <th class="md:w-[7em]">特性值</th>
+                                            <th class="md:w-[6em]">修正值</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="row in calcRows" :key="row.key">
+                                            <th
+                                                class="whitespace-nowrap"
+                                                :class="row.individual ? 'text-orange-300' : ''"
+                                            >
+                                                {{ row.label }}
+                                            </th>
+                                            <td class="whitespace-nowrap opacity-80">{{ row.growthText }}</td>
+                                            <td
+                                                class="whitespace-nowrap"
+                                                :class="row.individual ? 'text-orange-300' : ''"
+                                            >
+                                                {{ row.rangeText }}
+                                            </td>
+                                            <td>
+                                                <NInputNumber
+                                                    size="tiny"
+                                                    class="w-14!"
+                                                    :value="bonus[row.key]"
+                                                    :min="0"
+                                                    :show-button="false"
+                                                    placeholder="0"
+                                                    @update:value="(v: number | null) => setBonus(row.key, v)"
+                                                />
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <div class="text-xs opacity-60 mt-2">
+                                    所有特性值、能力值均不包含任何被动技能、装备等效果
+                                </div>
+                            </div>
+
+                            <!-- 能力值 -->
+                            <div class="flex flex-col gap-4">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <table class="wikitable my-0! w-full table-fixed text-center text-sm">
+                                        <colgroup>
+                                            <col class="w-[50%]" />
+                                            <col />
+                                        </colgroup>
+                                        <thead>
+                                            <tr>
+                                                <th>能力值</th>
+                                                <th>数值</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="row in abilityTopLeftRows" :key="row.label">
+                                                <th class="whitespace-nowrap">{{ row.label }}</th>
+                                                <td class="whitespace-nowrap">{{ row.text }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    <table class="wikitable my-0! w-full table-fixed text-center text-sm">
+                                        <colgroup>
+                                            <col class="w-[50%]" />
+                                            <col />
+                                        </colgroup>
+                                        <thead>
+                                            <tr>
+                                                <th>能力值</th>
+                                                <th>数值</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="row in abilityTopRightRows" :key="row.label">
+                                                <th class="whitespace-nowrap">{{ row.label }}</th>
+                                                <td class="whitespace-nowrap">{{ row.text }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-2">
+                                    <table class="wikitable my-0! w-full table-fixed text-center text-sm">
+                                        <colgroup>
+                                            <col class="w-[50%]" />
+                                            <col />
+                                        </colgroup>
+                                        <thead>
+                                            <tr>
+                                                <th>能力值</th>
+                                                <th>数值</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="row in abilityBottomLeftRows" :key="row.label">
+                                                <th class="whitespace-nowrap">{{ row.label }}</th>
+                                                <td class="whitespace-nowrap">{{ row.text }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    <table class="wikitable my-0! w-full table-fixed text-center text-sm">
+                                        <colgroup>
+                                            <col class="w-[50%]" />
+                                            <col />
+                                        </colgroup>
+                                        <thead>
+                                            <tr>
+                                                <th>能力值</th>
+                                                <th>数值</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="row in abilityBottomRightRows" :key="row.label">
+                                                <th class="whitespace-nowrap">{{ row.label }}</th>
+                                                <td class="whitespace-nowrap">{{ row.text }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- 信息 -->
-                <div>
-                    <table class="wikitable my-0! w-full text-center">
-                        <tbody>
-                            <tr>
-                                <th colspan="3">信息</th>
-                            </tr>
-                            <tr>
-                                <th class="w-20 md:w-1/3">风格</th>
-                                <td colspan="2" class="md:w-2/3">{{ data.style || '基本' }}</td>
-                            </tr>
-                            <tr>
-                                <th>种族</th>
-                                <td colspan="2">{{ data.race.name }}</td>
-                            </tr>
-                            <tr>
-                                <th>性别</th>
-                                <td colspan="2">{{ data.gender.name }}</td>
-                            </tr>
-                            <tr>
-                                <th>性格</th>
-                                <td colspan="2">{{ data.alignment.name }}</td>
-                            </tr>
-                            <tr>
-                                <th>缘类型</th>
-                                <td colspan="2">{{ fateText }}</td>
-                            </tr>
-                            <tr>
-                                <th class="md:w-1/3">特性</th>
-                                <th colspan="2" class="md:w-2/3">
-                                    <div class="flex gap-1 justify-center">
-                                        <div>
-                                            1级
-                                            <span class="hidden md:inline!">数值</span>
-                                        </div>
-                                        <!-- NModal 内的浮层默认挂到 modal 元素上，会被滚动容器的 overflow 裁掉，这里强制挂到 body -->
-                                        <NTooltip trigger="hover" to="body">
-                                            <template #trigger>
-                                                <div class="hidden md:flex! items-center justify-center gap-1 leading-none">
-                                                    <NIcon><QuestionIcon /></NIcon>
-                                                </div>
-                                            </template>
-                                            1级基准特性值是用来对比检查角色的个体情况
-                                            <br />
-                                            <span>
-                                                <span class="bg-red-800/70 font-bold">亮红色背景</span>
-                                                为根据官方数据，该特性个体，确定无法在1级看出
-                                            </span>
-                                            <br />
-                                            <span>
-                                                <span class="bg-violet-800/70 font-bold">亮紫色背景</span>
-                                                为根据官方数据，该特性个体，有一部分无法在1级时看出
-                                            </span>
-                                            <br />
-                                            <span>
-                                                <span class="bg-red-800/30 font-bold">暗红色背景</span>
-                                                为根据其他数据推断，该特性个体，可能无法在1级看出
-                                            </span>
-                                            <br />
-                                            <span>
-                                                <span class="bg-violet-800/30 font-bold">暗紫色背景</span>
-                                                为根据其他数据推断，该特性个体，有一部分可能无法在1级时看出
-                                            </span>
-                                            <br />
-                                            具体可参考
-                                            <a href="/wiki/能力值#个体的识别" target="_blank">这里</a>
-                                        </NTooltip>
-                                    </div>
-                                </th>
-                            </tr>
-                            <tr>
-                                <th class="md:w-1/3">职业</th>
-                                <th :class="hasSubJob ? 'md:w-1/3' : 'md:w-2/3'">{{ primaryJob?.name ?? '—' }}</th>
-                                <th v-if="hasSubJob" class="md:w-1/3">{{ subJob?.name }}</th>
-                            </tr>
-                            <tr v-for="row in STAT_ROWS" :key="row.key">
-                                <th class="md:w-1/3">{{ row.label }}</th>
-                                <td :class="[hasSubJob ? 'md:w-1/3' : 'md:w-2/3', mainBg(row.key)]">
-                                    {{ levelStat(row.key, primaryJob) }}
-                                </td>
-                                <td v-if="hasSubJob" :class="['md:w-1/3', staticBg(subJob, row.key)]">
-                                    {{ levelStat(row.key, subJob) }}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <div v-if="showRateButton" class="mt-2 flex items-center justify-center">
-                        <NButton size="tiny" @click="rateModal = true">查看个体概率</NButton>
-                    </div>
-                </div>
-
-                <!-- 技能 -->
-                <div class="row-span-2 md:col-auto">
-                    <table class="wikitable my-0! w-full">
-                        <tbody>
-                            <template v-for="group in skillGroups" :key="group.label">
-                                <template v-for="s in group.skills" :key="`${group.label}-${s.identification}`">
-                                    <tr>
-                                        <th class="text-center">
-                                            {{ group.label }}
-                                            <WikiImg
-                                                v-if="group.label === '潜在继承技能'"
-                                                imageName="icon_RareSkills.png"
-                                                class="w-5 h-5 inline-block align-middle"
-                                            />
-                                            <span
-                                                v-if="group.label === '潜在继承技能' && data.potential_grade"
-                                                class="text-xs opacity-60"
-                                            >
-                                                (Lv{{ data.potential_grade }} 解锁)
-                                            </span>
-                                        </th>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <div class="p-2">
-                                                <div
-                                                    class="text-light pb-0.5 border-b! mb-2 relative cursor-pointer hover:opacity-80"
-                                                    @click="openSkill(s.identification)"
-                                                >
-                                                    {{ s.name }}
-                                                    <span v-if="s.level" class="text-xs opacity-60">
-                                                        Lv{{ s.level }}
-                                                    </span>
-                                                </div>
-                                                <div class="whitespace-pre-line">{{ descOf(s.identification) }}</div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </template>
-                            </template>
-                            <tr v-if="!skillGroups.length">
-                                <td class="text-center py-2 opacity-40">—</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="flex flex-wrap justify-center mt-4 gap-4">
-                <NButton size="small" type="primary" @click="gotoDetail">查看详情页</NButton>
-                <NButton v-if="onClose" size="small" type="warning" @click="onClose">关闭</NButton>
             </div>
         </div>
         <NEmpty v-else-if="!loading" description="加载失败" />
@@ -254,7 +468,7 @@
 
 <script setup lang="ts">
 import { QuestionCircle as QuestionIcon } from '@vicons/fa';
-import { NButton, NEmpty, NIcon, NModal, NSpin, NTooltip } from 'naive-ui';
+import { NButton, NEmpty, NIcon, NInputNumber, NModal, NSelect, NSlider, NSpin, NTooltip } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
 import ElementIcon from '../../components/ElementIcon.vue';
 import WikiImg from '../../components/huiji/WikiImg.vue';
@@ -281,15 +495,15 @@ const openSkill = (identification: number) => {
     modal.value = true;
 };
 
-/** 属性行，顺序沿用 V1（力 / 智慧 / 信仰心 / 生命力 / 灵巧 / 敏捷 / 运） */
+/** 属性行，顺序沿用 V1（力量 / 智慧 / 信仰心 / 生命力 / 灵巧 / 敏捷 / 幸运） */
 const STAT_ROWS: Array<{ key: StatKey; label: string }> = [
-    { key: 'str', label: '力' },
+    { key: 'str', label: '力量' },
     { key: 'int', label: '智慧' },
     { key: 'pie', label: '信仰心' },
     { key: 'vit', label: '生命力' },
     { key: 'dex', label: '灵巧' },
     { key: 'agi', label: '敏捷' },
-    { key: 'luk', label: '运' },
+    { key: 'luk', label: '幸运' },
 ];
 
 /** ``StatKey`` -> 个体几率里的属性系数（V1 的 STAT_KEY_MAP，命名不同） */
@@ -339,8 +553,6 @@ const subJob = computed<JobRef | null>(() => {
     return jobs.find((job) => job !== primaryJob.value) ?? null;
 });
 const hasSubJob = computed(() => subJob.value !== null);
-
-const jobText = computed(() => (data.value?.jobs ?? []).map((job) => job.name).join(' / '));
 
 const fateText = computed(() => {
     const fate = data.value?.fate;
@@ -463,13 +675,380 @@ const skillGroups = computed<SkillGroup[]>(() => {
     return groups.filter((group) => group.skills.length);
 });
 
-const descOf = (identification: number) =>
-    store.skillById.get(identification)?.description || '技能描述未找到';
+const descOf = (identification: number) => store.skillById.get(identification)?.description || '技能描述未找到';
 
 const gotoDetail = () => {
     if (!data.value?.name) return;
     window.open(`/wiki/${data.value.name}`, '_blank');
 };
+
+/* ------------------------------------------------------------------ */
+/* 特性值计算                                                          */
+/* ------------------------------------------------------------------ */
+
+type TabKey = 'basic' | 'stats';
+const TABS: Array<{ label: string; value: TabKey }> = [
+    { label: '基本信息', value: 'basic' },
+    { label: '特性值', value: 'stats' },
+];
+const tab = ref<TabKey>('basic');
+
+const CALC_LEVEL_MIN = 1;
+const CALC_LEVEL_MAX = 70;
+/** 阶级：上限等级 20 → 70（每档 +10），目前只开到铜阶 */
+const GRADE_MAX_LV = [20, 30, 40, 50, 60, 70];
+/** 阶级对全部特性值的加成（``CharacterGrade.base_*``） */
+const GRADE_BONUS = [0, 1, 2, 3, 4, 6];
+/** 个体：在这些等级额外获得 1 级成长 */
+const INDIVIDUAL_LEVELS = [1, 11, 30, 40, 50, 60, 70];
+/**
+ * 个体对成长率的修正：对应特性 +0.04，另两项 −0.02
+ * （攻略站「个体也会改变成长率」表）
+ */
+const INDIVIDUAL_GROWTH: Record<StatKey, Partial<Record<StatKey, number>>> = {
+    str: { str: 0.04, int: -0.02, pie: -0.02 },
+    int: { int: 0.04, str: -0.02, vit: -0.02 },
+    pie: { pie: 0.04, agi: -0.02, dex: -0.02 },
+    vit: { vit: 0.04, agi: -0.02, luk: -0.02 },
+    agi: { agi: 0.04, str: -0.02, int: -0.02 },
+    dex: { dex: 0.04, str: -0.02, pie: -0.02 },
+    luk: { luk: 0.04, str: -0.02, vit: -0.02 },
+};
+/** 意志力只提升成长率上限：90 → +0.01，80 → +0.02 */
+const MENTAL_GROWTH_MAX: Record<number, number> = { 100: 0, 90: 0.01, 80: 0.02 };
+/** 稀有度对成长率的加成：传说 +0.02，其余不变 */
+const RARITY_GROWTH: Record<number, number> = { 100: 0, 200: 0, 300: 0.02 };
+/** 每个特性有 4 档成长率，随机部分为 +0.06 ~ +0.09 */
+const RANDOM_GROWTH_MIN = 0.06;
+const RANDOM_GROWTH_MAX = 0.09;
+
+const calcLevel = ref(CALC_LEVEL_MAX);
+const calcJobId = ref<number | null>(null);
+const calcGrade = ref<number | 'auto'>('auto');
+const calcIndividual = ref<StatKey | 'none'>('none');
+const calcMental = ref(100);
+
+const emptyStats = () => ({ str: 0, int: 0, pie: 0, vit: 0, agi: 0, dex: 0, luk: 0 }) as Record<StatKey, number>;
+const bonus = ref<Record<StatKey, number>>(emptyStats());
+
+const setCalcLevel = (value: number | null) => {
+    const next = Math.round(value ?? CALC_LEVEL_MIN);
+    calcLevel.value = Math.min(CALC_LEVEL_MAX, Math.max(CALC_LEVEL_MIN, next));
+};
+
+/** NSlider 的 value 可能是区间，这里只取单值 */
+const onSlide = (value: number | Array<number> | null) => {
+    setCalcLevel(Array.isArray(value) ? (value[0] ?? null) : value);
+};
+
+const calcJob = computed<JobRef | null>(
+    () => (data.value?.jobs ?? []).find((job) => job.id === calcJobId.value) ?? primaryJob.value,
+);
+const calcJobOptions = computed(() =>
+    (data.value?.jobs ?? []).map((job) => ({ label: job.name ?? `#${job.id}`, value: job.id })),
+);
+const calcJobDetail = computed(() => {
+    const job = calcJob.value;
+    return job ? store.jobById.get(job.id) : undefined;
+});
+
+/** 等级对应的「自动」阶级：按上限等级逐档提升（20 级自动取铅阶） */
+const autoGradeId = (level: number) =>
+    Math.min(GRADE_MAX_LV.length, 1 + GRADE_MAX_LV.filter((maxLv) => maxLv <= level).length);
+
+/** 当前等级可选的阶级（上限等级不低于当前等级，最高只到铜阶） */
+const gradeOptions = computed(() => {
+    const options: Array<{ label: string; value: number | 'auto' }> = [
+        {
+            label: `自动·${store.grades[autoGradeId(calcLevel.value) - 1]?.name ?? '—'}`,
+            value: 'auto',
+        },
+    ];
+    for (const grade of store.grades.slice(0, GRADE_MAX_LV.length)) {
+        const maxLv = GRADE_MAX_LV[grade.id - 1] ?? 0;
+        if (maxLv >= calcLevel.value) options.push({ label: grade.name ?? `#${grade.id}`, value: grade.id });
+    }
+    return options;
+});
+
+/** 实际生效的阶级 id（手选但已不适用时回退到自动） */
+const gradeId = computed(() => {
+    const selected = calcGrade.value;
+    if (selected === 'auto') return autoGradeId(calcLevel.value);
+    const maxLv = GRADE_MAX_LV[selected - 1] ?? 0;
+    return maxLv >= calcLevel.value ? selected : autoGradeId(calcLevel.value);
+});
+
+const individualOptions = computed(() => [
+    { label: '无', value: 'none' },
+    ...STAT_ROWS.map((row) => ({ label: row.label, value: row.key as string })),
+]);
+
+const mentalOptions = [100, 90, 80].map((value) => ({ label: String(value), value }));
+
+const setGrade = (value: string | number | Array<string | number> | null) => {
+    const first = Array.isArray(value) ? value[0] : value;
+    calcGrade.value = first === 'auto' || first == null ? 'auto' : Number(first);
+};
+const setIndividual = (value: string | number | Array<string | number> | null) => {
+    const first = Array.isArray(value) ? value[0] : value;
+    calcIndividual.value = first === 'none' || first == null ? 'none' : (String(first) as StatKey);
+};
+const setMental = (value: string | number | Array<string | number> | null) => {
+    const first = Array.isArray(value) ? value[0] : value;
+    calcMental.value = Number(first ?? 100);
+};
+const setCalcJob = (value: string | number | Array<string | number> | null) => {
+    const first = Array.isArray(value) ? value[0] : value;
+    calcJobId.value = first == null ? null : Number(first);
+};
+
+/** 修正值：直接加到特性值上，不限点数 */
+const setBonus = (key: StatKey, value: number | null) => {
+    bonus.value[key] = Math.max(0, Math.round(value ?? 0));
+};
+
+/** 抹平浮点误差后再向上取整 */
+const ceilGrowth = (growth: number, levelItem: number) => Math.ceil(Math.round(growth * levelItem * 1e6) / 1e6);
+
+interface CalcRow {
+    key: StatKey;
+    label: string;
+    individual: boolean;
+    growthText: string;
+    rangeText: string;
+    valueMin: number;
+    valueMax: number;
+}
+
+const calcRows = computed<CalcRow[]>(() => {
+    const detail = data.value;
+    if (!detail) return [];
+    const stats = detail.stats;
+    const jobDetail = calcJobDetail.value;
+    const gradeBonus = GRADE_BONUS[gradeId.value - 1] ?? 0;
+    const rarityBonus = RARITY_GROWTH[detail.rarity.id] ?? 0;
+    // 意志力只抬高成长率上限（100 → +0，90 → +0.01，80 → +0.02）
+    const mentalMaxBonus = MENTAL_GROWTH_MAX[calcMental.value] ?? 0;
+    const individualGrowth: Partial<Record<StatKey, number>> =
+        calcIndividual.value === 'none' ? {} : INDIVIDUAL_GROWTH[calcIndividual.value];
+    const level = calcLevel.value;
+    const extraLevels = INDIVIDUAL_LEVELS.filter((lv) => lv <= level).length;
+
+    return STAT_ROWS.map((row) => {
+        const key = row.key;
+        const individual = calcIndividual.value === key;
+        const levelItem = level + (individual ? extraLevels : 0);
+
+        const base = (stats.base[key] ?? 0) + (jobDetail?.base[key] ?? 0) + gradeBonus + (bonus.value[key] ?? 0);
+        const growthBase = ((stats.growth[key] ?? 0) + (jobDetail?.growth?.[key] ?? 0)) / 100 + rarityBonus;
+        const growthFix = individualGrowth[key] ?? 0;
+        const growthMin = growthBase + RANDOM_GROWTH_MIN + growthFix;
+        const growthMax = growthBase + RANDOM_GROWTH_MAX + growthFix + mentalMaxBonus;
+
+        const valueMin = base + ceilGrowth(growthMin, levelItem);
+        const valueMax = base + ceilGrowth(growthMax, levelItem);
+
+        const growthText =
+            growthMin === growthMax ? growthMin.toFixed(2) : `${growthMin.toFixed(2)}~${growthMax.toFixed(2)}`;
+        const rangeText = valueMin === valueMax ? String(valueMin) : `${valueMin}~${valueMax}`;
+
+        return {
+            key,
+            label: row.label,
+            individual,
+            growthText,
+            rangeText,
+            valueMin,
+            valueMax,
+        };
+    });
+});
+
+/* 能力值 = ⌈ Σ(特性值 × 基本倍率) × 职业倍率 ⌉（会心不乘职业倍率） */
+interface AbilityDef {
+    label: string;
+    parts: Array<[StatKey, number]>;
+    /** 职业倍率字段名（Job.multipliers） */
+    multiplier?: string;
+}
+
+const ABILITY_DEFS: AbilityDef[] = [
+    { label: '攻击力', parts: [['str', 1]], multiplier: 'atk' },
+    { label: '魔力', parts: [['int', 1]], multiplier: 'mag' },
+    { label: '神力', parts: [['pie', 1]], multiplier: 'div' },
+    { label: '防御力', parts: [['vit', 1]], multiplier: 'def' },
+    { label: '法术防御力', parts: [['pie', 1]], multiplier: 'mdef' },
+    { label: '会心', parts: [['dex', 0.2]] },
+    {
+        label: '探知',
+        parts: [
+            ['int', 0.7],
+            ['luk', 0.3],
+        ],
+        multiplier: 'det',
+    },
+    {
+        label: '陷阱解除',
+        parts: [
+            ['dex', 0.7],
+            ['luk', 0.3],
+        ],
+        multiplier: 'dtrap',
+    },
+    {
+        label: '陷阱回避',
+        parts: [
+            ['agi', 0.7],
+            ['luk', 0.3],
+        ],
+        multiplier: 'etrap',
+    },
+    { label: '行动速度', parts: [['agi', 1]], multiplier: 'speed' },
+    {
+        label: '命中',
+        parts: [
+            ['dex', 0.7],
+            ['luk', 0.3],
+        ],
+        multiplier: 'acc',
+    },
+    {
+        label: '回避',
+        parts: [
+            ['agi', 0.7],
+            ['luk', 0.3],
+        ],
+        multiplier: 'eva',
+    },
+    {
+        label: '抵抗',
+        parts: [
+            ['pie', 0.6],
+            ['vit', 0.3],
+        ],
+        multiplier: 'res',
+    },
+];
+
+/** 抹平浮点误差后向上取整（能力值一律进位） */
+const ceilValue = (value: number) => Math.ceil(Math.round(value * 1e6) / 1e6);
+
+const fmtRange = (min: number, max: number) => (min === max ? String(min) : `${min}~${max}`);
+
+const abilityValues = computed<Record<string, string>>(() => {
+    const rows = calcRows.value;
+    const detail = data.value;
+    if (!rows.length || !detail) return {};
+    const byKey = new Map(rows.map((row) => [row.key, row]));
+    const jobDetail = calcJobDetail.value;
+    const multipliers = jobDetail?.multipliers ?? {};
+    const out: Record<string, string> = {};
+
+    const statSum = (parts: Array<[StatKey, number]>, pick: (row: CalcRow) => number) =>
+        parts.reduce((sum, [key, weight]) => {
+            const row = byKey.get(key);
+            return sum + (row ? pick(row) * weight : 0);
+        }, 0);
+
+    // 常规能力：特性值加权求和 × 职业倍率（会心不乘职业倍率）
+    for (const def of ABILITY_DEFS) {
+        const rate = def.multiplier ? (multipliers[def.multiplier] ?? 100) / 100 : 1;
+        out[def.label] = fmtRange(
+            ceilValue(statSum(def.parts, (row) => row.valueMin) * rate),
+            ceilValue(statSum(def.parts, (row) => row.valueMax) * rate),
+        );
+    }
+
+    // HP / MP / SP：基础值 +（1 + 特性值 × 倍率 ÷ 1000）× 成长率 × 等级（× 职业倍率），40~89 级按低 1 级
+    const level = calcLevel.value;
+    const levelEff = level >= 40 && level <= 89 ? level - 1 : level;
+    const poolOf = (key: 'hp' | 'mp' | 'sp') => ({
+        base: (detail.stats.pools[key]?.base ?? 0) + (jobDetail?.base?.[key] ?? 0),
+        growth: ((detail.stats.pools[key]?.growth ?? 0) + (jobDetail?.growth?.[key] ?? 0)) / 100,
+    });
+    const poolValue = (base: number, growth: number, stat: number, rate: number) =>
+        ceilValue(base + (1 + stat / 1000) * growth * levelEff * rate);
+
+    const hpPool = poolOf('hp');
+    const mpPool = poolOf('mp');
+    const spPool = poolOf('sp');
+    const mpRate = (multipliers.mp ?? 100) / 100;
+    const spRate = (multipliers.sp ?? 100) / 100;
+
+    const HP_STAT: Array<[StatKey, number]> = [['vit', 1]];
+    const MP_STAT: Array<[StatKey, number]> = [
+        ['int', 0.7],
+        ['pie', 0.3],
+    ];
+    const SP_STAT: Array<[StatKey, number]> = [
+        ['str', 0.25],
+        ['vit', 0.25],
+        ['agi', 0.25],
+        ['dex', 0.25],
+    ];
+
+    out.HP = fmtRange(
+        poolValue(
+            hpPool.base,
+            hpPool.growth,
+            statSum(HP_STAT, (row) => row.valueMin),
+            1,
+        ),
+        poolValue(
+            hpPool.base,
+            hpPool.growth,
+            statSum(HP_STAT, (row) => row.valueMax),
+            1,
+        ),
+    );
+    out.MP = fmtRange(
+        poolValue(
+            mpPool.base,
+            mpPool.growth,
+            statSum(MP_STAT, (row) => row.valueMin),
+            mpRate,
+        ),
+        poolValue(
+            mpPool.base,
+            mpPool.growth,
+            statSum(MP_STAT, (row) => row.valueMax),
+            mpRate,
+        ),
+    );
+    out.SP = fmtRange(
+        poolValue(
+            spPool.base,
+            spPool.growth,
+            statSum(SP_STAT, (row) => row.valueMin),
+            spRate,
+        ),
+        poolValue(
+            spPool.base,
+            spPool.growth,
+            statSum(SP_STAT, (row) => row.valueMax),
+            spRate,
+        ),
+    );
+
+    return out;
+});
+
+/** 四张能力值小表：左上 / 右上 / 左下 / 右下 */
+const ABILITY_TOP_LEFT = ['HP', 'MP', 'SP'];
+const ABILITY_TOP_RIGHT = ['探知', '陷阱解除', '陷阱回避'];
+const ABILITY_BOTTOM_LEFT = ['攻击力', '魔力', '神力', '防御力', '法术防御力'];
+const ABILITY_BOTTOM_RIGHT = ['行动速度', '命中', '会心', '回避', '抵抗'];
+
+const abilityList = (labels: string[]) => {
+    const values = abilityValues.value;
+    return labels.map((label) => ({ label, text: values[label] ?? '—' }));
+};
+
+const abilityTopLeftRows = computed(() => abilityList(ABILITY_TOP_LEFT));
+const abilityTopRightRows = computed(() => abilityList(ABILITY_TOP_RIGHT));
+const abilityBottomLeftRows = computed(() => abilityList(ABILITY_BOTTOM_LEFT));
+const abilityBottomRightRows = computed(() => abilityList(ABILITY_BOTTOM_RIGHT));
 
 const load = async (id: number) => {
     loading.value = true;
@@ -481,5 +1060,29 @@ const load = async (id: number) => {
     }
 };
 
-watch(() => props.id, load, { immediate: true });
+watch(
+    () => props.id,
+    (id) => {
+        calcJobId.value = null;
+        calcGrade.value = 'auto';
+        calcIndividual.value = 'none';
+        bonus.value = emptyStats();
+        void load(id);
+    },
+    { immediate: true },
+);
+
+watch(
+    () => data.value?.mental.value,
+    (value) => {
+        calcMental.value = value ?? 100;
+    },
+);
+
+// 等级变高后，手选的阶级如果已装不下这个等级，就回退到「自动」
+watch(calcLevel, (level) => {
+    if (calcGrade.value === 'auto') return;
+    const maxLv = GRADE_MAX_LV[calcGrade.value - 1] ?? 0;
+    if (maxLv < level) calcGrade.value = 'auto';
+});
 </script>

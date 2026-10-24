@@ -446,6 +446,13 @@ export const useDataV2Store = defineStore('data-v2', () => {
     /** 角色个体出现几率（``Api/GetV2Character`` 顶层 rates） */
     const characterRate = (id: number) => wiki.characterRates[id] ?? null;
 
+    /** 阶级（``CharacterGrade``）：id 升序，1 = 无阶 */
+    const grades = computed(() =>
+        Object.entries(wiki.enums.grade)
+            .map(([key, entry]) => ({ id: Number(key), name: entry.name ?? `#${key}` }))
+            .sort((a, b) => a.id - b.id),
+    );
+
     const getSkill = async (identification: number): Promise<SkillDetail | null> =>
         skillById.value.get(identification) ?? null;
 
@@ -468,6 +475,7 @@ export const useDataV2Store = defineStore('data-v2', () => {
         getCharacter,
         getSkill,
         characterRate,
+        grades,
         characterById,
         jobById,
         skillById,

@@ -29,10 +29,7 @@
                                 class="h-9 px-2 py-1 align-middle whitespace-normal break-words border! border-[#463d38]!"
                                 :colspan="pair.cells.length === 1 ? 3 : 1"
                             >
-                                <div
-                                    v-if="cell.tags?.length"
-                                    class="flex flex-wrap items-center justify-center gap-1"
-                                >
+                                <div v-if="cell.tags?.length" class="flex flex-wrap items-center justify-center gap-1">
                                     <NTag v-for="tag in cell.tags" :key="tag" size="small" :bordered="false">
                                         {{ tag }}
                                     </NTag>
@@ -152,10 +149,10 @@
                     </tr>
                     <template v-if="learnRows.length || sourceTags.length">
                         <tr v-if="learnRows.length">
-                            <th class="h-9 px-2 py-1 align-middle whitespace-nowrap border! border-[#463d38]!">
-                                学习
-                            </th>
-                            <td class="h-9 px-2 py-1 align-middle whitespace-normal break-words border! border-[#463d38]!">
+                            <th class="h-9 px-2 py-1 align-middle whitespace-nowrap border! border-[#463d38]!">学习</th>
+                            <td
+                                class="h-9 px-2 py-1 align-middle whitespace-normal break-words border! border-[#463d38]!"
+                            >
                                 <div class="flex flex-wrap items-center justify-center gap-1">
                                     <NTag
                                         v-for="learn in learnRows"
@@ -170,10 +167,10 @@
                             </td>
                         </tr>
                         <tr v-if="sourceTags.length">
-                            <th class="h-9 px-2 py-1 align-middle whitespace-nowrap border! border-[#463d38]!">
-                                获取
-                            </th>
-                            <td class="h-9 px-2 py-1 align-middle whitespace-normal break-words border! border-[#463d38]!">
+                            <th class="h-9 px-2 py-1 align-middle whitespace-nowrap border! border-[#463d38]!">获取</th>
+                            <td
+                                class="h-9 px-2 py-1 align-middle whitespace-normal break-words border! border-[#463d38]!"
+                            >
                                 <div class="flex flex-wrap items-center justify-center gap-1">
                                     <NTag
                                         v-for="s in sourceTags"
@@ -232,8 +229,14 @@ const data = ref<SkillDetail | null>(null);
 const loading = ref(false);
 
 const SOURCE_LABEL: Record<string, string> = {
-    job: '职业', potential: '潜在', discipline: '克己',
-    equipment: '装备', equip_set: '套装', relic: '遗物', fate: '才能', bond: '羁绊',
+    job: '职业',
+    potential: '潜在',
+    discipline: '克己',
+    equipment: '装备',
+    equip_set: '套装',
+    relic: '遗物',
+    fate: '才能',
+    bond: '羁绊',
 };
 
 /**
@@ -391,10 +394,12 @@ const amountFields = (s: SkillSubEffect): SubField[] => {
             value: `${s.calc_reference_parameter_rate_2}%`,
         });
     }
-    if (s.calc_valid_cap_parameter_value) {
+    // 没有任何参照能力值时，阈值只是个孤立数字（敌方专用技能常见 10000），不单独显示
+    const hasRef = Boolean(s.calc_reference_parameter_rate || s.calc_reference_parameter);
+    if (hasRef && s.calc_valid_cap_parameter_value) {
         out.push({ name: `${base}阈值`, value: String(s.calc_valid_cap_parameter_value) });
     }
-    if (s.calc_valid_start_parameter_value) {
+    if (hasRef && s.calc_valid_start_parameter_value) {
         out.push({ name: `${base}阈值起点`, value: String(s.calc_valid_start_parameter_value) });
     }
     return out;
@@ -428,15 +433,15 @@ const skillRef = (value: number): { id: number; name: string } | null => {
     return { id, name: level > 0 && level <= 9 ? `${name} Lv${level}` : name };
 };
 
-/** 参数 -> 「参数名 / 值」；原始 id 能对上技能就显示技能名，对不上就整条跳过 */
+/** 参数 -> 「参数名 / 值」；0 也照常显示，只有原始 id 对不上技能时才跳过 */
 const paramFields = (
     params: Array<number | null> | null | undefined,
     labels: Array<EffectParamLabel | null> | null | undefined,
 ): SubField[] => {
     const out: SubField[] = [];
-    (params ?? []).forEach((value, index) => {
-        if (!value) return;
+    (params ?? []).forEach((raw, index) => {
         const label = labels?.[index] ?? null;
+        const value = raw ?? 0;
         if (isRawId(value)) {
             const skill = skillRef(value);
             if (skill) {
@@ -513,12 +518,7 @@ const briefFields = (e: SubEffectBriefLeaf): SubField[] => {
  * 递归展开成「层级 + 效果名 + 参数」。同名兄弟（例：多阶花バフ）按出现顺序加序号，
  * 否则不同阶段会被合并到同一组里挤成一个单元格。
  */
-const effectNodes = (
-    list: SubEffectBriefLeaf[],
-    depth: number,
-    out: EffectNode[] = [],
-    parent = '',
-): EffectNode[] => {
+const effectNodes = (list: SubEffectBriefLeaf[], depth: number, out: EffectNode[] = [], parent = ''): EffectNode[] => {
     const total = new Map<string, number>();
     for (const e of list) total.set(effectLabel(e), (total.get(effectLabel(e)) ?? 0) + 1);
     const seen = new Map<string, number>();
@@ -581,9 +581,7 @@ const powerRef = computed(() => {
     const base = only == null ? undefined : REFERENCE_PARAM[only];
     if (!base) return '';
     // double scaling: 11800001 is 魔力＋神力, 11100009 is 攻击力＋灵巧 …
-    const second = [...extra]
-        .map((id) => REFERENCE_PARAM[id])
-        .filter((name): name is string => Boolean(name));
+    const second = [...extra].map((id) => REFERENCE_PARAM[id]).filter((name): name is string => Boolean(name));
     return second.length === 1 ? `${base}＋${second[0]}` : base;
 });
 
@@ -598,11 +596,7 @@ const rows = computed<Row[]>(() => {
     // 单位放进项目列（消耗 SP / 消耗 MP），值列只留数字
     const costKind = levels.value.find((lv) => lv.cost != null)?.cost_kind;
     const costUnit = costKind == null ? '' : (COST_UNIT[costKind] ?? '');
-    add(
-        collect(`消耗${costUnit ? ` ${costUnit}` : ''}`, (lv) =>
-            lv.cost == null ? '' : String(lv.cost),
-        ),
-    );
+    add(collect(`消耗${costUnit ? ` ${costUnit}` : ''}`, (lv) => (lv.cost == null ? '' : String(lv.cost))));
     add(collect('使用次数', (lv) => (lv.use_limit ? String(lv.use_limit) : '')));
     add(collect('仇恨', (lv) => (lv.hate ? String(lv.hate) : '')));
     add(
@@ -613,9 +607,7 @@ const rows = computed<Row[]>(() => {
     add(damageValues('固定伤害', (d) => (d.fixed_damage ? integer(d.fixed_damage) : '')));
 
     // 威力: the reference stat is its own dimmed segment, like a sub effect parameter
-    const powerRow = damageValues(powerLabel.value, (d) =>
-        d.attack_rate == null ? '' : `${d.attack_rate}%`,
-    );
+    const powerRow = damageValues(powerLabel.value, (d) => (d.attack_rate == null ? '' : `${d.attack_rate}%`));
     if (powerRow && powerRef.value) {
         powerRow.group = '威力';
         powerRow.name = powerRef.value;
@@ -630,11 +622,7 @@ const rows = computed<Row[]>(() => {
         ),
     );
     // 下限阈值是单手 / 双手共用的，放在两行阈值之后
-    add(
-        damageValues('下限阈值', (d) =>
-            d.valid_start_parameter_value ? integer(d.valid_start_parameter_value) : '',
-        ),
-    );
+    add(damageValues('下限阈值', (d) => (d.valid_start_parameter_value ? integer(d.valid_start_parameter_value) : '')));
     add(damageValues('命中修正', (d) => integer(d.hit_rate)));
     // 直接写数值，不显示 %
     add(damageValues('会心修正', (d) => (d.add_critical_rate ? String(d.add_critical_rate) : '')));
@@ -832,7 +820,11 @@ const rows = computed<Row[]>(() => {
                 });
             if (!child.fields.length) {
                 // 没有参数的子效果也要占一行，名字本身就是全部信息
-                pushChild(undefined, levels.value.map(() => ''), true);
+                pushChild(
+                    undefined,
+                    levels.value.map(() => ''),
+                    true,
+                );
                 continue;
             }
             for (const field of child.fields) {
@@ -914,10 +906,9 @@ const infoRows = computed<InfoRow[]>(() => {
     const damages = firstLevel?.damage ?? [];
     const targets = [
         ...new Set(
-            [
-                ...damages.map((x) => x.target_text),
-                ...(firstLevel?.sub_effects ?? []).map((x) => x.target_text),
-            ].filter((x): x is string => Boolean(x) && x !== '#N/A'),
+            [...damages.map((x) => x.target_text), ...(firstLevel?.sub_effects ?? []).map((x) => x.target_text)].filter(
+                (x): x is string => Boolean(x) && x !== '#N/A',
+            ),
         ),
     ];
 
@@ -980,9 +971,7 @@ const infoPairs = computed(() => {
 const detailCols = computed(() => 1 + levels.value.length);
 
 const learnRows = computed(() =>
-    (data.value?.learn ?? []).map((x) =>
-        x.get_lv == null ? jobName(x.job) : `${jobName(x.job)} Lv${x.get_lv}`,
-    ),
+    (data.value?.learn ?? []).map((x) => (x.get_lv == null ? jobName(x.job) : `${jobName(x.job)} Lv${x.get_lv}`)),
 );
 
 const load = async (id: number) => {
