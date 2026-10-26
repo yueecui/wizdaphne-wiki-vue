@@ -8,7 +8,8 @@
                         版本 {{ manifest.version ?? '—' }} ·
                         角色 {{ manifest.counts.characters }} ·
                         职业 {{ manifest.counts.jobs }} ·
-                        技能 {{ manifest.counts.skills }}（可获得 {{ manifest.counts.player_skills }}）
+                        技能 {{ manifest.counts.skills }}（可获得 {{ manifest.counts.player_skills }}） ·
+                        装备 {{ manifest.counts.equipments }}
                     </template>
                     <template v-else>加载中…</template>
                 </div>
@@ -35,6 +36,11 @@
                 <CharacterPanel v-if="activeKey === 'character'" />
                 <JobPanel v-else-if="activeKey === 'job'" />
                 <SkillPanel v-else-if="activeKey === 'skill'" />
+                <EquipmentPanel
+                    v-else-if="activeKey === 'weapon' || activeKey === 'armor'"
+                    :group="activeKey"
+                />
+                <JunkPanel v-else-if="activeKey === 'junk'" />
             </NSpin>
 
         </div>
@@ -47,7 +53,9 @@ import { storeToRefs } from 'pinia';
 import { computed, onMounted, ref } from 'vue';
 import ThemeConfigProvider from '../../layout/ThemeConfigProvider.vue';
 import CharacterPanel from './CharacterPanel.vue';
+import EquipmentPanel from './EquipmentPanel.vue';
 import JobPanel from './JobPanel.vue';
+import JunkPanel from './JunkPanel.vue';
 import SkillPanel from './SkillPanel.vue';
 import { useDataV2Store } from './dataV2Store';
 
@@ -60,11 +68,16 @@ const tabs = [
     { key: 'character', label: '角色' },
     { key: 'job', label: '职业' },
     { key: 'skill', label: '技能' },
+    { key: 'weapon', label: '武器' },
+    { key: 'armor', label: '防具' },
+    { key: 'junk', label: '杂物' },
 ] as const;
 
 type TabKey = (typeof tabs)[number]['key'];
 
-const urlTab = new URLSearchParams(window.location.search).get('v2tab') as TabKey | null;
+// 兼容旧链接：v2tab=equipment 归到武器页
+const rawTab = new URLSearchParams(window.location.search).get('v2tab');
+const urlTab = (rawTab === 'equipment' ? 'weapon' : rawTab) as TabKey | null;
 const activeKey = ref<TabKey>(urlTab && tabs.some((t) => t.key === urlTab) ? urlTab : 'character');
 
 const selectTab = (key: TabKey) => {
@@ -78,6 +91,8 @@ const busy = computed(() => {
     const s = state.value;
     if (activeKey.value === 'character') return s.characters === 'loading';
     if (activeKey.value === 'job') return s.jobs === 'loading';
+    if (activeKey.value === 'weapon' || activeKey.value === 'armor') return s.equipments === 'loading';
+    if (activeKey.value === 'junk') return false;
     return s.skills === 'loading';
 });
 
@@ -86,6 +101,7 @@ const load = () => {
     void store.ensureCharacters();
     void store.ensureJobs();
     void store.ensureSkills();
+    void store.ensureEquipments();
 };
 
 const reload = async () => {

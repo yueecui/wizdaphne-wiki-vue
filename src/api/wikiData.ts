@@ -3,7 +3,8 @@
  *
  * Data lives on the wiki (``Data:`` namespace) and is served by the Scribunto
  * modules ``Api/GetV2Character`` / ``Api/GetV2Job`` / ``Api/GetV2Skill`` /
- * ``Api/GetV2Enum`` / ``Api/GetV2EffectKind`` / ``Api/GetV2Version``.
+ * ``Api/GetV2Equipment`` / ``Api/GetV2Enum`` / ``Api/GetV2EffectKind`` /
+ * ``Api/GetV2Version``.
  *
  * ``Api/GetV2EffectKind`` is the hand-maintained effect kind name table: it lives
  * only on the wiki (DEV reads ``public/mock/EffectKindResponse.json``) and is
@@ -16,7 +17,7 @@
 
 import { IS_DEV } from '../util';
 
-export type ModuleName = 'Character' | 'Job' | 'Skill' | 'Enum' | 'EffectKind';
+export type ModuleName = 'Character' | 'Job' | 'Skill' | 'Equipment' | 'Enum' | 'EffectKind';
 
 /** 效果种类的一项：根节点 key 就是 kind 编号 */
 export interface EffectKind {
@@ -45,6 +46,11 @@ export interface ModulePayload<T = unknown> {
     extra?: unknown;
     /** 角色个体出现几率（每条带角色 id），同样不进 items */
     rates?: unknown;
+    /**
+     * 装备的类型基准数值（``{ "短剑": { i: 1, c: 2, spe: 4, ... } }``），
+     * 在 ``Api/GetV2Equipment`` 顶层；列表用它决定「高于 / 低于基准」的红绿配色。
+     */
+    baseStat?: unknown;
 }
 
 /** 单次请求的条目上限（与 wiki 端 ``Api/GetV2Xxx`` 的 ``limit`` 参数一致） */
@@ -138,10 +144,20 @@ export async function fetchModuleItems<T = unknown>(
 ): Promise<ModulePayload<T>> {
     const data = unwrap(await getJson<unknown>(IS_DEV ? mockUrl(name) : pageUrl(name, page, limit)));
 
-    const payload = data as { items?: T[]; count?: number; extra?: unknown; rates?: unknown } | T[] | null;
-    const items = Array.isArray(payload) ? payload : payload?.items;
+    const payload = data as
+        | { items?: T[] | T; count?: number; extra?: unknown; rates?: unknown; baseStat?: unknown }
+        | T[]
+        | null;
+    const rawItems = Array.isArray(payload) ? payload : payload?.items;
 
-    if (!Array.isArray(items)) {
+    // 单条目页（Data:Enum.json）的 items 是整表对象，包成单元素数组方便调用方统一处理
+    const items = Array.isArray(rawItems)
+        ? rawItems
+        : rawItems && typeof rawItems === 'object'
+          ? [rawItems as T]
+          : null;
+
+    if (!items) {
         throw new Error(`Api/GetV2${name}: unexpected payload`);
     }
 
@@ -150,6 +166,7 @@ export async function fetchModuleItems<T = unknown>(
         count: payload && !Array.isArray(payload) ? (payload.count ?? items.length) : items.length,
         extra: payload && !Array.isArray(payload) ? payload.extra : undefined,
         rates: payload && !Array.isArray(payload) ? payload.rates : undefined,
+        baseStat: payload && !Array.isArray(payload) ? payload.baseStat : undefined,
     };
 }
 
@@ -170,5 +187,11 @@ export async function fetchAllModuleItems<T = unknown>(name: ModuleName): Promis
         if (all.length === before) break;
     }
 
-    return { items: all, count: total, extra: first.extra, rates: first.rates };
+    return {
+        items: all,
+        count: total,
+        extra: first.extra,
+        rates: first.rates,
+        baseStat: first.baseStat,
+    };
 }

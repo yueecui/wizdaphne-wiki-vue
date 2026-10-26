@@ -21,6 +21,7 @@ export type FieldKind =
     | 'raw'
     | 'numArr'
     | 'strArr'
+    | 'numArrArr'
     | 'numMap'
     | 'obj'
     | 'map'
@@ -316,6 +317,103 @@ export const SKILL_FIELDS: FieldSpec[] = [
     { long: 'levels', short: 'lv', kind: 'objArr', fields: LEVEL },
 ];
 
+/** 装备特性：技能 identification + 引用等级（名字与说明由前端查技能数据） */
+const EQUIP_REF: FieldSpec[] = [
+    { long: 'id', short: 'i', kind: 'num' },
+    { long: 'level', short: 'l', kind: 'num' },
+    // 展示型 lock config 特性才带名字与手写说明
+    { long: 'name', short: 'zh', kind: 'str' },
+    { long: 'desc', short: 'd', kind: 'str' },
+];
+
+/** 装备数值：atk 攻击 / c 攻击次数 / mag 魔力 / div 神力 / def 防御 / mdef 魔防 /
+ *  spe 速度 / acc 命中 / sur 会心 / eva 回避 / res 抵抗 */
+const EQUIP_STAT: FieldSpec[] = [
+    { long: 'atk', short: 'at', kind: 'num' },
+    { long: 'c', short: 'c', kind: 'num' },
+    { long: 'mag', short: 'mg', kind: 'num' },
+    { long: 'div', short: 'dv', kind: 'num' },
+    { long: 'def', short: 'df', kind: 'num' },
+    { long: 'mdef', short: 'md', kind: 'num' },
+    { long: 'spe', short: 'sp', kind: 'num' },
+    { long: 'acc', short: 'ac', kind: 'num' },
+    { long: 'sur', short: 'sr', kind: 'num' },
+    { long: 'eva', short: 'ev', kind: 'num' },
+    { long: 'res', short: 'rs', kind: 'num' },
+    // 探索系（装备自身属性，也随强化成长）：探知 / 陷阱解除 / 陷阱回避
+    { long: 'det', short: 'dt', kind: 'num' },
+    { long: 'dtrap', short: 'dp', kind: 'num' },
+    { long: 'etrap', short: 'et', kind: 'num' },
+];
+
+/** 强化曲线的一行：等级 + 该等级的完整数值（只输出与 +0 不同的等级） */
+const EQUIP_LEVEL: FieldSpec[] = [
+    { long: 'lv', short: 'l', kind: 'num' },
+    ...EQUIP_STAT,
+];
+
+/** 材质补强的一行：目标阶级 / 阶级内次数 / 金币 / 五项累计加成 */
+const EQUIP_OVER_RANK: FieldSpec[] = [
+    { long: 'rank', short: 'r', kind: 'num' },
+    { long: 'level', short: 'l', kind: 'num' },
+    { long: 'cost', short: 'co', kind: 'num' },
+    { long: 'atk', short: 'at', kind: 'num' },
+    { long: 'mag', short: 'mg', kind: 'num' },
+    { long: 'div', short: 'dv', kind: 'num' },
+    { long: 'def', short: 'df', kind: 'num' },
+    { long: 'mdef', short: 'md', kind: 'num' },
+];
+
+const EQUIP_SET: FieldSpec[] = [
+    { long: 'id', short: 'i', kind: 'num' },
+    { long: 'skill_id', short: 'si', kind: 'num' },
+    { long: 'skill_name', short: 'sn', kind: 'str' },
+    { long: 'require_count', short: 'rc', kind: 'num' },
+    { long: 'max_level', short: 'ml', kind: 'num' },
+    { long: 'add_skill_level', short: 'al', kind: 'num' },
+];
+
+export const EQUIP_FIELDS: FieldSpec[] = [
+    { long: 'id', short: 'i', kind: 'raw' },
+    { long: 'name', short: 'zh', kind: 'str' },
+    { long: 'name_jp', short: 'jp', kind: 'str' },
+    { long: 'name_en', short: 'en', kind: 'str' },
+    { long: 'category', short: 'c', kind: 'str' },
+    { long: 'type_id', short: 'ti', kind: 'num' },
+    { long: 'type', short: 'ty', kind: 'str' },
+    { long: 'part', short: 'pt', kind: 'num' },
+    { long: 'rank', short: 'r', kind: 'num' },
+    // 图鉴编号（数字；特殊装备为 "EX"）
+    { long: 'collection_id', short: 'ci', kind: 'raw' },
+    { long: 'element', short: 'el', kind: 'num' },
+    { long: 'element_name', short: 'eln', kind: 'str' },
+    { long: 'special', short: 'sp', kind: 'bool' },
+    { long: 'note', short: 'nt', kind: 'str' },
+    // 图标资源名：list_icon = 列表小图，icon = 背包大图（均不含 .png）
+    { long: 'list_icon', short: 'li', kind: 'str' },
+    { long: 'icon', short: 'ic', kind: 'str' },
+    // V1 手工字段：soucate 9 = 特典 / desc 中文说明 / 获取途径 / 妖精
+    { long: 'soucate', short: 'so', kind: 'num' },
+    { long: 'desc', short: 'd', kind: 'str' },
+    { long: 'sou', short: 'su', kind: 'strArr' },
+    { long: 'req', short: 'rq', kind: 'strArr' },
+    { long: 'fa_can', short: 'fc', kind: 'num' },
+    { long: 'fa_sk', short: 'fs', kind: 'str' },
+    // 妖精技能描述
+    { long: 'fa_sk_desc', short: 'fd', kind: 'str' },
+    { long: 'reinforce_max', short: 'rm', kind: 'num' },
+    { long: 'stats', short: 'st', kind: 'obj', fields: EQUIP_STAT },
+    { long: 'max_stats', short: 'mx', kind: 'obj', fields: EQUIP_STAT },
+    { long: 'skills', short: 'sk', kind: 'objArr', fields: EQUIP_REF },
+    { long: 'traits', short: 'tr', kind: 'objArr', fields: EQUIP_REF },
+    { long: 'set_skills', short: 'ss', kind: 'objArr', fields: EQUIP_SET },
+    // 强化曲线（每级完整数值，只输出与 +0 不同的等级）与加护概率（4 槽 × 19 属性）
+    { long: 'levels', short: 'lv', kind: 'objArr', fields: EQUIP_LEVEL },
+    { long: 'bonus', short: 'bn', kind: 'numArrArr' },
+    // 材质补强（低于最高阶级时可继续提升；空数组 = 已是最上位阶级）
+    { long: 'over_rank', short: 'or', kind: 'objArr', fields: EQUIP_OVER_RANK },
+];
+
 const reverseCache = new WeakMap<FieldSpec, Record<string, string>>();
 
 const reverseMap = (spec: FieldSpec) => {
@@ -354,6 +452,12 @@ export function decodeDoc<T = Doc>(src: Doc | null | undefined, fields: FieldSpe
             case 'numArr':
             case 'strArr':
                 out[spec.long] = Array.isArray(raw) ? raw : [];
+                break;
+            // 二维数字数组（加护概率 4 槽 × 19 属性），0 有含义，原样保留
+            case 'numArrArr':
+                out[spec.long] = Array.isArray(raw)
+                    ? (raw as unknown[][]).map((row) => (Array.isArray(row) ? [...row] : []))
+                    : [];
                 break;
             case 'numMap':
                 out[spec.long] = raw && typeof raw === 'object' ? { ...(raw as Doc) } : {};

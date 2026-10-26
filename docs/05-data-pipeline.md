@@ -120,11 +120,12 @@ data/
 
 | 文件 | 对应接口 | 条数 | 体积 |
 |---|---|---|---|
-| `CharacterResponse.json` | `Api/GetCharacter` | 95 | 771 KB |
-| `JobResponse.json` | `Api/GetJob` | 17 | 21 KB |
-| `SkillResponse.json` | `Api/GetSkill` | 3,031 | 2.16 MB |
-| `EnumResponse.json` | `Api/GetEnum` | 1（对象包） | 62 KB |
-| `VersionResponse.json` | `Api/Version` | — | <1 KB |
+| `CharacterResponse.json` | `Api/GetV2Character` | 95 | 816 KB |
+| `JobResponse.json` | `Api/GetV2Job` | 17 | 26 KB |
+| `SkillResponse.json` | `Api/GetV2Skill` | 3,031 | 2.34 MB |
+| `EquipmentResponse.json` | `Api/GetV2Equipment` | 816 | 1.41 MB |
+| `EnumResponse.json` | `Api/GetV2Enum` | 1（对象包） | 46 KB |
+| `VersionResponse.json` | `Api/GetV2Version` | — | <1 KB |
 
 每个模块一条记录即完整文档（角色含 stats/talent/skills/voice，技能含描述与全部等级数值），不再有 `*Detail` 接口。
 
@@ -161,6 +162,12 @@ data/
 
 1. **短键唯一性**：合并后的 spec 里同一个短键只能出现一次（列表与详情合并后最容易撞键，`style`/`stats` 就撞过，故 `style` 用 `sty`）；
 2. **往返稳定**：每条记录执行 `encode → decode → encode`，必须与第一次编码完全相等，否则直接抛错（防止 spec 漏字段）。
+
+> **线上 Lua 序列化陷阱**：Scribunto 返回 table 时，**从 1 开始的连续整数 key 会被编码成数组**。
+> `EnumResponse` 里的 `alignment` / `cost_kind` / `damage_type` 正好是 `{1:…,2:…,3:…}`，
+> 到线上会变成 `["善","中立","恶"]`。`src/stores/wikiData.ts` 的 `normalizeEnums()` 在
+> 下载落库、读缓存时统一还原成 `{"1": …}`（数组下标 0 = key 1），所以生成侧不用改格式，
+> DEV 的 mock（本来就是对象）原样透传；`skill_kind` / `use_timing` 等 key 不连续，线上仍是对象。
 
 ### 3.3 短键表（节选）
 
@@ -200,6 +207,37 @@ data/
 | `lv[].dm` | damage `[{ar,a2,ad,cr,vc,v2,vs,at,dt,fd,hr,dc,oo,tg}]` | objArr |
 | `lv[].sb` | sub_effects `[{k,p,s,t,g,f,rp,rr,as,ac,fa,ir,cp,c2,cq,c3,cc,cv,rs,ch,tr,xp,cs,xe}]` | objArr |
 | `lv[].sb[].cs` / `xe` | 被引用 sub effect 的摘要 `[{i,k,kn,p,s,t,g,gt,cs}]`（第二层 `cs` 为叶子，不再嵌套） | objArr |
+
+装备 `EquipmentResponse.items[]`：
+
+| 短键 | 长键 | 类型 |
+|---|---|---|
+| `i` / `zh` / `jp` / `en` | id / name / name_jp / name_en | raw / str |
+| `c` / `ty` | category（武器/盾/头部/身体/手部/脚部/饰品/工具）/ type | str |
+| `ti` / `pt` / `r` | type_id / part / rank | num |
+| `el` / `eln` | element / element_name（1 火 … 6 暗） | num / str |
+| `sp` | special（特典装备） | bool |
+| `nt` / `rm` | note（客户端日文备注）/ reinforce_max | str / num |
+
+| `li` / `ic` | list_icon（列表小图）/ icon（背包大图）；均为去掉 `.png` 的资源名，空格→`_`、连续 `_` 合并（wiki 标题规则） | str |
+| `so` / `d` | soucate（9 = 特典）/ desc（中文说明）；解包与接口暂未提供，恒为空（占位） | num / str |
+| `su` / `rq` | sou（获取途径）/ req（装备需求）；暂未提供，恒为空（占位） | strArr |
+| `fc` / `fs` | fa_can（0 非妖精 / 1 可装备 / 2 限定）/ fa_sk（妖精技能）；暂未提供，恒为空（占位） | num / str |
+| `fd` | fa_sk_desc（妖精技能描述）；暂未提供，恒为空（占位） | str |
+| `lv` | levels `[{l, at, c, mg, …}]`：强化曲线，每个等级一行「完整数值」（含不变化的攻击次数 `c`），只输出与 +0 不同的等级 | objArr |
+| `bn` | bonus `[[…],[…],[…],[…]]`：加护概率 4 槽 × 19 属性，来自 `Api/GetV2Equipment` 顶层 `bonus` | numArrArr |
+| `st` / `mx` | stats / max_stats `{at,c,mg,dv,df,md,sp,ac,sr,ev,rs,dt,dp,et}`；`dt` / `dp` / `et` = 探知 / 陷阱解除 / 陷阱回避，取自 `EquipmentParam` 的 `detection_base` / `trap_remove_base` / `trap_avoid_base`，和别的属性一样进 `lv` 强化曲线（只有手套 / 面具 / 饰品等少数装备有） | obj |
+| `sk` / `tr` | skills（装备类型特性）/ traits（非装备类型特性）`[{i, l?, zh?, d?}]`：技能引用只有 identification + 等级 `l`（1 级不显示），名字与说明由前端查技能数据。`EquipmentLockConfig` 只保留 10 条游戏里没有对应技能的展示型特性（火水风土光暗属性 / 力量适应+ / 力量适应- / 抗不死 / 抗岩石），带名字 `zh`（`LOCK_CONFIG_NAME` 覆盖游戏内显示名）与手写说明 `d`（`equipment.py` 的 `LOCK_CONFIG_DESC`），前端不可交互；其余 lock config（都是已有技能的别名）一律隐藏 | objArr |
+| `ss` | set_skills `[{i,si,sn,rc,ml,al}]` | objArr |
+
+`st` 的键：`at` 攻击 / `c` 攻击次数 / `mg` 魔力 / `dv` 神力 / `df` 防御 / `md` 魔防 / `sp` 速度 / `ac` 命中 / `sr` 会心 / `ev` 回避 / `rs` 抵抗 / `dt` 探知 / `dp` 陷阱解除 / `et` 陷阱回避；`mx` 是「基础值 + 强化组在 `reinforce_max` 的值」的推算值。
+
+装备只排除两类：游戏里不存在的测试行（`残旧苦无` / `残旧之刃`），以及 `name` 没有中文本地化的敌人 / NPC / 剧情专用装备 —— 解包里这类 `name` 不是 `{ja, zhs, …}` 而是纯日文字符串（如 `短剣（陽炎の忍者用）`），判定见 `equipment.py` 的 `has_cn_name()`。
+
+`EquipmentResponse` 顶层还有 `baseStat`（长键、不压缩）：类型 -> 基准值 + 排序序号 `i`
+（`{ "短剑": { "i": 1, "c": 2, "spe": 4, "acc": 15, "eva": 2 } }`，`-1` 表示该属性不参与比较）。
+它来自 `config/EquipmentApi.json`（线上 `Api/GetV2Equipment` 响应的本地备份，与顶层 `bonus`
+同一个文件），列表用它做红绿配色；`i` 同时决定类型按钮的顺序（< 100 武器，>= 100 防具）。
 
 `sub_effects[].f` 取值 `"d"`（damage 行挂载）/ `"g"`（effect group 挂载）/ `"a"`（attack_start 攻击前挂载），decode 还原为 `damage` / `effect_group` / `attack_start`。
 
@@ -249,9 +287,9 @@ python local_scripts\clean\build_mock.py --data D:\tmp\data --out D:\tmp\mock
 
 | 项 | 状态 | 说明 |
 |---|---|---|
-| 上传脚本（mock → `Data:` 页面） | **已完成** | `local_scripts/wiki/uploadDataToWiki.ts`（`yarn update:wiki`）：记录级 `Data:Character|Job|Skill/<id>.json` + `dtype`，单条目 `Data:Enum.json`；`Data:Version.json`、`Data:EffectKind.json` 不由脚本维护（后者在 wiki 上手工改）；增量缓存为 sqlite（`D:\WizardyDaphne\workspace\wikitext.sqlite`） |
+| 上传脚本（mock → `Data:` 页面） | **已完成** | `local_scripts/wiki/uploadDataToWiki.ts`（`yarn update:wiki`）：记录级 `Data:Character|Job|Skill|Equipment/<id>.json` + `dtype`，单条目 `Data:Enum.json`；`Data:Version.json`、`Data:EffectKind.json` 不由脚本维护（后者在 wiki 上手工改）；增量缓存为 sqlite（`D:\WizardyDaphne\workspace\wikitext.sqlite`） |
 | `Api/GetXxx` lua 模块 | 未做 | 按 `dtype` 从 `mw.huiji.db` 取对应 `Data:` 条目，包成 `{items,count,page,limit}`；单条目页直接读 `Data:Enum.json` / `Data:Version.json` |
-| 前端 `decodeDoc` / `DOC_SPECS` | **已完成** | `src/api/dbCodec.ts`（CHAR/JOB/SKILL 三套 spec，与本文 §3.3 一致） |
+| 前端 `decodeDoc` / `DOC_SPECS` | **已完成** | `src/api/dbCodec.ts`（CHAR / JOB / SKILL / EQUIP 四套 spec，与本文 §3.3 一致） |
 | IndexedDB 缓存层 | **已完成** | `src/stores/wikiData.ts`（Dexie，版本比对 + 整库重拉），`DataV2` 已切到该数据源 |
 | 多语言 | 只中文 + 日英名 | 描述/台词缺中文时用 `*_lang` 标记 |
 
@@ -263,8 +301,8 @@ python local_scripts\clean\build_mock.py --data D:\tmp\data --out D:\tmp\mock
 2. `data/characters.json` 中随便一条：既有 `stats/talent/skills/voice`，也有 `rarity/race/...` 数字，`jobs` 只有 `{id, primary}`。
 3. `data/enums.json` 的 `grade` 有 12 项、`job` 有 17 项、`target` 有 96 项。
 4. `data/skills.json` 中精密攻击（`id: 111000000`）同时有 `name/kind/sources` 和 `description/levels`。
-5. 子目录条数与总数一致：`data/character/` 95 个、`data/job/` 17 个、`data/skill/` 3,031 个，且 `data/skill/111000000.json` 是单条对象。
-6. `python local_scripts\clean\build_mock.py` 输出 5 个文件且不抛异常（短键唯一性 + 往返自检）。
+5. 子目录条数与总数一致：`data/character/` 95 个、`data/job/` 17 个、`data/skill/` 3,031 个、`data/equipment/` 816 个，且 `data/skill/111000000.json` 是单条对象。
+6. `python local_scripts\clean\build_mock.py` 输出 6 个文件且不抛异常（短键唯一性 + 往返自检）。
 7. `public/mock/SkillResponse.json` 的形态是 `{items,count,page,limit}`，`count` = 3031；精密攻击首级为
    `{"l":1,"c":5,"ck":1,"ut":2,"dm":[{"ar":120,"a2":144,"ad":100,"cr":30,"vc":100,"v2":300,"dt":1,"hr":90,"dc":99,"tg":901}],"sb":[{"k":20,"p":[1000],"g":901,"f":"d"},{"k":30,"p":[50],"g":901,"f":"d"}]}`
    （`vs`、`fixed_damage`、`only_once` 为 0/false 已省略）。

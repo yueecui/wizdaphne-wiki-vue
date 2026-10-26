@@ -8,6 +8,7 @@
  *   Data:Character/<id>.json   dtype: "character"
  *   Data:Job/<id>.json         dtype: "job"
  *   Data:Skill/<id>.json       dtype: "skill"
+ *   Data:Equipment/<id>.json   dtype: "equipment"
  *   Data:Enum.json             整表（id 字典 + effect_kind），单条目
  *
  * `Data:Version.json` **不由本脚本维护**（版本号另行处理，避免上传脚本自动把前端缓存刷掉）。
@@ -21,7 +22,7 @@
  *   缓存表 wikitext_cache（sqlite）：条目名 -> 上次上传的内容，
  *   默认 `D:\WizardyDaphne\workspace\wikitext.sqlite`，可用 `WIKI_CACHE_SQLITE_PATH` 覆盖。
  *
- * 顺序：character → job → skill → enum（各自失败互不影响，最后汇总失败数）。
+ * 顺序：character → job → skill → equipment → enum（各自失败互不影响，最后汇总失败数）。
  * 效果种类名表（Data:EffectKind.json）在 wiki 上手工维护，不由本脚本上传。
  *
  * 运行（在本仓库根目录）：
@@ -86,7 +87,7 @@ interface KindSpec {
     note?: string;
 }
 
-const KIND_NAMES = ['character', 'job', 'skill', 'enum'] as const;
+const KIND_NAMES = ['character', 'job', 'skill', 'equipment', 'enum'] as const;
 type KindName = (typeof KIND_NAMES)[number];
 
 const KINDS: Record<KindName, KindSpec> = {
@@ -110,6 +111,14 @@ const KINDS: Record<KindName, KindSpec> = {
         dtype: 'skill',
         idKey: 'i',
         byDefault: true,
+    },
+    equipment: {
+        sub: 'Equipment',
+        file: 'EquipmentResponse.json',
+        dtype: 'equipment',
+        idKey: 'i',
+        byDefault: true,
+        note: '装备（含强化曲线 / 材质补强 / 图鉴编号）',
     },
     enum: {
         sub: null,

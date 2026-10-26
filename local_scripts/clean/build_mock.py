@@ -11,6 +11,7 @@ required) so the frontend can be developed against DEV mocks:
     CharacterResponse.json    Api/GetV2Character   95 records (roster + stats/talent/skills/voice)
     JobResponse.json          Api/GetV2Job         17 jobs
     SkillResponse.json        Api/GetV2Skill       3,031 records (skill fields + description + levels)
+    EquipmentResponse.json    Api/GetV2Equipment   839 records (weapon / armor stats + traits) + 顶层 baseStat
     EnumResponse.json         Api/GetV2Enum        id dictionaries + effect kind 结构（名字在 GetV2EffectKind）
     VersionResponse.json      Api/GetV2Version     { version }
 
@@ -41,7 +42,13 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import ROOT, character_extra, character_rates  # noqa: E402
+from common import (  # noqa: E402
+    EQUIP_API_JSON,
+    ROOT,
+    character_extra,
+    character_rates,
+    read_config_json,
+)
 
 PAGE_LIMIT = 10000
 DEFAULT_DATA = os.path.join(ROOT, "data")
@@ -258,6 +265,89 @@ SKILL_DETAIL = [
 ]
 
 
+#: 装备特性：只带技能 identification + 引用等级（名字与说明由前端查技能数据），
+#: 解包 Skill 表里找不到的纯 lock config 特性才带名字
+EQUIP_REF = [
+    ("id", "i", "num"),
+    ("level", "l", "num"),
+    ("name", "zh", "str"),
+    # 手写的展示型特性说明（lock config，游戏里没有这段文本）
+    ("desc", "d", "str"),
+]
+
+EQUIP_STAT = [
+    ("atk", "at", "num"), ("c", "c", "num"), ("mag", "mg", "num"), ("div", "dv", "num"),
+    ("def", "df", "num"), ("mdef", "md", "num"), ("spe", "sp", "num"), ("acc", "ac", "num"),
+    ("sur", "sr", "num"), ("eva", "ev", "num"), ("res", "rs", "num"),
+    # 探索系（装备自身属性，也随强化成长）：探知 / 陷阱解除 / 陷阱回避
+    ("det", "dt", "num"), ("dtrap", "dp", "num"), ("etrap", "et", "num"),
+]
+
+#: 强化曲线的一行：等级 + 该等级的完整数值（缺失的 num 在解码时补 0）
+EQUIP_LEVEL = [("lv", "l", "num")] + EQUIP_STAT
+
+#: 材质补强（合材补强）的一行：目标阶级 / 阶级内次数 / 金币 / 五项累计加成
+#: 武器只加攻击 / 魔力 / 神力，防具只加防御 / 法术防御
+EQUIP_OVER_RANK = [
+    ("rank", "r", "num"),
+    ("level", "l", "num"),
+    ("cost", "co", "num"),
+    ("atk", "at", "num"),
+    ("mag", "mg", "num"),
+    ("div", "dv", "num"),
+    ("def", "df", "num"),
+    ("mdef", "md", "num"),
+]
+EQUIP_SET = [
+    ("id", "i", "num"),
+    ("skill_id", "si", "num"),
+    ("skill_name", "sn", "str"),
+    ("require_count", "rc", "num"),
+    ("max_level", "ml", "num"),
+    ("add_skill_level", "al", "num"),
+]
+EQUIPMENT = [
+    ("id", "i", "raw"),
+    ("name", "zh", "str"),
+    ("name_jp", "jp", "str"),
+    ("name_en", "en", "str"),
+    ("category", "c", "str"),
+    ("type_id", "ti", "num"),
+    ("type", "ty", "str"),
+    ("part", "pt", "num"),
+    ("rank", "r", "num"),
+    # 图鉴编号；特殊装备（display_type 2）为 "EX"
+    ("collection_id", "ci", "raw"),
+    ("element", "el", "num"),
+    ("element_name", "eln", "str"),
+    ("special", "sp", "bool"),
+    ("note", "nt", "str"),
+    # 图标资源名（list_icon = 列表小图，icon = 背包大图，均不含 .png）
+    ("list_icon", "li", "str"),
+    ("icon", "ic", "str"),
+    # V1 手工字段：soucate 9 = 特典 / desc 中文说明 / 获取途径 / 妖精
+    ("soucate", "so", "num"),
+    ("desc", "d", "str"),
+    ("sou", "su", "strArr"),
+    ("req", "rq", "strArr"),
+    ("fa_can", "fc", "num"),
+    ("fa_sk", "fs", "str"),
+    # 妖精技能描述
+    ("fa_sk_desc", "fd", "str"),
+    ("reinforce_max", "rm", "num"),
+    # 0 级数值 + 满强化推算
+    ("stats", "st", "obj", EQUIP_STAT),
+    ("max_stats", "mx", "obj", EQUIP_STAT),
+    ("skills", "sk", "objArr", EQUIP_REF),
+    ("traits", "tr", "objArr", EQUIP_REF),
+    ("set_skills", "ss", "objArr", EQUIP_SET),
+    # 强化曲线（每级完整数值，只输出与 +0 不同的等级）与加护概率（4 槽 × 19 属性）
+    ("levels", "lv", "objArr", EQUIP_LEVEL),
+    ("bonus", "bn", "numArrArr"),
+    # 材质补强（低于最高阶级时可继续提升，空数组 = 不能补强）
+    ("over_rank", "or", "objArr", EQUIP_OVER_RANK),
+]
+
 #: list + detail fields merged (``id`` / ``grade`` are already in the list part;
 #: ``style`` uses ``sty`` because ``st`` is taken by ``stats``)
 CHAR = CHAR_LIST + [spec for spec in CHAR_DETAIL if spec[0] not in ("id", "grade")]
@@ -308,6 +398,11 @@ def encode_doc(src: dict, fields: list) -> dict:
         elif kind in ("numArr", "strArr"):
             if value:
                 out[short] = value
+
+        elif kind == "numArrArr":
+            # 二维数字数组（加护概率 4 槽 × 19 属性），0 有含义，必须保留
+            if value:
+                out[short] = [list(row) for row in value]
 
         elif kind == "numMap":
             nested = {k: v for k, v in (value or {}).items() if v not in (0, None)}
@@ -374,6 +469,8 @@ def decode_doc(src: dict, fields: list) -> dict:
             out[long] = bool(raw)
         elif kind in ("numArr", "strArr"):
             out[long] = raw or []
+        elif kind == "numArrArr":
+            out[long] = [list(row) for row in (raw or [])]
         elif kind == "numMap":
             out[long] = dict(raw or {})
         elif kind == "obj":
@@ -401,7 +498,7 @@ def verify(encoded: list[dict], fields: list, label: str) -> None:
 
 def check_specs() -> None:
     """Merged specs must not reuse a short key (a later field would win silently)."""
-    for label, spec in (("CHAR", CHAR), ("SKILL", SKILL), ("JOB", JOB)):
+    for label, spec in (("CHAR", CHAR), ("SKILL", SKILL), ("JOB", JOB), ("EQUIPMENT", EQUIPMENT)):
         seen: dict[str, str] = {}
         for item in spec:
             long, short = item[0], item[1]
@@ -426,16 +523,19 @@ def main(argv: list[str]) -> int:
     characters = read_json(os.path.join(data, "characters.json"))
     jobs = read_json(os.path.join(data, "jobs.json"))
     skills = read_json(os.path.join(data, "skills.json"))
+    equipments = read_json(os.path.join(data, "equipments.json"))
     effect_kinds = read_json(os.path.join(data, "effect_kinds.json"))
     enums = read_json(os.path.join(data, "enums.json"))
 
     char_rows = [encode_doc(row, CHAR) for row in characters]
     job_rows = [encode_doc(row, JOB) for row in jobs]
     skill_rows = [encode_doc(row, SKILL) for row in skills]
+    equip_rows = [encode_doc(row, EQUIPMENT) for row in equipments]
 
     verify(char_rows, CHAR, "Character")
     verify(job_rows, JOB, "Job")
     verify(skill_rows, SKILL, "Skill")
+    verify(equip_rows, EQUIPMENT, "Equipment")
 
     # 手工补充数据（config/Data_CharacterExtra.tabx.xlsx）放在 payload 顶层 `extra`：
     # 长键、不压缩，前端导入时按 id 合并，不进 items
@@ -470,6 +570,12 @@ def main(argv: list[str]) -> int:
         "CharacterResponse.json": {**wrap(char_rows), "extra": char_extra, "rates": char_rates},
         "JobResponse.json": wrap(job_rows),
         "SkillResponse.json": wrap(skill_rows),
+        # baseStat 与线上 ``Api/GetV2Equipment`` 顶层同形状（不压缩），列表用它决定红绿配色；
+        # 加护概率已并入每件装备的 ``bn``，这里只补 baseStat
+        "EquipmentResponse.json": {
+            **wrap(equip_rows),
+            "baseStat": (read_config_json(EQUIP_API_JSON) or {}).get("baseStat") or {},
+        },
         # effect_kind 只有结构（名字在 Data:EffectKind.json，由 Api/GetV2EffectKind 提供）
         "EnumResponse.json": wrap([{**enums, "effect_kind": effect_kinds}]),
         # the cache is keyed on this single value; nothing else belongs here

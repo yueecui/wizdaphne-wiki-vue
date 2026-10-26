@@ -4,6 +4,7 @@ import {
     useWikiDataStore,
     type EnumEntry,
     type RawCharacter,
+    type RawEquipment,
     type RawJob,
     type RawSkill,
     type RawSubEffectBrief,
@@ -13,6 +14,8 @@ import type {
     CharacterDetail,
     CharacterListItem,
     EffectKind,
+    EquipmentBaseStat,
+    EquipmentListItem,
     FateSkill,
     JobDetail,
     Manifest,
@@ -342,8 +345,49 @@ export const useDataV2Store = defineStore('data-v2', () => {
         })),
     });
 
+    /** 装备：清洗时已把名称 / 分组 / 特性名落地，这里只补缺省值 */
+    const toEquipment = (raw: RawEquipment): EquipmentListItem => ({
+        id: raw.id,
+        name: raw.name,
+        name_jp: raw.name_jp || null,
+        name_en: raw.name_en || null,
+        category: raw.category || '其他',
+        type_id: raw.type_id || null,
+        type: raw.type || null,
+        part: raw.part || null,
+        rank: raw.rank,
+        collection_id: raw.collection_id ?? null,
+        element: raw.element,
+        element_name: raw.element_name || null,
+        special: Boolean(raw.special),
+        note: raw.note || null,
+        list_icon: raw.list_icon || null,
+        icon: raw.icon || null,
+        soucate: raw.soucate || 0,
+        desc: raw.desc || null,
+        sou: raw.sou ?? [],
+        req: raw.req ?? [],
+        fa_can: raw.fa_can || 0,
+        fa_sk: raw.fa_sk || null,
+        fa_sk_desc: raw.fa_sk_desc || null,
+        levels: raw.levels ?? [],
+        bonus: raw.bonus ?? null,
+        reinforce_max: raw.reinforce_max,
+        over_rank: raw.over_rank ?? [],
+        stats: raw.stats,
+        max_stats: raw.max_stats,
+        skills: raw.skills ?? [],
+        traits: raw.traits ?? [],
+        set_skills: raw.set_skills ?? [],
+    });
+
     const characterDetails = computed<CharacterDetail[]>(() => wiki.characters.map(toCharacter));
     const skillDetails = computed<SkillDetail[]>(() => wiki.skills.map(toSkill));
+    const equipments = computed<EquipmentListItem[]>(() => wiki.equipments.map(toEquipment));
+    /** 装备类型基准值（V1 手工维护）：红绿配色与类型按钮排序都用它 */
+    const equipmentBaseStat = computed<EquipmentBaseStat>(
+        () => wiki.equipmentBaseStat as EquipmentBaseStat,
+    );
 
     const characters = computed<CharacterListItem[]>(() => characterDetails.value);
     const skills = computed<SkillListItem[]>(() => skillDetails.value);
@@ -400,6 +444,7 @@ export const useDataV2Store = defineStore('data-v2', () => {
                 jobs: wiki.counts.jobs,
                 skills: wiki.counts.skills,
                 player_skills: wiki.counts.playerSkills,
+                equipments: wiki.counts.equipments,
             },
             notes: [],
         };
@@ -421,6 +466,7 @@ export const useDataV2Store = defineStore('data-v2', () => {
             characters: mapped,
             jobs: mapped,
             skills: mapped,
+            equipments: mapped,
             effectKinds: mapped,
         };
     });
@@ -438,6 +484,7 @@ export const useDataV2Store = defineStore('data-v2', () => {
     const ensureCharacters = ensureAll;
     const ensureJobs = ensureAll;
     const ensureSkills = ensureAll;
+    const ensureEquipments = ensureAll;
     const ensureEffectKinds = ensureAll;
 
     const getCharacter = async (id: number): Promise<CharacterDetail | null> =>
@@ -461,6 +508,10 @@ export const useDataV2Store = defineStore('data-v2', () => {
         characters,
         jobs,
         skills,
+        /** 装备列表（一条 = 一件装备） */
+        equipments,
+        /** 装备类型基准值（baseStat） */
+        equipmentBaseStat,
         effectKinds,
         state,
         error,
@@ -469,6 +520,7 @@ export const useDataV2Store = defineStore('data-v2', () => {
         ensureCharacters,
         ensureJobs,
         ensureSkills,
+        ensureEquipments,
         ensureEffectKinds,
         ensureAll,
         refresh,

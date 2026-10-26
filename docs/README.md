@@ -55,6 +55,8 @@
 | [`03-manual-vs-unpack.md`](./03-manual-vs-unpack.md) | 手工数据（`data.json` 95 条）与解包的逐字段对照、差异清单、迁移建议 | 要迁移数据 / 修手工错漏的人 |
 | [`04-data-v2.md`](./04-data-v2.md) | v2 数据流水线与前端：收录规则、产物结构、生成命令、挂载方式、验收清单 | 要部署 / 继续开发 v2 页面的人 |
 | [`05-data-pipeline.md`](./05-data-pipeline.md) | **新链路**：第一轮长键精简（`data/`）→ 第二轮短键 mock（`public/mock/`），字段精简规则、短键表、编码规则、验收清单 | 要接 Wiki API / 改载荷格式的人 |
+| [`06-masterdata-patches.md`](./06-masterdata-patches.md) | 官方主数据「配错表」的修正补丁：症状、扫描命令、`SKILL_IDENT_FIXES` 的位置与新增流程（案例 56167101 / 56167201） | 发现技能名/说明错位时要补数据的人 |
+| [`07-shops.md`](./07-shops.md) | 商店数据：`Shop` / `ShopContent` / `PointShop` 表结构与字段、地区商店 126 件商品的分布、进度解锁只有 id 没有文案、落地方案 | 要做商店页 / 补「获取途径」的人 |
 | [`data-wiki-api-indexeddb.md`](./data-wiki-api-indexeddb.md) | 参考范式：Wiki 短键 JSON → `Api/GetXxx` → 前端 decode → IndexedDB/内存 | 要理解 05 为什么这么设计的人 |
 
 > 解包本身的技术原理（AES 密钥、IL2CPP、MessagePack、Addressables）不在本仓库展开，见解包仓库的 `docs/unpacking.md` 与 `skills/main-unpack/SKILL.md`。
@@ -79,10 +81,13 @@
 | 12 | v2 网页载荷导出 | **已废弃** | `local_scripts/clean/export_v2.py` → `public/data-v2/` | 被第 15/16 项取代；`public/data-v2` 已删除 |
 | 13 | v2 前端页面 | 首版可用 | `src/views/DataV2/` + `loader/config/dataSearcherV2.ts` | 独立目录/独立 store/挂载点 `#data-searcher-v2`，待人工验收 |
 | 14 | 技能详情弹窗 | 完成（首版） | `DataV2/SkillModal.vue` + `SkillDetail.vue` | 攻略站式版式：基本信息/说明/逐级数值（转置）/通用数值/学习来源；字段对照见 04 §3.1 |
-| 15 | 第一轮清洗（长键精简） | 完成 | `local_scripts/clean/build_data.py` → `data/` | 95 角色 / 17 职业 / 3,031 技能；根目录总数据 + `character/ job/ skill/` 单条；列表与详情合并、引用只留 id、名称进 `enums.json`（见 05） |
-| 16 | 第二轮清洗（Wiki 载荷 mock） | 完成 | `local_scripts/clean/build_mock.py` → `public/mock/` | 短键 + `{items,count,page,limit}`，5 个模块共 2.94 MB，内置短键唯一性与往返自检；上传模块未做，mock 不入库 |
+| 15 | 第一轮清洗（长键精简） | 完成 | `local_scripts/clean/build_data.py` → `data/` | 95 角色 / 17 职业 / 3,031 技能 / 816 装备；根目录总数据 + `character/ job/ skill/ equipment/` 单条；列表与详情合并、引用只留 id、名称进 `enums.json`（见 05） |
+| 16 | 第二轮清洗（Wiki 载荷 mock） | 完成 | `local_scripts/clean/build_mock.py` → `public/mock/` | 短键 + `{items,count,page,limit}`，6 个模块共 4.40 MB，内置短键唯一性与往返自检；`update:wiki` 已支持 character / job / skill / equipment / enum 上传（mock 本身不入库） |
 | 17 | IndexedDB 数据源 | 完成 | `src/api/dbCodec.ts` + `src/api/wikiData.ts` + `src/stores/wikiData.ts` | 短键解码、版本比对、整库缓存；`DataV2` 已切换（见 04 §4.3） |
 | 18 | 移除旧载荷 | 完成 | — | `public/data-v2/` 已删除，页面不再请求该路径 |
+| 19 | 装备（武器 / 防具） | 完成 | `local_scripts/clean/equipment.py` + `DataV2/EquipmentPanel.vue` + `EquipmentModal.vue` | 816 条（武器 341 / 盾 51 / 头部 97 / 身体 109 / 手部 73 / 脚部 61 / 饰品 82 / 工具 2）；数值、攻击次数、特性、套装、图标、强化曲线、探索三项（探知 / 陷阱解除 / 陷阱回避）、材质补强（`EquipmentOverRankReinforce`，540 件）与图鉴编号（`CollectionEquip`，特殊装备 EX）取自解包，加护概率与类型基准值 `baseStat` 取自 `Api/GetV2Equipment` 顶层；详情新增「材质补强」页（目标阶级分组、逐次属性增量、阶级小计、总加成），属性表可用下拉叠加补强等级；能通过杂物获得的装备还会显示「杂物来源」页签（本地有杂物整理缓存时生效）；敌人 / NPC / 剧情专用装备（`name` 没有中文本地化）与测试行一并排除；V1 手工表（EquipmentExtra / EquipmentSkill / EquipmentSetSkill / EquipmentBonus / EquipmentBaseStat）不再参与清洗，解包与接口都没有的字段保留占位 |
+
+| 20 | 杂物 | 完成 | `DataV2/JunkPanel.vue` + `DataV2/junk/` | V2 独立实现，V1 代码不改动；官网抓包 `public/junkdata.json`（743 分类）整理出约 23 万条几率组合，装备中文名 / 阶级 / 特典取 V2 装备数据；列表 / 筛选 / 分页 / 详情弹窗 / 右键复制模板与 V1 一致；整理结果缓存到主库 `wizdaphne-wiki-v2` 的 `junk` 表，本地有缓存时进页面直接读取、不再走网络，整库重建（`DB_SCHEMA_VERSION` bump）或手动刷新时一起失效；详情里查看装备打开 V2 装备弹窗 |
 
 状态含义：**完成** = 已产出且验证过；**首版可用** = 有产物但字段/粒度待定；**未开始** = 仅完成调研。
 

@@ -18,6 +18,7 @@ import { defineStore } from 'pinia';
 import { computed, reactive, ref } from 'vue';
 import {
     CHAR_FIELDS,
+    EQUIP_FIELDS,
     JOB_FIELDS,
     SKILL_FIELDS,
     decodeDoc,
@@ -29,6 +30,7 @@ import {
     fetchModuleItems,
     type EffectKindMap,
 } from '../api/wikiData';
+import type { SerializedJunkItem } from '../views/DataV2/junk/types';
 
 export interface EnumEntry {
     name?: string;
@@ -160,6 +162,162 @@ export interface RawJob {
     change_items?: Array<{ item?: number; quantity?: number; group?: number }>;
 }
 
+/** 装备数值（0 级 / 满强化共用同一组键） */
+export interface RawEquipmentStat {
+    /** 攻击 */
+    atk: number;
+    /** 攻击次数（防具为 0） */
+    c: number;
+    mag: number;
+    div: number;
+    def: number;
+    mdef: number;
+    /** 速度 */
+    spe: number;
+    /** 命中 */
+    acc: number;
+    /** 会心 */
+    sur: number;
+    /** 回避 */
+    eva: number;
+    /** 抵抗 */
+    res: number;
+    /** 探知 */
+    det: number;
+    /** 陷阱解除 */
+    dtrap: number;
+    /** 陷阱回避 */
+    etrap: number;
+}
+
+/**
+ * 装备特性：技能 identification + 装备引用的等级。
+ * 名字与说明都不落地，前端按 ``id`` 从技能数据（IndexedDB）里查。
+ */
+export interface RawEquipmentRef {
+    /** ``Skill.identification``（纯 lock config 特性则是 ``EquipmentLockConfig.id``） */
+    id: number;
+    /** 装备引用的技能等级（1 级为 0） */
+    level: number;
+    /** 展示型 lock config 特性的名字（技能数据里查不到） */
+    name: string;
+    /** 展示型 lock config 特性的手写说明 */
+    desc: string;
+}
+
+/** 强化曲线的一行：该等级的完整数值（只输出与 +0 不同的等级） */
+export interface RawEquipmentLevel extends Partial<RawEquipmentStat> {
+    lv: number;
+}
+
+/**
+ * 材质补强（合材补强）的一行。``rank`` 是**目标阶级**、``level`` 是该阶级内的
+ * 次数；五项属性是累计加成（新阶级第 1 次接着上一阶级满次继续加）。
+ */
+export interface RawEquipmentOverRank {
+    rank: number;
+    level: number;
+    /** 金币消耗 */
+    cost: number;
+    atk: number;
+    mag: number;
+    div: number;
+    def: number;
+    mdef: number;
+}
+
+export interface RawEquipmentSetSkill {
+    id: number;
+    skill_id: number;
+    skill_name: string;
+    require_count: number;
+    max_level: number;
+    add_skill_level: number;
+}
+
+/**
+ * 一件装备（一个 ``identification``）。同一 identification 在 ``Equipment``
+ * 表里有多行抽选档位，清洗时已合并成一条。
+ */
+export interface RawEquipment {
+    id: number;
+    name: string;
+    name_jp: string;
+    name_en: string;
+    /** 列表分组：武器 / 盾 / 头部 / 身体 / 手部 / 脚部 / 饰品 / 工具 */
+    category: string;
+    type_id: number;
+    /** 类型名：短剑 / 单手剑 / 双手斧 … */
+    type: string;
+    /** ``EquipmentType.part``，1/2 是武器 */
+    part: number;
+    /** 阶级 */
+    rank: number;
+    /** 图鉴编号；特殊装备（图鉴 ``display_type`` 2）为 ``"EX"``，没有图鉴记录为 null */
+    collection_id: number | 'EX' | null;
+    /** ``Equipment.element``：1 火 / 2 水 / 3 风 / 4 土 / 5 光 / 6 暗 */
+    element: number;
+    element_name: string;
+    special: boolean;
+    /** 客户端备注（日文，多为特性说明） */
+    note: string;
+    /** 列表图标资源名（不含 ``.png``，与其它 wiki 图片同目录） */
+    list_icon: string;
+    /** 背包大图标资源名（``assets.lib/sprite/EquipmentIcon``，不含 ``.png``） */
+    icon: string;
+    /** 特典分类：9 = 特典（解包/接口暂未提供，占位） */
+    soucate: number;
+    /** 中文说明（解包/接口暂未提供，占位） */
+    desc: string;
+    /** 获取途径（解包/接口暂未提供，占位） */
+    sou: string[];
+    /** 装备需求（解包/接口暂未提供，占位） */
+    req: string[];
+    /** 妖精可装备：0 不支持 / 1 可装备 / 2 限定妖精（暂未提供，占位） */
+    fa_can: number;
+    /** 妖精专属技能（暂未提供，占位） */
+    fa_sk: string;
+    /** 妖精技能描述（暂未提供，占位） */
+    fa_sk_desc: string;
+    /** 强化曲线（每个等级一行完整数值，只输出与 +0 不同的等级） */
+    levels: RawEquipmentLevel[];
+    /** 加护概率：4 个槽位 × 19 个属性（``Api/GetV2Equipment`` 顶层 bonus） */
+    bonus: number[][] | null;
+    /** 强化上限 */
+    reinforce_max: number;
+    /** 材质补强（目标阶级从当前+1 起；空数组 = 已是最上位阶级） */
+    over_rank: RawEquipmentOverRank[];
+    /** 0 级数值 */
+    stats: RawEquipmentStat;
+    /** 满强化推算值（base + 强化组） */
+    max_stats: RawEquipmentStat;
+    /** 装备类型特性（lock config characteristic 100 / standard_skill_ids） */
+    skills: RawEquipmentRef[];
+    /** 非装备类型特性 */
+    traits: RawEquipmentRef[];
+    set_skills: RawEquipmentSetSkill[];
+}
+
+/**
+ * 类型基准值（``Api/GetV2Equipment`` 顶层 ``baseStat``，本地备份是
+ * ``config/EquipmentApi.json``）。列表用它判断「同类型同阶级」的偏高 / 偏低，
+ * 值 ``-1`` 表示该属性不参与比较。``i`` 同时是类型按钮的排序序号（< 100 武器，>= 100 防具）。
+ */
+export interface EquipmentBaseStatEntry {
+    i: number;
+    atk?: number;
+    c?: number;
+    mag?: number;
+    div?: number;
+    def?: number;
+    mdef?: number;
+    spe?: number;
+    acc?: number;
+    sur?: number;
+    eva?: number;
+    res?: number;
+}
+
 export interface RawSkillDamage {
     attack_rate: number;
     attack_rate_both_hands: number;
@@ -289,13 +447,30 @@ interface MetaRow {
 
 const DB_NAME = 'wizdaphne-wiki-v2';
 /** bump when the stored document shape changes -> whole DB is rebuilt */
-const DB_SCHEMA_VERSION = 2;
+export const DB_SCHEMA_VERSION = 12;
+
+/**
+ * 杂物整理结果（官网抓包 → JunkItem 全量几率组合）。
+ * 和 wiki 数据放在同一个库里，整库重建时一起失效，不再单独维护一个数据库。
+ */
+export interface JunkCacheRow {
+    /** 固定为 ``all``（源数据是整包） */
+    key: string;
+    /** 写入时的 ``DB_SCHEMA_VERSION``，结构变了就当作没有缓存 */
+    schemaVersion: number;
+    /** 源数据内容哈希（仅留档，不再用于判断是否走网络） */
+    hash: string;
+    items: SerializedJunkItem[];
+    savedAt: number;
+}
 
 class WikiDataDb extends Dexie {
     characters!: Table<RawCharacter, number>;
     jobs!: Table<RawJob, number>;
     skills!: Table<RawSkill, number>;
+    equipments!: Table<RawEquipment, number>;
     meta!: Table<MetaRow, string>;
+    junk!: Table<JunkCacheRow, string>;
 
     constructor() {
         super(DB_NAME);
@@ -303,10 +478,18 @@ class WikiDataDb extends Dexie {
             characters: 'id',
             jobs: 'id',
             skills: 'id',
+            equipments: 'id',
             meta: 'key',
         });
+        // v2：杂物整理结果并入主库
+        this.version(2).stores({ junk: 'key' });
     }
 }
+
+let db: WikiDataDb | null = null;
+
+/** 主库单例（杂物整理结果等附属缓存也复用它） */
+export const getWikiDb = () => (db ??= new WikiDataDb());
 
 const emptyEnums = (): EnumsPayload => ({
     alignment: {},
@@ -325,6 +508,36 @@ const emptyEnums = (): EnumsPayload => ({
     equipment_type: {},
     effect_kind: {},
 });
+
+/**
+ * 线上 Wiki 的 Lua 模块序列化 table 时，「从 1 开始的连续整数 key」会被当成数组：
+ * ``{1:"善",2:"中立",3:"恶"}`` 到线上就变成 ``["善","中立","恶"]``。
+ * 受影响的字典是 key 连续的那几个（alignment / cost_kind / damage_type，以及
+ * 恰好也从 1 开始连续的 rarity / grade / job 等）——这里统一还原成
+ * ``{"1": ...}`` 形态（数组下标 0 对应 key 1），组件就不用区分线上 / DEV。
+ */
+const toKeyedRecord = <T,>(value: unknown): Record<string, T> => {
+    if (Array.isArray(value)) {
+        const out: Record<string, T> = {};
+        value.forEach((item, index) => {
+            out[String(index + 1)] = item as T;
+        });
+        return out;
+    }
+    return value && typeof value === 'object' ? { ...(value as Record<string, T>) } : {};
+};
+
+/** 把载荷里的字典统一成对象（数组形态按 Lua 的 1 起下标还原） */
+const normalizeEnums = (raw: unknown): EnumsPayload => {
+    const source =
+        raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+    const base = emptyEnums() as unknown as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    for (const key of Object.keys(base)) {
+        out[key] = toKeyedRecord(source[key]);
+    }
+    return out as unknown as EnumsPayload;
+};
 
 /**
  * 角色个体出现几率，来自 ``Api/GetV2Character`` 顶层的 ``rates``。
@@ -374,11 +587,14 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
     const characters = ref<RawCharacter[]>([]);
     const jobs = ref<RawJob[]>([]);
     const skills = ref<RawSkill[]>([]);
+    const equipments = ref<RawEquipment[]>([]);
     const enums = ref<EnumsPayload>(emptyEnums());
     /** ``Api/GetV2Character`` 顶层的 extra，按角色 id 索引 */
     const characterExtras = ref<Record<number, RawCharacterExtra>>({});
     /** ``Api/GetV2Character`` 顶层的 rates，按角色 id 索引 */
     const characterRates = ref<Record<number, RawCharacterRate>>({});
+    /** ``Api/GetV2Equipment`` 顶层的 baseStat，按键是类型名（含 ``R{阶级}`` 变体） */
+    const equipmentBaseStat = ref<Record<string, EquipmentBaseStatEntry>>({});
 
     const version = ref<number | null>(null);
     const status = ref<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -390,34 +606,40 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         jobs: 0,
         skills: 0,
         playerSkills: 0,
+        equipments: 0,
     });
 
-    let db: WikiDataDb | null = null;
     let pending: Promise<void> | null = null;
 
-    const getDb = () => (db ??= new WikiDataDb());
+    const getDb = getWikiDb;
 
     function apply(database: WikiDataDb, payload: {
         characters: RawCharacter[];
         jobs: RawJob[];
         skills: RawSkill[];
+        equipments: RawEquipment[];
         enums: EnumsPayload;
         version: number | null;
         extras?: Record<number, RawCharacterExtra>;
         rates?: Record<number, RawCharacterRate>;
+        /** 装备类型基准值（顶层 baseStat） */
+        baseStat?: Record<string, EquipmentBaseStatEntry> | null;
     }) {
         characters.value = payload.characters;
         jobs.value = payload.jobs;
         skills.value = payload.skills;
-        enums.value = payload.enums;
+        equipments.value = payload.equipments;
+        enums.value = normalizeEnums(payload.enums);
         version.value = payload.version;
         characterExtras.value = payload.extras ?? {};
         characterRates.value = payload.rates ?? {};
+        equipmentBaseStat.value = payload.baseStat ?? {};
 
         counts.characters = payload.characters.length;
         counts.jobs = payload.jobs.length;
         counts.skills = payload.skills.length;
         counts.playerSkills = payload.skills.filter((s) => s.player).length;
+        counts.equipments = payload.equipments.length;
 
         void database;
     }
@@ -461,10 +683,11 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
     }
 
     async function download(database: WikiDataDb, remoteVersion: number) {
-        const [charPayload, jobPayload, skillPayload, enumPayload] = await Promise.all([
+        const [charPayload, jobPayload, skillPayload, equipPayload, enumPayload] = await Promise.all([
             fetchAllModuleItems('Character'),
             fetchAllModuleItems('Job'),
             fetchAllModuleItems('Skill'),
+            fetchAllModuleItems('Equipment'),
             // 字典只有一个条目，不需要分页
             fetchModuleItems('Enum'),
         ]);
@@ -473,27 +696,33 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
             characters: charPayload.items.map((row) => decodeDoc<RawCharacter>(row as never, CHAR_FIELDS)),
             jobs: jobPayload.items.map((row) => decodeDoc<RawJob>(row as never, JOB_FIELDS)),
             skills: skillPayload.items.map((row) => decodeDoc<RawSkill>(row as never, SKILL_FIELDS)),
-            enums: (enumPayload.items[0] ?? emptyEnums()) as EnumsPayload,
+            equipments: equipPayload.items.map((row) => decodeDoc<RawEquipment>(row as never, EQUIP_FIELDS)),
+            // 线上可能把连续整数 key 的字典转成数组，统一还原成对象再落库
+            enums: normalizeEnums(enumPayload.items[0]),
             version: remoteVersion,
             extras: extraMap(charPayload.extra),
             rates: rateMap(charPayload.rates),
+            baseStat: (equipPayload.baseStat as Record<string, EquipmentBaseStatEntry>) ?? null,
         };
 
         await database.transaction(
             'rw',
-            [database.characters, database.jobs, database.skills, database.meta],
+            [database.characters, database.jobs, database.skills, database.equipments, database.meta],
             async () => {
                 await database.characters.clear();
                 await database.jobs.clear();
                 await database.skills.clear();
+                await database.equipments.clear();
                 await database.characters.bulkPut(decoded.characters);
                 await database.jobs.bulkPut(decoded.jobs);
                 await database.skills.bulkPut(decoded.skills);
+                await database.equipments.bulkPut(decoded.equipments);
                 await database.meta.bulkPut([
                     { key: 'dataVersion', value: remoteVersion },
                     { key: 'enums', value: decoded.enums },
                     { key: 'characterExtras', value: decoded.extras },
                     { key: 'characterRates', value: decoded.rates },
+                    { key: 'equipmentBaseStat', value: decoded.baseStat },
                 ]);
             },
         );
@@ -502,22 +731,32 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
     }
 
     async function readCache(database: WikiDataDb) {
-        const [chars, jobRows, skillRows, metaRows] = await Promise.all([
+        const [chars, jobRows, skillRows, equipRows, metaRows] = await Promise.all([
             database.characters.toArray(),
             database.jobs.toArray(),
             database.skills.toArray(),
-            database.meta.bulkGet(['dataVersion', 'enums', 'characterExtras', 'characterRates']),
+            database.equipments.toArray(),
+            database.meta.bulkGet([
+                'dataVersion',
+                'enums',
+                'characterExtras',
+                'characterRates',
+                'equipmentBaseStat',
+            ]),
         ]);
 
-        const [versionRow, enumRow, extrasRow, ratesRow] = metaRows;
+        const [versionRow, enumRow, extrasRow, ratesRow, baseStatRow] = metaRows;
 
         apply(database, {
             characters: chars,
             jobs: jobRows,
             skills: skillRows,
-            enums: (enumRow?.value as EnumsPayload) ?? emptyEnums(),
+            equipments: equipRows,
+            // 旧缓存里可能存着数组形态，读出来也统一还原
+            enums: normalizeEnums(enumRow?.value),
             version: (versionRow?.value as number) ?? null,
             extras: (extrasRow?.value as Record<number, RawCharacterExtra>) ?? {},
+            baseStat: (baseStatRow?.value as Record<string, EquipmentBaseStatEntry>) ?? null,
             rates: (ratesRow?.value as Record<number, RawCharacterRate>) ?? {},
         });
     }
@@ -589,7 +828,10 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         await database.characters.clear();
         await database.jobs.clear();
         await database.skills.clear();
+        await database.equipments.clear();
         await database.meta.clear();
+        // 装备名称 / 阶级变了，杂物整理结果也要重算
+        await database.junk.clear();
         status.value = 'idle';
         await init();
     }
@@ -600,9 +842,11 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         characters,
         jobs,
         skills,
+        equipments,
         enums,
         characterExtras,
         characterRates,
+        equipmentBaseStat,
         version,
         status,
         error,

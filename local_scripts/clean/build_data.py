@@ -19,10 +19,12 @@ Layout (``--out`` defaults to ``<repo>/data``)::
     characters.json               95 rows  (totals; roster fields + stats/talent/skills/voice)
     jobs.json                     17 jobs  (totals; skill refs only, no names)
     skills.json                   3,031 rows (totals; skill fields + description + levels)
+    equipments.json               841 rows (totals; weapon / armor fields + stats)
     effect_kinds.json             414 sub-effect kinds -> id + usage count + param slots
     character/<id>.json           one character
     job/<id>.json                 one job
     skill/<identification>.json   one skill
+    equipment/<identification>.json  one equipment
 
 Totals live in the root for grepping; the per-record files under
 ``character/ job/ skill/`` make a single entry easy to read in an editor.
@@ -45,7 +47,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import CLEAN, MD, ROOT, text  # noqa: E402
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 AWAKENING_SUFFIX = ("0099", "0100")
 PLACEHOLDER_IDS = {901100720000}
 DEFAULT_OUT = os.path.join(ROOT, "data")
@@ -178,6 +180,7 @@ def main(argv: list[str]) -> int:
     skills = read_clean("skill", "skills.json")
     levels = read_clean("skill", "skill_levels.json")
     effect_kinds = read_clean("skill", "effect_kinds.json")
+    equipments = read_clean("equipment", "equipments.json")
 
     roster, excluded = [], []
     for row in characters:
@@ -453,6 +456,52 @@ def main(argv: list[str]) -> int:
             "levels": out_levels,
         }))
 
+    # ---------- equipments（武器 / 盾 / 防具 / 饰品，一条 = 一个 identification） ----------
+    equipment_rows = []
+    for item in equipments:
+        equipment_rows.append(compact({
+            "id": item.get("id"),
+            "name": item.get("name"),
+            "name_jp": item.get("name_jp"),
+            "name_en": item.get("name_en"),
+            # 列表分组（武器 / 盾 / 头部 / 身体 / 手部 / 脚部 / 饰品 / 工具）
+            "category": item.get("category"),
+            "type_id": item.get("type_id"),
+            "type": item.get("type"),
+            "part": item.get("part"),
+            "rank": item.get("rank"),
+            # 图鉴编号：特殊装备为 "EX"，没有图鉴记录则为空
+            "collection_id": item.get("collection_id"),
+            "element": item.get("element"),
+            "element_name": item.get("element_name"),
+            "special": bool(item.get("special")),
+            "note": item.get("note"),
+            # 图标资源名（已按 wiki 标题规则规范化，不含 .png）
+            "list_icon": item.get("list_icon"),
+            "icon": item.get("icon"),
+            # 接口/解包暂未提供的占位字段：特典分类 / 中文说明 / 获取途径 / 装备需求 / 妖精
+            "soucate": item.get("soucate"),
+            "desc": item.get("desc"),
+            "sou": item.get("sou"),
+            "req": item.get("req"),
+            "fa_can": item.get("fa_can"),
+            "fa_sk": item.get("fa_sk"),
+            "fa_sk_desc": item.get("fa_sk_desc"),
+            # 加护概率（4 槽 × 19 属性）与强化曲线（[{lv, atk, ...}]，每级完整数值，只输出与 +0 不同的等级）
+            "bonus": item.get("bonus"),
+            "levels": item.get("levels"),
+            "reinforce_max": item.get("reinforce_max"),
+            # 材质补强：[{rank, level, cost, atk, mag, div, def, mdef}]，属性为累计加成
+            "over_rank": item.get("over_rank"),
+            # 0 级数值 + 满强化推算（base + 强化组在 reinforce_max 的值）
+            "stats": item.get("stats"),
+            "max_stats": item.get("max_stats"),
+            # 装备类型特性 / 非装备类型特性 / 套装
+            "skills": item.get("skills"),
+            "traits": item.get("traits"),
+            "set_skills": item.get("set_skills"),
+        }))
+
     # ---------- enums: targets actually referenced ----------
     skill_targets = read_json(MD, "SkillTarget.json")
     for row in skill_targets:
@@ -493,6 +542,7 @@ def main(argv: list[str]) -> int:
     write_json(os.path.join(out, "characters.json"), char_rows, indent=1)
     write_json(os.path.join(out, "jobs.json"), job_list, indent=1)
     write_json(os.path.join(out, "skills.json"), skill_rows, indent=1)
+    write_json(os.path.join(out, "equipments.json"), equipment_rows, indent=1)
     write_json(os.path.join(out, "effect_kinds.json"), kinds, indent=1)
     write_json(os.path.join(out, "enums.json"), enums, indent=1)
 
@@ -502,6 +552,17 @@ def main(argv: list[str]) -> int:
         write_json(os.path.join(out, "job", f"{row['id']}.json"), row, indent=1)
     for row in skill_rows:
         write_json(os.path.join(out, "skill", f"{row['id']}.json"), row, indent=1)
+
+    # 单条目录不整体清空（编辑器友好），但要删掉本次没有输出的旧条，
+    # 例如被排除的测试装备 106000200 / 108000200
+    equipment_dir = os.path.join(out, "equipment")
+    keep = {f"{row['id']}.json" for row in equipment_rows}
+    if os.path.isdir(equipment_dir):
+        for name in os.listdir(equipment_dir):
+            if name.endswith(".json") and name not in keep:
+                os.remove(os.path.join(equipment_dir, name))
+    for row in equipment_rows:
+        write_json(os.path.join(equipment_dir, f"{row['id']}.json"), row, indent=1)
     write_json(os.path.join(out, "excluded.json"), [
         {"id": r["id"], "name": r.get("name"),
          "reason": "awakening" if str(r["id"])[-4:] in AWAKENING_SUFFIX else "placeholder"}
@@ -518,6 +579,7 @@ def main(argv: list[str]) -> int:
             "jobs": len(job_list),
             "skills": len(skill_rows),
             "player_skills": sum(1 for s in skill_rows if s.get("player")),
+            "equipments": len(equipment_rows),
             "effect_kinds": len(kinds),
             "targets": len(enums["target"]),
         },
@@ -530,7 +592,8 @@ def main(argv: list[str]) -> int:
     }, indent=1)
 
     print(f"{len(char_rows)} characters (+{len(excluded)} excluded), {len(job_list)} jobs, "
-          f"{len(skill_rows)} skills, {len(kinds)} effect kinds -> {out}")
+          f"{len(skill_rows)} skills, {len(equipment_rows)} equipments, "
+          f"{len(kinds)} effect kinds -> {out}")
     return 0
 
 

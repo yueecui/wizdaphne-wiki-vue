@@ -41,8 +41,50 @@ EXTRA_XLSX = os.path.join(ROOT, "config", "Data_CharacterExtra.tabx.xlsx")
 #: 个体出现几率（线上 ``CharacterResponse.rates`` 的本地备份，只用于生成 mock）
 RATES_JSON = os.path.join(ROOT, "config", "CharacterRates.json")
 
+#: ``Api/GetV2Equipment`` 响应的本地备份（``{items, baseStat, bonus, …}``）。
+#: 类型基准值 ``baseStat`` 与加护概率 ``bonus`` 都随接口返回，不再从 V1 手工表清洗：
+#:   * ``baseStat``：类型 -> 基准值 + 排序序号 ``i``（列表红绿配色 / 类型按钮顺序）
+#:   * ``bonus``：``[[装备名, [4 槽 × 19 属性]]]``
+EQUIP_API_JSON = os.path.join(ROOT, "config", "EquipmentApi.json")
+
 _XLSX_NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 _JST_OFFSET = timezone(timedelta(hours=8))  # release dates are written in game time (UTC+8)
+
+#: 官方主数据「配错表」的修正表：``Skill.id`` -> 该行真正的 ``identification``。
+#:
+#: 症状：同一个 ``identification`` + 同一个 ``level`` 下出现多行、名字却不同。
+#: 清洗按 identification 归组，名字与说明只取排序后的第一行，于是另一行的技能
+#: 就顶着别人的名字出现在装备 / 怪物页上；引用它的装备又因为「id 查不到
+#: identification」而落回错误的行。
+#:
+#: 这里按**行 id**（``Skill.id``，引用方实际写的就是它）纠正 identification，
+#: 让两个技能各自成条，引用关系自然对上。排查与新增流程见
+#: ``docs/06-masterdata-patches.md``。
+SKILL_IDENT_FIXES: dict[int, int] = {
+    # 範囲魔術理解（范围魔术理解）：官方表把 identification 写成了 56167101
+    # （庇護巧者 / 庇护能手），装备 203101330 的 standard_skill_ids 引用的是
+    # 它自己的 56167201。
+    56167201: 56167201,
+    # 効率調合（效率调和）：identification 被写成 56164101（慧眼の祝福（両手剣）），
+    # 装备 104100430「调药棒」引用的是它自己的 56164201。
+    56164201: 56164201,
+    # 剣鬼の呪い（剑鬼的诅咒）：塞进了 53100401（混乱付与 Lv1-5）里，装备引用的是 56162501。
+    56162501: 56162501,
+    # 闇属性強化（暗属性强化）：塞进了 56165001（クラウストルムの力）。
+    56165101: 56165101,
+    # 下面三个都塞进了 56165801（常時器用さダウン）：一个 identification 下四条不同技能。
+    56165901: 56165901,   # 修正射撃 / 校正射击
+    56166001: 56166001,   # 常時探知・罠解除・攻撃力アップ / 探知・陷阱解除・攻击力持续提升
+    56166101: 56166101,   # 弓の習熟 / 熟习弓
+}
+
+
+def skill_identification(row: dict):
+    """技能行真正的 identification（应用 ``SKILL_IDENT_FIXES`` 修正）。"""
+    if not isinstance(row, dict):
+        return None
+    fixed = SKILL_IDENT_FIXES.get(row.get("id"))
+    return fixed if fixed is not None else row.get("identification")
 
 #: 克己加成（``SkillSubEffect.kind``）-> 中文标签。名字只存在于 wiki 的
 #: ``Data:EffectKind.json``（日文），这里按习语给出中文，供筛选与展示使用。
@@ -166,6 +208,14 @@ def brief(row: dict | None, ident: int | None) -> dict | None:
     out = {"id": ident}
     out.update(names(row))
     return out
+
+
+def read_config_json(path: str):
+    """Read a hand maintained JSON under ``config/`` (missing file -> ``None``)."""
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding="utf8") as fh:
+        return json.load(fh)
 
 
 def write_json(path: str, data) -> None:

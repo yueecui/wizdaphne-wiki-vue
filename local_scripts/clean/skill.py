@@ -33,7 +33,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import CLEAN, load, names, text, write_json  # noqa: E402
+from common import CLEAN, load, names, skill_identification, text, write_json  # noqa: E402
 
 KIND_NAMES = {
     1: "普通攻击",
@@ -73,7 +73,9 @@ def main(argv: list[str]) -> int:
     skills = load("Skill")
     by_ident: dict[int, list] = collections.defaultdict(list)
     for r in skills:
-        by_ident[r["identification"]].append(r)
+        # 官方表把个别技能行写进了别的 identification（见 common.SKILL_IDENT_FIXES），
+        # 这里按行 id 纠正后再归组，否则两行会被并成同一个技能、名字只取到第一行。
+        by_ident[skill_identification(r)].append(r)
     for rows in by_ident.values():
         rows.sort(key=lambda r: r.get("level") or 0)
     known = set(by_ident)
@@ -133,8 +135,9 @@ def main(argv: list[str]) -> int:
             learn_of[i].append({"job": r["job_id"], "get_lv": r.get("get_lv")})
     for r in skills:
         if r.get("learnable_job_id"):
-            job_of[r["identification"]].add(r["learnable_job_id"])
-            learn_of[r["identification"]].append(
+            ident = skill_identification(r)
+            job_of[ident].add(r["learnable_job_id"])
+            learn_of[ident].append(
                 {"job": r["learnable_job_id"], "get_lv": None})
 
     # ---------- build ----------

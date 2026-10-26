@@ -316,15 +316,17 @@
                                                 {{ row.rangeText }}
                                             </td>
                                             <td>
-                                                <NInputNumber
-                                                    size="tiny"
-                                                    class="w-14!"
-                                                    :value="bonus[row.key]"
-                                                    :min="0"
-                                                    :show-button="false"
-                                                    placeholder="0"
-                                                    @update:value="(v: number | null) => setBonus(row.key, v)"
-                                                />
+                                                <div class="bonus-cell">
+                                                    <NInputNumber
+                                                        size="tiny"
+                                                        class="w-14!"
+                                                        :value="bonus[row.key]"
+                                                        :min="0"
+                                                        :show-button="false"
+                                                        placeholder="0"
+                                                        @update:value="(v: number | null) => setBonus(row.key, v)"
+                                                    />
+                                                </div>
                                             </td>
                                         </tr>
                                     </tbody>
@@ -1086,3 +1088,16 @@ watch(calcLevel, (level) => {
     if (maxLv < level) calcGrade.value = 'auto';
 });
 </script>
+
+<style scoped>
+/* 修正值输入框：框在单元格内居中（naive-ui 的根元素是 flex，td 的 text-center 管不到） */
+.bonus-cell {
+    display: flex;
+    justify-content: center;
+}
+
+/* 数字在框内居中（naive-ui 的 <input> 默认靠左） */
+.bonus-cell :deep(.n-input__input-el) {
+    text-align: center;
+}
+</style>

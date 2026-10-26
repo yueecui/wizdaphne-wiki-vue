@@ -135,6 +135,145 @@ export interface JobDetail extends LocalizedName {
     change_items: Array<{ item: number | null; quantity: number | null; group: number | null }>;
 }
 
+/** 装备数值：攻击 / 次数 / 魔力 / 神力 / 防御 / 魔防 / 速度 / 命中 / 会心 / 回避 / 抵抗 / 探索三项 */
+export interface EquipmentStat {
+    atk: number;
+    c: number;
+    mag: number;
+    div: number;
+    def: number;
+    mdef: number;
+    spe: number;
+    acc: number;
+    sur: number;
+    eva: number;
+    res: number;
+    /** 探知 */
+    det: number;
+    /** 陷阱解除 */
+    dtrap: number;
+    /** 陷阱回避 */
+    etrap: number;
+}
+
+export type EquipmentStatKey = keyof EquipmentStat;
+
+/**
+ * 类型基准值（``EquipmentResponse.baseStat``）：键是类型名（含 ``R{阶级}`` 变体）。
+ * ``i`` 是类型按钮的排序序号（< 100 武器 / >= 100 防具），
+ * 其余属性 ``-1`` 表示不参与比较，缺省按 0 处理。
+ */
+export type EquipmentBaseStatEntry = { i: number } & Partial<Record<EquipmentStatKey, number>>;
+
+export type EquipmentBaseStat = Record<string, EquipmentBaseStatEntry>;
+
+/**
+ * 装备特性：只存技能 identification（+ 装备引用的等级），
+ * 名字与说明由前端从技能数据（IndexedDB）里查。
+ */
+export interface EquipmentRef {
+    /** ``Skill.identification``（纯 lock config 特性则是 ``EquipmentLockConfig.id``） */
+    id: number;
+    /** 装备引用的技能等级（1 级不写） */
+    level?: number;
+    /** 展示型 lock config 特性的名字（技能数据里查不到） */
+    name?: string;
+    /** 展示型 lock config 特性的手写说明（游戏里没有这段文本） */
+    desc?: string | null;
+}
+
+/** 强化曲线的一行：该等级的完整数值（只输出与 +0 不同的等级） */
+export interface EquipmentLevel extends Partial<EquipmentStat> {
+    lv: number;
+}
+
+/**
+ * 材质补强（合材补强）的一行。``rank`` 是**目标阶级**、``level`` 是该阶级内的
+ * 次数；五项属性是累计加成（新阶级第 1 次接着上一阶级满次继续加），
+ * 武器只有 atk / mag / div，防具只有 def / mdef。
+ */
+export interface EquipmentOverRank {
+    rank: number;
+    level: number;
+    /** 金币消耗 */
+    cost: number;
+    atk: number;
+    mag: number;
+    div: number;
+    def: number;
+    mdef: number;
+}
+
+export interface EquipmentSetSkill {
+    id: number;
+    skill_id: number;
+    skill_name: string | null;
+    require_count: number | null;
+    max_level: number | null;
+    add_skill_level: number;
+}
+
+/**
+ * 一件装备（一个 identification）。列表与详情共用同一条记录：
+ * 841 条装备体积很小，不需要像技能那样拆两级。
+ */
+export interface EquipmentListItem extends LocalizedName {
+    id: number;
+    /** 武器 / 盾 / 头部 / 身体 / 手部 / 脚部 / 饰品 / 工具 */
+    category: string;
+    type_id: number | null;
+    /** 短剑 / 单手剑 / 双手斧 … */
+    type: string | null;
+    part: number | null;
+    /** 阶级 */
+    rank: number;
+    /** 图鉴编号；特殊装备（图鉴 ``display_type`` 2）为 ``"EX"``，没有图鉴记录为 null */
+    collection_id: number | 'EX' | null;
+    element: number;
+    element_name: string | null;
+    /** 特典 / 活动装备 */
+    special: boolean;
+    /** 客户端备注（日文） */
+    note: string | null;
+    /** 列表图标资源名（不含 ``.png``，与其它 wiki 图片同目录） */
+    list_icon: string | null;
+    /** 背包大图标资源名（不含 ``.png``） */
+    icon: string | null;
+    /** 特典分类：9 = 特典（解包/接口暂未提供，占位，0 为普通） */
+    soucate: number;
+    /** 中文说明（解包/接口暂未提供，占位） */
+    desc: string | null;
+    /** 获取途径（解包/接口暂未提供，占位） */
+    sou: string[];
+    /** 装备需求（解包/接口暂未提供，占位） */
+    req: string[];
+    /** 妖精可装备：0 不支持 / 1 可装备 / 2 限定妖精（暂未提供，占位） */
+    fa_can: number;
+    /** 妖精专属技能（暂未提供，占位） */
+    fa_sk: string | null;
+    /** 妖精技能描述（暂未提供，占位） */
+    fa_sk_desc: string | null;
+    /** 强化曲线（每个等级一行完整数值） */
+    levels: EquipmentLevel[];
+    /** 加护概率：4 个槽位 × 19 个属性 */
+    bonus: number[][] | null;
+    /** 强化上限 */
+    reinforce_max: number;
+    /** 材质补强（目标阶级从当前+1 起；空数组 = 已是最上位阶级） */
+    over_rank: EquipmentOverRank[];
+    /** 0 级数值 */
+    stats: EquipmentStat;
+    /** 满强化推算值（base + 强化组，仅供参考） */
+    max_stats: EquipmentStat;
+    /** 装备类型特性 */
+    skills: EquipmentRef[];
+    /** 非装备类型特性 */
+    traits: EquipmentRef[];
+    set_skills: EquipmentSetSkill[];
+}
+
+export interface EquipmentDetail extends EquipmentListItem {}
+
 export interface EffectParamLabel {
     /** 名称；末尾带 ``%`` 表示该值是百分数（显示时 ``%`` 移到数值后面） */
     name: string;
@@ -312,6 +451,7 @@ export interface Manifest {
         jobs: number;
         skills: number;
         player_skills: number;
+        equipments: number;
     };
     notes: string[];
 }
