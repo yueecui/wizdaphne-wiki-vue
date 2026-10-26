@@ -56,7 +56,8 @@
 | [`04-data-v2.md`](./04-data-v2.md) | v2 数据流水线与前端：收录规则、产物结构、生成命令、挂载方式、验收清单 | 要部署 / 继续开发 v2 页面的人 |
 | [`05-data-pipeline.md`](./05-data-pipeline.md) | **新链路**：第一轮长键精简（`data/`）→ 第二轮短键 mock（`public/mock/`），字段精简规则、短键表、编码规则、验收清单 | 要接 Wiki API / 改载荷格式的人 |
 | [`06-masterdata-patches.md`](./06-masterdata-patches.md) | 官方主数据「配错表」的修正补丁：症状、扫描命令、`SKILL_IDENT_FIXES` 的位置与新增流程（案例 56167101 / 56167201） | 发现技能名/说明错位时要补数据的人 |
-| [`07-shops.md`](./07-shops.md) | 商店数据：`Shop` / `ShopContent` / `PointShop` 表结构与字段、地区商店 126 件商品的分布、进度解锁只有 id 没有文案、落地方案 | 要做商店页 / 补「获取途径」的人 |
+| [`07-shops.md`](./07-shops.md) | 商店数据：`Shop` / `ShopContent` / `PointShop` 表结构与字段、金币商店 126 件商品的分布、进度解锁只有 id 没有文案、**122 家店的清洗与商店页实现** | 要做商店页 / 补「获取途径」的人 |
+| [`08-items.md`](./08-items.md) | 道具数据：`Reward` / `ItemType` / `Expendables` / 强化素材表结构、2,684 条道具的分类分布、**图鉴（出售/消耗品/贵重品/其他，473 条）**、清理与前端探查页的实现 | 要做道具页 / 查道具效果与价格的人 |
 | [`data-wiki-api-indexeddb.md`](./data-wiki-api-indexeddb.md) | 参考范式：Wiki 短键 JSON → `Api/GetXxx` → 前端 decode → IndexedDB/内存 | 要理解 05 为什么这么设计的人 |
 
 > 解包本身的技术原理（AES 密钥、IL2CPP、MessagePack、Addressables）不在本仓库展开，见解包仓库的 `docs/unpacking.md` 与 `skills/main-unpack/SKILL.md`。

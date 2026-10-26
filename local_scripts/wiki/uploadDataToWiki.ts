@@ -9,6 +9,9 @@
  *   Data:Job/<id>.json         dtype: "job"
  *   Data:Skill/<id>.json       dtype: "skill"
  *   Data:Equipment/<id>.json   dtype: "equipment"
+ *   Data:Item/<id>.json        dtype: "item"
+ *   Data:Shop/<id>.json        dtype: "shop"
+ *   Data:Relic/<id>.json       dtype: "relic"
  *   Data:Enum.json             整表（id 字典 + effect_kind），单条目
  *
  * `Data:Version.json` **不由本脚本维护**（版本号另行处理，避免上传脚本自动把前端缓存刷掉）。
@@ -22,11 +25,12 @@
  *   缓存表 wikitext_cache（sqlite）：条目名 -> 上次上传的内容，
  *   默认 `D:\WizardyDaphne\workspace\wikitext.sqlite`，可用 `WIKI_CACHE_SQLITE_PATH` 覆盖。
  *
- * 顺序：character → job → skill → equipment → enum（各自失败互不影响，最后汇总失败数）。
+ * 顺序：character → job → skill → equipment → item → shop → relic → enum
+ * （各自失败互不影响，最后汇总失败数）。
  * 效果种类名表（Data:EffectKind.json）在 wiki 上手工维护，不由本脚本上传。
  *
  * 运行（在本仓库根目录）：
- *   yarn update:wiki                              # 增量（默认 character/job/skill/enum）
+ *   yarn update:wiki                              # 增量（默认全部记录级 + enum）
  *   yarn update:wiki -- --force                   # 忽略缓存全部重传
  *   yarn update:wiki -- --only skill              # 只传一类
  *   yarn update:wiki -- --only skill --limit 100  # 试传前 100 条
@@ -79,15 +83,17 @@ interface KindSpec {
     dtype?: string;
     /** 记录 id 的短键，默认 `i` */
     idKey?: string;
-    /** 整表塞在一个页面里（响应 items[0]） */
+    /** 整表塞在一个页面里（默认取响应 `items[0]`，或用 `field` 指定顶层键） */
     singleton?: boolean;
+    /** 单条目页面的内容取自响应里的哪个顶层键（如 Enum 的 `enum`） */
+    field?: string;
     /** 是否在默认上传列表里 */
     byDefault: boolean;
     /** 说明（日志用） */
     note?: string;
 }
 
-const KIND_NAMES = ['character', 'job', 'skill', 'equipment', 'enum'] as const;
+const KIND_NAMES = ['character', 'job', 'skill', 'equipment', 'item', 'shop', 'relic', 'enum'] as const;
 type KindName = (typeof KIND_NAMES)[number];
 
 const KINDS: Record<KindName, KindSpec> = {
@@ -120,13 +126,40 @@ const KINDS: Record<KindName, KindSpec> = {
         byDefault: true,
         note: '装备（含强化曲线 / 材质补强 / 图鉴编号）',
     },
+    item: {
+        sub: 'Item',
+        file: 'ItemResponse.json',
+        dtype: 'item',
+        idKey: 'i',
+        byDefault: true,
+        note: '道具（含使用效果 / 商店价格 / 钓鱼 / 神器）',
+    },
+    shop: {
+        sub: 'Shop',
+        file: 'ShopResponse.json',
+        dtype: 'shop',
+        idKey: 'i',
+        byDefault: true,
+        note: '商店（122 家，商品内嵌在 items）',
+    },
+    relic: {
+        sub: 'Relic',
+        file: 'RelicResponse.json',
+        dtype: 'relic',
+        idKey: 'i',
+        byDefault: true,
+        note: '遗物（61 种，同组取最低阶级；含遗物酒 / 遗物之力 / 提升与降低属性）',
+    },
     enum: {
         sub: null,
         title: 'Enum',
         file: 'EnumResponse.json',
+        // 响应是 `{enum, kinds}`：只上传 `enum`；`kinds` 对应 wiki 上手工维护的
+        // Data:EffectKind.json（Api/GetV2Enum 直接读它），不由本脚本上传
+        field: 'enum',
         singleton: true,
         byDefault: true,
-        note: 'id 字典 + effect_kind',
+        note: 'id 字典 + effect_kind 结构（kinds 手工维护）',
     },
 };
 
@@ -245,9 +278,9 @@ export async function buildEntries(
     if (spec.singleton) {
         const title = `${PAGE_NS}:${spec.title}.json`;
         const file = path.join(MOCK_DIR, spec.file!);
-        const payload = await readJson<MockPayload>(file);
-        const doc = payload.items?.[0];
-        if (!doc) throw new Error(`${file} 里没有 items[0]`);
+        const payload = await readJson<MockPayload & Record<string, unknown>>(file);
+        const doc = spec.field ? payload[spec.field] : payload.items?.[0];
+        if (!doc) throw new Error(`${file} 里没有 ${spec.field ?? 'items[0]'}`);
 
         const keys = Object.keys(doc).length;
         console.log(`  ${kind}: 单条目 ${title}（${keys} 个顶层键）`);

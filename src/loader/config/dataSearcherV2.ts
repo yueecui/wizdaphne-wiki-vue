@@ -5,9 +5,9 @@ import { hasHTMLElement } from '../util';
  * 解包数据查询（v2）。
  *
  * 与旧的 `#data-searcher` 完全独立：挂载点是 `#data-searcher-v2`。
- * 数据来自 Wiki 模块 `Api/GetV2Character|GetV2Job|GetV2Skill|GetV2Enum`（开发环境读
- * `public/mock/*Response.json`），短键解码后缓存到 IndexedDB，
- * 不读取也不修改手工维护的 `public/data.json`。
+ * 数据来自 Wiki 模块 `Api/GetV2Character`（含 `jobs`）/ `Api/GetV2Skill` /
+ * `Api/GetV2Equipment` / `Api/GetV2Enum`（开发环境读 `public/mock/*Response.json`），
+ * 短键解码后缓存到 IndexedDB，不读取也不修改手工维护的 `public/data.json`。
  */
 const config: LoaderConfig = {
     isEnabled: () => hasHTMLElement('#data-searcher-v2'),

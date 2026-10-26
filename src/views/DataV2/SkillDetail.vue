@@ -200,8 +200,9 @@ import { NEmpty, NSpin, NTag } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
 import { MwConfig } from '../../huiji/MwConfig';
 import { useDataV2Store } from './dataV2Store';
+import { effectParamText, effectParamUnit } from './types';
 import type {
-    EffectParamLabel,
+    EffectParamEntry,
     SkillDamage,
     SkillDetail,
     SkillLevel,
@@ -291,7 +292,7 @@ const REFERENCE_PARAM: Record<number, string> = {
     13: '回避',
     14: '命中',
     20: '力量',
-    21: '智力',
+    21: '智慧',
     22: '信仰',
     23: '体力',
     24: '敏捷',
@@ -346,11 +347,89 @@ const subLabel = (s: SkillSubEffect) =>
  */
 const PERCENT = /%+$/;
 
-const paramName = (label: EffectParamLabel | null | undefined, index: number) =>
-    (label?.name ?? `参数${index + 1}`).replace(PERCENT, '');
+/** 占位效果（kind = 1「空データ」），没有任何信息，不单独占行 */
+const EMPTY_KIND = /空データ/;
 
-const paramValue = (label: EffectParamLabel | null | undefined, value: number) => {
-    const percent = PERCENT.test(label?.name ?? '') || label?.unit === '%';
+/**
+ * 参数名末尾的 ``@xx``：这个数字是某个枚举的 id，展示时翻译成名字。
+ * 优先级高于「≥100 万当成技能 id」的自动猜测；查不到就原样显示数字。
+ */
+const REF_TAG = /@([a-z]{2})\s*$/i;
+
+/** 单条参数的标注（取不到返回 null） */
+const paramTag = (label: EffectParamEntry | null | undefined): string | null => {
+    const matched = effectParamText(label).match(REF_TAG);
+    return matched ? matched[1].toLowerCase() : null;
+};
+
+/**
+ * ``@bt`` 的兜底：5700「常時ベースパラメータの割合分を上乗せ」里**被加成的那一项**。
+ * 由技能描述反推（智慧防壁→防御力 5、智慧精神力→MP 2、贪婪之力→HP1/攻击力4/防御力5/法术防御力7 …），
+ * wiki 上可用 ``Data:Enum.json`` 的 ``buff_target`` 分组覆盖 / 补全。
+ */
+const BUFF_TARGET: Record<number, string> = {
+    1: 'HP',
+    2: 'MP',
+    4: '攻击力',
+    5: '防御力',
+    6: '魔力',
+    7: '法术防御力',
+    8: '神力',
+    10: '回避',
+    12: '会心',
+    14: '行动速度',
+};
+
+/** ``@xx`` -> 这个名字；查不到返回 null（调用方回退成数字） */
+const refText = (tag: string, value: number): string | null => {
+    switch (tag) {
+        case 'eq':   // 装备 / 武器类型
+            return store.enumText('equipment_type', value);
+        case 'el':   // 属性（元素）
+            return store.enumText('attribute', value);
+        // 基础参数（能力值 / 特性值），与伤害参照参数同一套 SkillReferenceParamType
+        case 'bp':
+            return store.enumText('character_parameter', value) ?? REFERENCE_PARAM[value] ?? null;
+        // 被加成项（5700 的参数3）
+        case 'bt':
+            return store.enumText('buff_target', value) ?? BUFF_TARGET[value] ?? null;
+        case 'ef':   // 效果种类
+            return store.effectKinds[String(value)]?.name ?? null;
+        case 'sk':   // 技能
+            return store.skillById.get(value)?.name ?? null;
+        case 'tg':   // 目标
+            return store.enumText('target', value);
+        case 'rc':   // 种族
+            return store.raceName(value) || null;
+        case 'jb':   // 职业
+            return store.enumText('job', value);
+        case 'gd':   // 阶级
+            return store.enumText('grade', value);
+        case 'dt':   // 伤害类型
+            return store.enumText('damage_type', value);
+        case 'ck':   // 消耗类型（SP / MP）
+            return store.enumText('cost_kind', value);
+        case 'kk':   // 技能种类
+            return store.enumText('skill_kind', value);
+        case 'ps':   // 性格
+            return store.enumText('personality', value);
+        case 'sx':   // 性别
+            return store.enumText('gender', value);
+        default:
+            return null;
+    }
+};
+
+const paramName = (label: EffectParamEntry | null | undefined, index: number) =>
+    (effectParamText(label) || `参数${index + 1}`).replace(PERCENT, '').replace(REF_TAG, '').trim();
+
+const paramValue = (label: EffectParamEntry | null | undefined, value: number) => {
+    const tag = paramTag(label);
+    if (tag) {
+        const text = refText(tag, value);
+        if (text) return text;
+    }
+    const percent = PERCENT.test(effectParamText(label)) || effectParamUnit(label) === '%';
     return percent ? `${value}%` : String(value);
 };
 
@@ -370,11 +449,23 @@ interface SubField {
 /** HP 回复类效果，效果量按「恢复量」命名 */
 const RECOVER_KINDS = new Set([1000, 1010, 1060]);
 
+/** 效果量只用到这几个字段，完整 sub effect 和被引用的摘要都能传进来 */
+type AmountSource = Pick<
+    SkillSubEffect,
+    | 'kind'
+    | 'calc_reference_parameter'
+    | 'calc_reference_parameter_2'
+    | 'calc_reference_parameter_rate'
+    | 'calc_reference_parameter_rate_2'
+    | 'calc_valid_cap_parameter_value'
+    | 'calc_valid_start_parameter_value'
+>;
+
 /**
  * 效果量：参照能力值 × 百分比，配阈值窗口。
  * 例：HP 回复为「恢复量 · 神力 140%，阈值 100，阈值起点 0」。
  */
-const amountFields = (s: SkillSubEffect): SubField[] => {
+const amountFields = (s: AmountSource): SubField[] => {
     const out: SubField[] = [];
     const base = RECOVER_KINDS.has(s.kind ?? 0) ? '恢复量' : '效果量';
     const refName = (id: number | null | undefined) =>
@@ -436,12 +527,24 @@ const skillRef = (value: number): { id: number; name: string } | null => {
 /** 参数 -> 「参数名 / 值」；0 也照常显示，只有原始 id 对不上技能时才跳过 */
 const paramFields = (
     params: Array<number | null> | null | undefined,
-    labels: Array<EffectParamLabel | null> | null | undefined,
+    labels: Array<EffectParamEntry | null> | null | undefined,
 ): SubField[] => {
     const out: SubField[] = [];
     (params ?? []).forEach((raw, index) => {
         const label = labels?.[index] ?? null;
         const value = raw ?? 0;
+        // 人工标了 @xx 就按标注解析，不再按 ≥100 万猜技能 id
+        const tag = paramTag(label);
+        if (tag) {
+            const text = refText(tag, value);
+            out.push({
+                name: paramName(label, index),
+                value: text ?? String(value),
+                slot: index,
+                skill: tag === 'sk' && text ? value : undefined,
+            });
+            return;
+        }
         if (isRawId(value)) {
             const skill = skillRef(value);
             if (skill) {
@@ -511,6 +614,8 @@ const briefFields = (e: SubEffectBriefLeaf): SubField[] => {
         out.push({ name: '强度', value: String(e.strength) });
     }
     if (e.turn) out.push({ name: '回合', value: e.turn >= 9999 ? '永久' : String(e.turn) });
+    // 被引用的效果也要带效果量（例：6800 -> 1000 HP回復 · 神力 19%）
+    out.push(...amountFields(e));
     return out;
 };
 
@@ -670,7 +775,7 @@ const rows = computed<Row[]>(() => {
             for (const lv of levels.value) {
                 for (const s of pick(lv)) {
                     const found = s.param_labels?.[no - 1];
-                    if (found?.name) return paramName(found, no - 1);
+                    if (effectParamText(found)) return paramName(found, no - 1);
                 }
             }
             return `参数${no}`;
@@ -842,6 +947,18 @@ const rows = computed<Row[]>(() => {
                     perLevel.map((fields) => fields.find((f) => f.skill != null)?.skill),
                 );
             }
+        }
+
+        // 一个可显示字段都没有的效果（例：「毒回復」参数全 0，只有效果本身有意义），
+        // 也要把效果名占一行，否则技能看起来完全没有效果；「空データ」只是占位，跳过。
+        if (!group.length && !EMPTY_KIND.test(label)) {
+            push(-1, {
+                label,
+                values: levels.value.map(() => ''),
+                group: label,
+                kind: kindId,
+                always: true,
+            });
         }
 
         // 组内按参数顺序写回总表

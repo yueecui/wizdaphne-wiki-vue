@@ -234,6 +234,12 @@ export const useDataV2Store = defineStore('data-v2', () => {
         turn: raw.turn || null,
         target: raw.target || null,
         target_text: raw.target_text || null,
+        calc_reference_parameter: raw.calc_reference_parameter || null,
+        calc_reference_parameter_2: raw.calc_reference_parameter_2 || null,
+        calc_reference_parameter_rate: raw.calc_reference_parameter_rate || null,
+        calc_reference_parameter_rate_2: raw.calc_reference_parameter_rate_2 || null,
+        calc_valid_cap_parameter_value: raw.calc_valid_cap_parameter_value || null,
+        calc_valid_start_parameter_value: raw.calc_valid_start_parameter_value || null,
     });
 
     const subBriefOf = (raw: RawSubEffectBrief): SubEffectBrief => ({
@@ -379,6 +385,7 @@ export const useDataV2Store = defineStore('data-v2', () => {
         skills: raw.skills ?? [],
         traits: raw.traits ?? [],
         set_skills: raw.set_skills ?? [],
+        shop: raw.shop ?? [],
     });
 
     const characterDetails = computed<CharacterDetail[]>(() => wiki.characters.map(toCharacter));
@@ -412,6 +419,16 @@ export const useDataV2Store = defineStore('data-v2', () => {
 
     const rangeName = (id: number | null | undefined) =>
         id == null ? '' : (RANGE_TYPE_NAME[id] ?? `#${id}`);
+
+    /**
+     * 通用枚举取名：``Data:Enum.json`` 里任意分组（equipment_type / attribute / target …），
+     * 取不到返回 null，由调用方回退成原始数字。
+     */
+    const enumText = (group: string, id: number | null | undefined): string | null => {
+        if (id == null) return null;
+        const table = (wiki.enums as unknown as Record<string, Record<string, { name?: string }>>)[group];
+        return table?.[String(id)]?.name ?? null;
+    };
     const skillById = computed(() => new Map(skillDetails.value.map((item) => [item.identification, item])));
 
     const effectKinds = computed<Record<string, EffectKind>>(() => {
@@ -436,7 +453,7 @@ export const useDataV2Store = defineStore('data-v2', () => {
         if (!wiki.ready) return null;
         return {
             version: wiki.version,
-            source: 'wiki:Api/GetV2Character / GetV2Job / GetV2Skill / GetV2Enum / GetV2EffectKind',
+            source: 'wiki:Api/GetV2Character（含 jobs / extra / rates） / GetV2Skill / GetV2Equipment / GetV2Enum（含 kinds）',
             counts: {
                 characters: wiki.counts.characters,
                 character_groups: new Set(wiki.characters.map((row) => row.group)).size,
@@ -478,6 +495,11 @@ export const useDataV2Store = defineStore('data-v2', () => {
     /** drop the IndexedDB cache and pull the wiki payloads again */
     const refresh = async () => {
         await wiki.refresh();
+    };
+
+    /** 只重拉 `Api/GetV2Enum`（字典 + 效果种类名），调 effect kind 名字时用 */
+    const refreshEnums = async () => {
+        await wiki.refreshEnums();
     };
 
     const ensureManifest = ensureAll;
@@ -524,6 +546,7 @@ export const useDataV2Store = defineStore('data-v2', () => {
         ensureEffectKinds,
         ensureAll,
         refresh,
+        refreshEnums,
         getCharacter,
         getSkill,
         characterRate,
@@ -534,5 +557,6 @@ export const useDataV2Store = defineStore('data-v2', () => {
         equipmentName,
         raceName,
         rangeName,
+        enumText,
     };
 });

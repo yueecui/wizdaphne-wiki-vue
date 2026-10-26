@@ -30,6 +30,14 @@
                             </div>
                             <div class="flex items-center gap-3 shrink-0">
                                 <span v-if="item" class="text-xs text-gray-600">ID {{ item.id }}</span>
+                                <NButton
+                                    v-if="canEdit"
+                                    size="tiny"
+                                    quaternary
+                                    @click="showRaw = !showRaw"
+                                >
+                                    {{ showRaw ? '隐藏 JSON' : '原始 JSON' }}
+                                </NButton>
                                 <NButton size="tiny" quaternary @click="close">关闭</NButton>
                             </div>
                         </div>
@@ -53,32 +61,16 @@
                                                 <th>阶级</th>
                                                 <td>{{ item.rank }}</td>
                                             </tr>
-                                            <tr>
-                                                <th>说明</th>
+                                            <!-- 购买来源：清洗后的店铺（不含限时商店） -->
+                                            <tr v-if="item.shop.length">
+                                                <th>购买来源</th>
                                                 <td class="text-left">
-                                                    <div class="text-sm">
-                                                        <div v-if="item.req.length" class="text-red-400">
-                                                            职业限制：{{ item.req.join('、') }}
-                                                        </div>
-                                                        <div v-if="item.fa_can === 1" class="text-light">
-                                                            妖精可装备
-                                                        </div>
-                                                        <div v-if="item.fa_can === 2" class="text-light">
-                                                            仅可由妖精装备
-                                                        </div>
-                                                        <div v-if="item.desc" v-html="renderDesc(item.desc)"></div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr v-if="item.sou.length">
-                                                <th>非杂物来源</th>
-                                                <td class="text-left">
-                                                    <div class="flex flex-col gap-2">
-                                                        <div
-                                                            v-for="(source, index) in item.sou"
-                                                            :key="index"
-                                                            v-html="renderDesc(source)"
-                                                        ></div>
+                                                    <div
+                                                        v-for="(row, index) in item.shop"
+                                                        :key="index"
+                                                    >
+                                                        {{ row.shop_name }}（{{ row.price ?? 0 }}
+                                                        {{ row.currency_name ?? '' }}）
                                                     </div>
                                                 </td>
                                             </tr>
@@ -295,8 +287,9 @@
                                     </div>
                                 </NTabPane>
 
-                                <!-- 杂物来源：本地无整理结果时也显示，点开页签才去下载 + 整理 -->
+                                <!-- 杂物来源：未整理时保留入口，整理后确实为空则隐藏整个页签 -->
                                 <NTabPane
+                                    v-if="showJunkTab"
                                     name="junk-sources"
                                     :tab="junkReady ? `杂物来源 (${junkSources.length})` : '杂物来源'"
                                 >
@@ -462,9 +455,10 @@
 
                             </NTabs>
 
-                            <div class="flex justify-center gap-4 mt-4">
-                                <NButton size="small" type="warning" @click="close">关闭</NButton>
-                            </div>
+                            <pre
+                                v-if="showRaw"
+                                class="shrink-0 text-xs p-2 rounded bg-black/20 whitespace-pre-wrap break-all"
+                            >{{ raw }}</pre>
                         </template>
 
                         <NEmpty v-else description="未选择装备" />
@@ -493,7 +487,9 @@ import {
 } from 'naive-ui';
 import { storeToRefs } from 'pinia';
 import { computed, onMounted, ref, watch } from 'vue';
+import { MwConfig } from '../../huiji/MwConfig';
 import ThemeConfigProvider from '../../layout/ThemeConfigProvider.vue';
+import { useWikiDataStore } from '../../stores/wikiData';
 import WikiImg from '../../components/huiji/WikiImg.vue';
 import SkillModal from './SkillModal.vue';
 import { useDataV2Store } from './dataV2Store';
@@ -509,10 +505,22 @@ const props = defineProps<{ show: boolean; identification: number | null }>();
 const emit = defineEmits<{ 'update:show': [value: boolean] }>();
 
 const store = useDataV2Store();
+const wiki = useWikiDataStore();
+const canEdit = MwConfig.getInstance().canEdit;
 
 const item = computed<EquipmentListItem | null>(
     () => store.equipments.find((row) => row.id === props.identification) ?? null,
 );
+
+const showRaw = ref(false);
+
+/** 原始文档（IndexedDB 里存的那份，长键） */
+const raw = computed(() => {
+    const identification = props.identification;
+    if (identification == null) return '';
+    const doc = wiki.equipments.find((row) => row.id === identification);
+    return doc ? JSON.stringify(doc, null, 1) : '';
+});
 
 // 杂物来源：打开弹窗只读本地缓存，真正下载 + 整理由点开「杂物来源」页签触发
 const junkStore = useJunkStore();
@@ -606,6 +614,14 @@ const orderType = ref<'attribute' | 'probability'>('probability');
 // 点开杂物来源页签时才真正下载 + 整理（本地已有结果时 loadJunkData 直接命中缓存）
 watch(activeTab, (tab) => {
     if (tab === 'junk-sources' && !junkReady.value) void junkStore.loadAndInitJunkData();
+});
+
+/** 杂物来源页签：整理完成且确实没有来源时整块隐藏（未整理时保留入口） */
+const showJunkTab = computed(() => !junkReady.value || junkSources.value.length > 0);
+
+// 页签被隐藏时，如果正停在上面就切回属性值
+watch(showJunkTab, (visible) => {
+    if (!visible && activeTab.value === 'junk-sources') activeTab.value = 'attributes';
 });
 
 const LEVELS = [0, 5, 10, 15, 20];

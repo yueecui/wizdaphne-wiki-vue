@@ -16,7 +16,17 @@
                                     {{ subtitle }}
                                 </div>
                             </div>
-                            <NButton size="tiny" quaternary @click="close">关闭</NButton>
+                            <div class="flex items-center gap-3 shrink-0">
+                                <NButton
+                                    v-if="canEdit"
+                                    size="tiny"
+                                    quaternary
+                                    @click="showRaw = !showRaw"
+                                >
+                                    {{ showRaw ? '隐藏 JSON' : '原始 JSON' }}
+                                </NButton>
+                                <NButton size="tiny" quaternary @click="close">关闭</NButton>
+                            </div>
                         </div>
                     </div>
 
@@ -42,6 +52,11 @@
                             @open-skill="currentId = $event"
                         />
                         <NEmpty v-else description="未选择技能" />
+
+                        <pre
+                            v-if="showRaw"
+                            class="shrink-0 mt-4 text-xs p-2 rounded bg-black/20 whitespace-pre-wrap break-all"
+                        >{{ raw }}</pre>
                     </div>
                 </div>
             </div>
@@ -52,7 +67,9 @@
 <script setup lang="ts">
 import { NButton, NEmpty, NModal, NSelect } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
+import { MwConfig } from '../../huiji/MwConfig';
 import ThemeConfigProvider from '../../layout/ThemeConfigProvider.vue';
+import { useWikiDataStore } from '../../stores/wikiData';
 import SkillDetail from './SkillDetail.vue';
 import { useDataV2Store } from './dataV2Store';
 import type { JobDetail, SkillListItem } from './types';
@@ -63,8 +80,20 @@ const props = defineProps<{ show: boolean; identification: number | null }>();
 const emit = defineEmits<{ 'update:show': [value: boolean] }>();
 
 const store = useDataV2Store();
+const wiki = useWikiDataStore();
+const canEdit = MwConfig.getInstance().canEdit;
 
 const currentId = ref<number | null>(props.identification ?? null);
+
+const showRaw = ref(false);
+
+/** 原始文档（IndexedDB 里存的那份，长键） */
+const raw = computed(() => {
+    const id = currentId.value;
+    if (id == null) return '';
+    const doc = wiki.skills.find((row) => row.id === id);
+    return doc ? JSON.stringify(doc, null, 1) : '';
+});
 
 watch(
     () => props.identification,

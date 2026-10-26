@@ -14,6 +14,15 @@
                     <template v-else>加载中…</template>
                 </div>
                 <div class="flex-1"></div>
+                <NButton
+                    size="tiny"
+                    quaternary
+                    :loading="enumLoading"
+                    title="只重拉 Api/GetV2Enum（字典 + 效果种类名），调 sub effect kind 名字时用"
+                    @click="reloadEnums"
+                >
+                    只重载 Enum
+                </NButton>
                 <NButton size="tiny" quaternary :loading="state.manifest === 'loading'" @click="reload">重新加载</NButton>
             </div>
 
@@ -41,6 +50,9 @@
                     :group="activeKey"
                 />
                 <JunkPanel v-else-if="activeKey === 'junk'" />
+                <ItemPanel v-else-if="activeKey === 'item'" />
+                <ShopPanel v-else-if="activeKey === 'shop'" />
+                <RelicPanel v-else-if="activeKey === 'relic'" />
             </NSpin>
 
         </div>
@@ -54,7 +66,10 @@ import { computed, onMounted, ref } from 'vue';
 import ThemeConfigProvider from '../../layout/ThemeConfigProvider.vue';
 import CharacterPanel from './CharacterPanel.vue';
 import EquipmentPanel from './EquipmentPanel.vue';
+import ItemPanel from './ItemPanel.vue';
 import JobPanel from './JobPanel.vue';
+import ShopPanel from './ShopPanel.vue';
+import RelicPanel from './RelicPanel.vue';
 import JunkPanel from './JunkPanel.vue';
 import SkillPanel from './SkillPanel.vue';
 import { useDataV2Store } from './dataV2Store';
@@ -71,6 +86,9 @@ const tabs = [
     { key: 'weapon', label: '武器' },
     { key: 'armor', label: '防具' },
     { key: 'junk', label: '杂物' },
+    { key: 'item', label: '物品' },
+    { key: 'shop', label: '商店' },
+    { key: 'relic', label: '遗物' },
 ] as const;
 
 type TabKey = (typeof tabs)[number]['key'];
@@ -92,7 +110,15 @@ const busy = computed(() => {
     if (activeKey.value === 'character') return s.characters === 'loading';
     if (activeKey.value === 'job') return s.jobs === 'loading';
     if (activeKey.value === 'weapon' || activeKey.value === 'armor') return s.equipments === 'loading';
+    // 杂物走自己的库；物品 / 商店 / 遗物和角色等在同一批全量下载里就绪
     if (activeKey.value === 'junk') return false;
+    if (
+        activeKey.value === 'item' ||
+        activeKey.value === 'shop' ||
+        activeKey.value === 'relic'
+    ) {
+        return s.characters === 'loading';
+    }
     return s.skills === 'loading';
 });
 
@@ -106,6 +132,21 @@ const load = () => {
 
 const reload = async () => {
     await store.refresh();
+};
+
+/** 只重拉 Enum：改完 `Data:EffectKind.json` 的名字后点一下就生效，不用清整库 */
+const enumLoading = ref(false);
+const reloadEnums = async () => {
+    if (enumLoading.value) return;
+    enumLoading.value = true;
+    error.value = null;
+    try {
+        await store.refreshEnums();
+    } catch (e) {
+        error.value = `Enum 重载失败：${e instanceof Error ? e.message : String(e)}`;
+    } finally {
+        enumLoading.value = false;
+    }
 };
 
 onMounted(() => {

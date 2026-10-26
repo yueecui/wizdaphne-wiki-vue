@@ -253,6 +253,37 @@ def main(argv: list[str]) -> int:
     api_payload = read_config_json(EQUIP_API_JSON) or {}
     bonus_map: dict = {name: rows for name, rows in (api_payload.get("bonus") or [])}
 
+    # ---------- 商店：只用 shop.py 清洗后的店铺（有结束时间的限时商店不算） ----------
+    # 商店的 content_id 是具体档位 id（如 100000109），要折回 identification（100000100）
+    ident_by_row_id = {row.get("id"): ident for ident, rows in by_ident.items() for row in rows}
+    shop_by_ident: dict[int, list] = collections.defaultdict(list)
+    shops_path = os.path.join(CLEAN, "shop", "shops.json")
+    if os.path.isfile(shops_path):
+        with open(shops_path, encoding="utf8") as fh:
+            for shop in json.load(fh):
+                if shop.get("end_at"):
+                    continue
+                for row in shop.get("items") or []:
+                    if row.get("content_type") != "Equip::Equipment":
+                        continue
+                    content_id = row.get("content_id")
+                    if not content_id:
+                        continue
+                    ident = ident_by_row_id.get(content_id, content_id)
+                    currency = row.get("currency")
+                    entry_row = {
+                        "shop_name": shop.get("name"),
+                        "price": row.get("price"),
+                        # 兑换点数写实际点数名（「银鳞硬币」）
+                        "currency_name": (shop.get("point_name") if currency == 5
+                                          else row.get("currency_name")),
+                    }
+                    bucket = shop_by_ident[ident]
+                    if entry_row not in bucket:
+                        bucket.append(entry_row)
+    else:
+        print(f"  {shops_path} 不存在：先跑 shop.py，否则装备没有商店信息")
+
     equipments = []
     counts_by_type: dict[int, collections.Counter] = collections.defaultdict(collections.Counter)
 
@@ -430,6 +461,11 @@ def main(argv: list[str]) -> int:
             "skills": skills,
             "traits": traits,
             "set_skills": sets,
+            # 商店来源（商店名 / 价格 / 货币名），空数组 = 商店买不到
+            "shop": sorted(
+                shop_by_ident.get(ident, []),
+                key=lambda r: (r.get("price") or 0, r.get("shop_name") or ""),
+            ),
         })
 
     # 攻击次数：优先用装备自身普通攻击的段数，解析不到时沿用同类型众数

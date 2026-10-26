@@ -101,6 +101,13 @@ const SUB_BRIEF_LEAF: FieldSpec[] = [
     { long: 'turn', short: 't', kind: 'num' },
     { long: 'target', short: 'g', kind: 'num' },
     { long: 'target_text', short: 'gt', kind: 'str' },
+    // 效果量（恢复量）：参照能力值 × 百分比 + 阈值窗口（同 build_mock.SUB_BRIEF_LEAF）
+    { long: 'calc_reference_parameter', short: 'cp', kind: 'num' },
+    { long: 'calc_reference_parameter_2', short: 'c2', kind: 'num' },
+    { long: 'calc_reference_parameter_rate', short: 'cq', kind: 'num' },
+    { long: 'calc_reference_parameter_rate_2', short: 'c3', kind: 'num' },
+    { long: 'calc_valid_cap_parameter_value', short: 'cc', kind: 'num' },
+    { long: 'calc_valid_start_parameter_value', short: 'cv', kind: 'num' },
 ];
 
 const SUB_BRIEF: FieldSpec[] = [
@@ -373,6 +380,13 @@ const EQUIP_SET: FieldSpec[] = [
     { long: 'add_skill_level', short: 'al', kind: 'num' },
 ];
 
+/** 商店来源（来自 shop.py 清洗后的店铺，不含限时商店） */
+const EQUIP_SHOP: FieldSpec[] = [
+    { long: 'shop_name', short: 'sn', kind: 'str' },
+    { long: 'price', short: 'p', kind: 'num' },
+    { long: 'currency_name', short: 'cn', kind: 'str' },
+];
+
 export const EQUIP_FIELDS: FieldSpec[] = [
     { long: 'id', short: 'i', kind: 'raw' },
     { long: 'name', short: 'zh', kind: 'str' },
@@ -412,6 +426,140 @@ export const EQUIP_FIELDS: FieldSpec[] = [
     { long: 'bonus', short: 'bn', kind: 'numArrArr' },
     // 材质补强（低于最高阶级时可继续提升；空数组 = 已是最上位阶级）
     { long: 'over_rank', short: 'or', kind: 'objArr', fields: EQUIP_OVER_RANK },
+    // 商店来源（空数组 = 商店买不到）
+    { long: 'shop', short: 'sh', kind: 'objArr', fields: EQUIP_SHOP },
+];
+
+const ITEM_SHOP: FieldSpec[] = [
+    // 商店名与点数名由 shop.py 清洗后写进道具数据，前端不再反查商店模块
+    { long: 'shop_name', short: 'sn', kind: 'str' },
+    { long: 'shop_kind', short: 'k', kind: 'num' },
+    { long: 'price', short: 'p', kind: 'num' },
+    { long: 'currency', short: 'cu', kind: 'num' },
+    { long: 'currency_name', short: 'cn', kind: 'str' },
+    { long: 'quantity', short: 'q', kind: 'num' },
+    { long: 'limit_kind', short: 'lk', kind: 'num' },
+    { long: 'limit_num', short: 'ln', kind: 'num' },
+    { long: 'repeat', short: 'rp', kind: 'bool' },
+    { long: 'condition', short: 'cd', kind: 'num' },
+    { long: 'town', short: 't', kind: 'num' },
+    { long: 'point_shop_id', short: 'ps', kind: 'num' },
+];
+
+const ITEM_FISHING: FieldSpec[] = [
+    { long: 'volume', short: 'vo', kind: 'num' },
+    { long: 'duration', short: 'du', kind: 'num' },
+    { long: 'min_meet', short: 'mn', kind: 'num' },
+    { long: 'max_meet', short: 'mx', kind: 'num' },
+    { long: 'min_success', short: 'ms', kind: 'num' },
+    { long: 'max_success', short: 'xs', kind: 'num' },
+];
+
+const ITEM_RELIC: FieldSpec[] = [
+    { long: 'grade', short: 'g', kind: 'num' },
+    { long: 'rank', short: 'r', kind: 'num' },
+    { long: 'alignment', short: 'al', kind: 'num' },
+    { long: 'skill_id', short: 'si', kind: 'num' },
+];
+
+const ITEM_SKILL: FieldSpec[] = [
+    { long: 'kind', short: 'kd', kind: 'str' },
+    { long: 'id', short: 'i', kind: 'num' },
+    { long: 'name', short: 'n', kind: 'str' },
+];
+
+/** 图鉴条目引用：条目 id + 编号，说明 / 售价归图鉴模块 */
+const ITEM_COLLECTION: FieldSpec[] = [
+    { long: 'id', short: 'i', kind: 'num' },
+    { long: 'no', short: 'n', kind: 'num' },
+];
+
+export const ITEM_FIELDS: FieldSpec[] = [
+    { long: 'id', short: 'i', kind: 'raw' },
+    { long: 'name', short: 'zh', kind: 'str' },
+    { long: 'name_jp', short: 'jp', kind: 'str' },
+    { long: 'name_en', short: 'en', kind: 'str' },
+    { long: 'type', short: 'ty', kind: 'str' },
+    { long: 'category', short: 'c', kind: 'str' },
+    { long: 'desc', short: 'd', kind: 'str' },
+    { long: 'desc_lang', short: 'dl', kind: 'str' },
+    { long: 'icon', short: 'ic', kind: 'str' },
+    { long: 'list_icon', short: 'li', kind: 'str' },
+    // 卖价（商店买价见 shop）
+    { long: 'value', short: 'v', kind: 'num' },
+    { long: 'sort_id', short: 'so', kind: 'num' },
+    { long: 'use_skill', short: 'sk', kind: 'obj', fields: ITEM_SKILL },
+    { long: 'shop', short: 'sh', kind: 'objArr', fields: ITEM_SHOP },
+    { long: 'fishing', short: 'fi', kind: 'obj', fields: ITEM_FISHING },
+    { long: 'relic', short: 're', kind: 'obj', fields: ITEM_RELIC },
+    // 图鉴：出售 / 消耗品 / 贵重品 / 其他（只有进图鉴的道具有值）
+    { long: 'collection_group', short: 'cg', kind: 'str' },
+    { long: 'collection', short: 'col', kind: 'obj', fields: ITEM_COLLECTION },
+    // 杂物二级分类：角色抽卡 / 装备抽卡 / 未分类（只有 Item::Junk 有值）
+    { long: 'junk_group', short: 'jg', kind: 'str' },
+];
+
+/** 遗物掉落怪物（手工数据补充后才有值） */
+const RELIC_MONSTER: FieldSpec[] = [
+    { long: 'id', short: 'i', kind: 'num' },
+    { long: 'name', short: 'n', kind: 'str' },
+];
+
+/** 遗物：一种遗物一条（同组取最低阶级），掉落怪物 / 推荐类别留给手工数据 */
+export const RELIC_FIELDS: FieldSpec[] = [
+    { long: 'id', short: 'i', kind: 'raw' },
+    { long: 'name', short: 'zh', kind: 'str' },
+    // 遗物酒名
+    { long: 'brew', short: 'b', kind: 'str' },
+    // 遗物之力（技能名）与技能 identification
+    { long: 'power', short: 'p', kind: 'str' },
+    { long: 'skill_id', short: 'sk', kind: 'num' },
+    // 性格：善 / 中立 / 恶
+    { long: 'align', short: 'a', kind: 'str' },
+    { long: 'grade', short: 'g', kind: 'num' },
+    { long: 'icon', short: 'ic', kind: 'str' },
+    // 提升 / 降低属性
+    { long: 'inc', short: 'u', kind: 'strArr' },
+    { long: 'dec', short: 'd', kind: 'strArr' },
+    { long: 'monsters', short: 'm', kind: 'objArr', fields: RELIC_MONSTER },
+    { long: 'categories', short: 'c', kind: 'strArr' },
+];
+
+const SHOP_ITEM: FieldSpec[] = [
+    { long: 'shop_id', short: 'si', kind: 'num' },
+    { long: 'name', short: 'n', kind: 'str' },
+    { long: 'content_type', short: 'ct', kind: 'str' },
+    { long: 'content_id', short: 'ci', kind: 'num' },
+    { long: 'content_ident', short: 'ce', kind: 'num' },
+    { long: 'icon', short: 'ic', kind: 'str' },
+    { long: 'price', short: 'p', kind: 'num' },
+    { long: 'currency', short: 'cu', kind: 'num' },
+    { long: 'currency_name', short: 'cn', kind: 'str' },
+    { long: 'quantity', short: 'q', kind: 'num' },
+    { long: 'limit_kind', short: 'lk', kind: 'num' },
+    { long: 'limit_num', short: 'ln', kind: 'num' },
+    { long: 'repeat', short: 'rp', kind: 'bool' },
+    { long: 'condition', short: 'cd', kind: 'num' },
+];
+
+export const SHOP_FIELDS: FieldSpec[] = [
+    { long: 'id', short: 'i', kind: 'raw' },
+    { long: 'key', short: 'k', kind: 'str' },
+    { long: 'group', short: 'gp', kind: 'num' },
+    { long: 'group_name', short: 'gn', kind: 'str' },
+    { long: 'kind', short: 'kd', kind: 'num' },
+    { long: 'kind_name', short: 'kn', kind: 'str' },
+    { long: 'town', short: 't', kind: 'num' },
+    { long: 'town_name', short: 'tn', kind: 'str' },
+    { long: 'point_shop_id', short: 'ps', kind: 'num' },
+    { long: 'point_shop_name', short: 'pn', kind: 'str' },
+    { long: 'point_id', short: 'pi', kind: 'num' },
+    { long: 'point_name', short: 'pt', kind: 'str' },
+    { long: 'start_at', short: 'sa', kind: 'num' },
+    { long: 'end_at', short: 'ea', kind: 'num' },
+    { long: 'name', short: 'zh', kind: 'str' },
+    { long: 'count', short: 'c', kind: 'num' },
+    { long: 'items', short: 'it', kind: 'objArr', fields: SHOP_ITEM },
 ];
 
 const reverseCache = new WeakMap<FieldSpec, Record<string, string>>();

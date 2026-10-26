@@ -181,6 +181,18 @@ def main(argv: list[str]) -> int:
     levels = read_clean("skill", "skill_levels.json")
     effect_kinds = read_clean("skill", "effect_kinds.json")
     equipments = read_clean("equipment", "equipments.json")
+    try:
+        items = read_clean("item", "items.json")
+    except FileNotFoundError:      # item.py 没跑过时不影响其它模块
+        items = []
+    try:
+        shops = read_clean("shop", "shops.json")
+    except FileNotFoundError:      # shop.py 没跑过时不影响其它模块
+        shops = []
+    try:
+        relics = read_clean("relic", "relics.json")
+    except FileNotFoundError:      # relic.py 没跑过时不影响其它模块
+        relics = []
 
     roster, excluded = [], []
     for row in characters:
@@ -500,6 +512,8 @@ def main(argv: list[str]) -> int:
             "skills": item.get("skills"),
             "traits": item.get("traits"),
             "set_skills": item.get("set_skills"),
+            # 商店来源（商店名 / 价格 / 货币名），空数组 = 商店买不到
+            "shop": item.get("shop"),
         }))
 
     # ---------- enums: targets actually referenced ----------
@@ -569,6 +583,34 @@ def main(argv: list[str]) -> int:
         for r in excluded
     ], indent=1)
 
+    # ---------- items (道具)：清洗产物已按 wiki 字段命名，直接落盘 ----------
+    item_rows = [compact(row) for row in items]
+    write_json(os.path.join(out, "items.json"), item_rows, indent=1)
+    item_dir = os.path.join(out, "item")
+    keep = {f"{row['id']}.json" for row in item_rows}
+    if os.path.isdir(item_dir):
+        for name in os.listdir(item_dir):
+            if name.endswith(".json") and name not in keep:
+                os.remove(os.path.join(item_dir, name))
+    for row in item_rows:
+        write_json(os.path.join(item_dir, f"{row['id']}.json"), row, indent=1)
+
+    # ---------- shops（商店）：一家店一条，items 内嵌 ----------
+    shop_rows = [compact(row) for row in shops]
+    write_json(os.path.join(out, "shops.json"), shop_rows, indent=1)
+    shop_dir = os.path.join(out, "shop")
+    keep = {f"{row['id']}.json" for row in shop_rows}
+    if os.path.isdir(shop_dir):
+        for name in os.listdir(shop_dir):
+            if name.endswith(".json") and name not in keep:
+                os.remove(os.path.join(shop_dir, name))
+    for row in shop_rows:
+        write_json(os.path.join(shop_dir, f"{row['id']}.json"), row, indent=1)
+
+    # ---------- relics（遗物）：每种一条（同组取最低阶级） ----------
+    relic_rows = [compact(row) for row in relics]
+    write_json(os.path.join(out, "relics.json"), relic_rows, indent=1)
+
     write_json(os.path.join(out, "meta.json"), {
         "schema_version": SCHEMA_VERSION,
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -580,6 +622,8 @@ def main(argv: list[str]) -> int:
             "skills": len(skill_rows),
             "player_skills": sum(1 for s in skill_rows if s.get("player")),
             "equipments": len(equipment_rows),
+            "items": len(item_rows),
+            "shops": len(shop_rows),
             "effect_kinds": len(kinds),
             "targets": len(enums["target"]),
         },
@@ -593,7 +637,7 @@ def main(argv: list[str]) -> int:
 
     print(f"{len(char_rows)} characters (+{len(excluded)} excluded), {len(job_list)} jobs, "
           f"{len(skill_rows)} skills, {len(equipment_rows)} equipments, "
-          f"{len(kinds)} effect kinds -> {out}")
+          f"{len(item_rows)} items, {len(shop_rows)} shops, {len(kinds)} effect kinds -> {out}")
     return 0
 
 

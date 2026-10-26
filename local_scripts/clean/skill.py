@@ -48,7 +48,7 @@ KIND_NAMES = {
 }
 
 #: 效果种类名不在生成阶段写死：保留客户端日文 ``name``，
-#: 中文由 Wiki 上的 ``Data:EffectKind.json``（``Api/GetV2EffectKind``）在前端覆盖。
+#: 中文由 Wiki 上的 ``Data:EffectKind.json``（``Api/GetV2Enum`` 的 ``kinds``）在前端覆盖。
 #: 参数名一律按位置写成「参数1 / 参数2 …」，不做任何推断。
 
 TEST_NAME = re.compile(r"テスト|テスト|test|Test|空データ")
@@ -250,6 +250,15 @@ def main(argv: list[str]) -> int:
                     "turn": s.get("turn"),
                     "target": s.get("skill_target_id"),
                     "target_text": text(tgt.get("convert_text"))[0],
+                    # 效果量（恢复量）：参照能力值 × 百分比 + 阈值窗口。
+                    # 被参数引用的效果（例：6800 -> 1000 HP回復）只有带上这些数字，
+                    # 才能显示「恢复量 · 神力 19%」，否则只剩一个效果名。
+                    "calc_reference_parameter": s.get("calc_reference_parameter"),
+                    "calc_reference_parameter_2": s.get("calc_reference_parameter_2"),
+                    "calc_reference_parameter_rate": s.get("calc_reference_parameter_rate"),
+                    "calc_reference_parameter_rate_2": s.get("calc_reference_parameter_rate_2"),
+                    "calc_valid_cap_parameter_value": s.get("calc_valid_cap_parameter_value"),
+                    "calc_valid_start_parameter_value": s.get("calc_valid_start_parameter_value"),
                 }
                 if with_children:
                     kids = [sub_brief(x, False) for x in (s.get("child_sub_effect_ids") or [])]
@@ -400,9 +409,13 @@ def main(argv: list[str]) -> int:
         levels_out[str(ident)] = lv_rows
 
     def param_labels(k):
-        """参数名按位置写「参数N」；人工修正请在 Override 配置里做。"""
+        """参数名按位置写「参数N」；人工修正请在 Wiki 的 Data:EffectKind.json 里做。
+
+        结构是**纯字符串数组**（``["参数1", "参数2"]``），不再是 ``[{"name": …}]``：
+        末尾 ``%`` 表示百分数，末尾 ``@xx`` 表示该值是某个枚举的 id（见前端 REF_TAG）。
+        """
         span = kind_param_span.get(k, 0)
-        return [{"name": f"参数{i + 1}"} for i in range(span)] or None
+        return [f"参数{i + 1}" for i in range(span)] or None
 
     # effect kind dictionary (only kinds that actually occur)
     kind_dict = {}

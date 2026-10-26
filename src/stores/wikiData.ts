@@ -19,18 +19,24 @@ import { computed, reactive, ref } from 'vue';
 import {
     CHAR_FIELDS,
     EQUIP_FIELDS,
+    ITEM_FIELDS,
     JOB_FIELDS,
+    RELIC_FIELDS,
+    SHOP_FIELDS,
     SKILL_FIELDS,
     decodeDoc,
 } from '../api/dbCodec';
 import {
-    fetchAllModuleItems,
+    asArray,
     fetchDataVersion,
-    fetchEffectKind,
-    fetchModuleItems,
+    fetchEnums,
+    fetchModule,
     type EffectKindMap,
 } from '../api/wikiData';
+import type { ItemDoc } from '../views/DataV2/itemTypes';
 import type { SerializedJunkItem } from '../views/DataV2/junk/types';
+import type { RelicDoc } from '../views/DataV2/relicTypes';
+import type { ShopDoc } from '../views/DataV2/shopTypes';
 
 export interface EnumEntry {
     name?: string;
@@ -46,11 +52,14 @@ export interface EffectParamLabel {
     unit?: string;
 }
 
+/** 参数标注：优先直接写字符串（``"武器@eq"``），也兼容旧的 ``{ "name": "…" }`` */
+export type EffectParamEntry = string | EffectParamLabel;
+
 export interface EffectKindEntry extends EnumEntry {
     id: number;
     count?: number;
     /** labels for param_1..7; a ``null`` slot means unknown / unused */
-    params?: Array<EffectParamLabel | null> | null;
+    params?: Array<EffectParamEntry | null> | null;
     /** 互斥 / 互相移除的效果种类（暂无可读枚举） */
     invalid_kinds?: number[] | null;
     remove_kinds?: number[] | null;
@@ -296,6 +305,16 @@ export interface RawEquipment {
     /** 非装备类型特性 */
     traits: RawEquipmentRef[];
     set_skills: RawEquipmentSetSkill[];
+    /** 商店来源（来自 shop.py 清洗后的店铺，不含限时商店；空数组 = 商店买不到） */
+    shop: RawEquipmentShop[];
+}
+
+export interface RawEquipmentShop {
+    /** 商店展示名，如「金币商店 · 全城镇通用」 */
+    shop_name?: string;
+    price?: number;
+    /** 货币名；兑换点数时是实际点数名（如「银鳞硬币」） */
+    currency_name?: string;
 }
 
 /**
@@ -351,6 +370,13 @@ export interface RawSubEffectBriefLeaf {
     turn?: number;
     target?: number;
     target_text?: string;
+    /** 效果量（恢复量）：参照能力值、百分比与阈值窗口 */
+    calc_reference_parameter?: number;
+    calc_reference_parameter_2?: number;
+    calc_reference_parameter_rate?: number;
+    calc_reference_parameter_rate_2?: number;
+    calc_valid_cap_parameter_value?: number;
+    calc_valid_start_parameter_value?: number;
 }
 
 /**
@@ -446,7 +472,11 @@ interface MetaRow {
 }
 
 const DB_NAME = 'wizdaphne-wiki-v2';
-/** bump when the stored document shape changes -> whole DB is rebuilt */
+/**
+ * bump when the stored document shape changes -> whole DB is rebuilt。
+ * 新增表（v3 的 items / relics / shops）不用改这个值：Dexie 升级会建空表，
+ * ``load()`` 发现表是空的会自动重新下载，还能保住耗时的杂物整理缓存。
+ */
 export const DB_SCHEMA_VERSION = 12;
 
 /**
@@ -469,6 +499,9 @@ class WikiDataDb extends Dexie {
     jobs!: Table<RawJob, number>;
     skills!: Table<RawSkill, number>;
     equipments!: Table<RawEquipment, number>;
+    items!: Table<ItemDoc, number>;
+    relics!: Table<RelicDoc, number>;
+    shops!: Table<ShopDoc, number>;
     meta!: Table<MetaRow, string>;
     junk!: Table<JunkCacheRow, string>;
 
@@ -483,6 +516,8 @@ class WikiDataDb extends Dexie {
         });
         // v2：杂物整理结果并入主库
         this.version(2).stores({ junk: 'key' });
+        // v3：道具 / 遗物 / 商店也缓存（此前这几个页面每次进都重新拉接口）
+        this.version(3).stores({ items: 'id', relics: 'id', shops: 'id' });
     }
 }
 
@@ -588,6 +623,12 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
     const jobs = ref<RawJob[]>([]);
     const skills = ref<RawSkill[]>([]);
     const equipments = ref<RawEquipment[]>([]);
+    /** ``Api/GetV2Item`` 的道具（图鉴 / 商店商品都按 id 查这张表） */
+    const items = ref<ItemDoc[]>([]);
+    /** ``Api/GetV2Item`` 顶层的 ``relics`` */
+    const relics = ref<RelicDoc[]>([]);
+    /** ``Api/GetV2Shop`` */
+    const shops = ref<ShopDoc[]>([]);
     const enums = ref<EnumsPayload>(emptyEnums());
     /** ``Api/GetV2Character`` 顶层的 extra，按角色 id 索引 */
     const characterExtras = ref<Record<number, RawCharacterExtra>>({});
@@ -607,6 +648,9 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         skills: 0,
         playerSkills: 0,
         equipments: 0,
+        items: 0,
+        relics: 0,
+        shops: 0,
     });
 
     let pending: Promise<void> | null = null;
@@ -620,6 +664,9 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         equipments: RawEquipment[];
         enums: EnumsPayload;
         version: number | null;
+        items?: ItemDoc[];
+        relics?: RelicDoc[];
+        shops?: ShopDoc[];
         extras?: Record<number, RawCharacterExtra>;
         rates?: Record<number, RawCharacterRate>;
         /** 装备类型基准值（顶层 baseStat） */
@@ -629,6 +676,9 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         jobs.value = payload.jobs;
         skills.value = payload.skills;
         equipments.value = payload.equipments;
+        items.value = payload.items ?? [];
+        relics.value = payload.relics ?? [];
+        shops.value = payload.shops ?? [];
         enums.value = normalizeEnums(payload.enums);
         version.value = payload.version;
         characterExtras.value = payload.extras ?? {};
@@ -640,6 +690,9 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         counts.skills = payload.skills.length;
         counts.playerSkills = payload.skills.filter((s) => s.player).length;
         counts.equipments = payload.equipments.length;
+        counts.items = items.value.length;
+        counts.relics = relics.value.length;
+        counts.shops = shops.value.length;
 
         void database;
     }
@@ -654,7 +707,9 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
                 base.params && fix.params
                     ? base.params.map((label, index) => {
                           const name = fix.params?.[index];
-                          return name ? { ...(label ?? {}), name } : label;
+                          if (!name) return label;
+                          // 旧写法是字符串，直接换成对象；对象写法只覆盖名字
+                          return label && typeof label !== 'string' ? { ...label, name } : { name };
                       })
                     : (base.params ?? null);
             next[key] = { ...base, name: fix.name ?? base.name, params };
@@ -663,19 +718,10 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
     }
 
     /**
-     * 效果种类名表：每次加载都重新拉一次（不受数据版本号约束），
-     * 所以在 wiki 上改完名字，刷新页面就生效，不用重新生成数据。
-     * 拉不到（离线 / 模块还没建）时退回上次成功拉取的结果，避免名字全空。
+     * 效果种类名表：随 ``Api/GetV2Enum`` 的 ``kinds`` 下发，下载时写进 meta；
+     * 这里从缓存读出来盖在 ``enums.effect_kind`` 上（名字改了要走一次版本刷新）。
      */
     async function applyEffectKindNames(database: WikiDataDb) {
-        const patch = await fetchEffectKind();
-
-        if (patch) {
-            mergeEffectKinds(patch);
-            await database.meta.put({ key: 'effectKindNames', value: patch });
-            return;
-        }
-
         const cached = (await database.meta.get('effectKindNames'))?.value as
             | EffectKindMap
             | undefined;
@@ -683,22 +729,32 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
     }
 
     async function download(database: WikiDataDb, remoteVersion: number) {
-        const [charPayload, jobPayload, skillPayload, equipPayload, enumPayload] = await Promise.all([
-            fetchAllModuleItems('Character'),
-            fetchAllModuleItems('Job'),
-            fetchAllModuleItems('Skill'),
-            fetchAllModuleItems('Equipment'),
-            // 字典只有一个条目，不需要分页
-            fetchModuleItems('Enum'),
-        ]);
+        const [charPayload, skillPayload, equipPayload, itemPayload, shopPayload, enumData] =
+            await Promise.all([
+                fetchModule('Character'),
+                fetchModule('Skill'),
+                fetchModule('Equipment'),
+                // 道具与遗物同一个模块返回（`{items, relics}`）
+                fetchModule('Item'),
+                fetchModule('Shop'),
+                // 字典与效果种类名表在同一个模块里返回（`{enum, kinds}`）
+                fetchEnums(),
+            ]);
 
         const decoded = {
             characters: charPayload.items.map((row) => decodeDoc<RawCharacter>(row as never, CHAR_FIELDS)),
-            jobs: jobPayload.items.map((row) => decodeDoc<RawJob>(row as never, JOB_FIELDS)),
+            // 职业不再单独开模块：``Api/GetV2Character`` 顶层的 ``jobs`` 就是原来的 job items
+            jobs: asArray(charPayload.jobs).map((row) => decodeDoc<RawJob>(row as never, JOB_FIELDS)),
             skills: skillPayload.items.map((row) => decodeDoc<RawSkill>(row as never, SKILL_FIELDS)),
             equipments: equipPayload.items.map((row) => decodeDoc<RawEquipment>(row as never, EQUIP_FIELDS)),
+            items: itemPayload.items.map((row) => decodeDoc<ItemDoc>(row as never, ITEM_FIELDS)),
+            // 遗物挂在 Item 顶层，单独存一张表（弹窗按 id 查）
+            relics: asArray(itemPayload.relics)
+                .map((row) => decodeDoc<RelicDoc>(row as never, RELIC_FIELDS))
+                .filter((row) => row.id != null),
+            shops: shopPayload.items.map((row) => decodeDoc<ShopDoc>(row as never, SHOP_FIELDS)),
             // 线上可能把连续整数 key 的字典转成数组，统一还原成对象再落库
-            enums: normalizeEnums(enumPayload.items[0]),
+            enums: normalizeEnums(enumData.enums),
             version: remoteVersion,
             extras: extraMap(charPayload.extra),
             rates: rateMap(charPayload.rates),
@@ -707,19 +763,36 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
 
         await database.transaction(
             'rw',
-            [database.characters, database.jobs, database.skills, database.equipments, database.meta],
+            [
+                database.characters,
+                database.jobs,
+                database.skills,
+                database.equipments,
+                database.items,
+                database.relics,
+                database.shops,
+                database.meta,
+            ],
             async () => {
                 await database.characters.clear();
                 await database.jobs.clear();
                 await database.skills.clear();
                 await database.equipments.clear();
+                await database.items.clear();
+                await database.relics.clear();
+                await database.shops.clear();
                 await database.characters.bulkPut(decoded.characters);
                 await database.jobs.bulkPut(decoded.jobs);
                 await database.skills.bulkPut(decoded.skills);
                 await database.equipments.bulkPut(decoded.equipments);
+                await database.items.bulkPut(decoded.items);
+                await database.relics.bulkPut(decoded.relics);
+                await database.shops.bulkPut(decoded.shops);
                 await database.meta.bulkPut([
                     { key: 'dataVersion', value: remoteVersion },
                     { key: 'enums', value: decoded.enums },
+                    // 效果种类名表（`Api/GetV2Enum.kinds`）盖在生成数据之上
+                    { key: 'effectKindNames', value: enumData.kinds ?? {} },
                     { key: 'characterExtras', value: decoded.extras },
                     { key: 'characterRates', value: decoded.rates },
                     { key: 'equipmentBaseStat', value: decoded.baseStat },
@@ -731,19 +804,23 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
     }
 
     async function readCache(database: WikiDataDb) {
-        const [chars, jobRows, skillRows, equipRows, metaRows] = await Promise.all([
-            database.characters.toArray(),
-            database.jobs.toArray(),
-            database.skills.toArray(),
-            database.equipments.toArray(),
-            database.meta.bulkGet([
-                'dataVersion',
-                'enums',
-                'characterExtras',
-                'characterRates',
-                'equipmentBaseStat',
-            ]),
-        ]);
+        const [chars, jobRows, skillRows, equipRows, itemRows, relicRows, shopRows, metaRows] =
+            await Promise.all([
+                database.characters.toArray(),
+                database.jobs.toArray(),
+                database.skills.toArray(),
+                database.equipments.toArray(),
+                database.items.toArray(),
+                database.relics.toArray(),
+                database.shops.toArray(),
+                database.meta.bulkGet([
+                    'dataVersion',
+                    'enums',
+                    'characterExtras',
+                    'characterRates',
+                    'equipmentBaseStat',
+                ]),
+            ]);
 
         const [versionRow, enumRow, extrasRow, ratesRow, baseStatRow] = metaRows;
 
@@ -752,6 +829,9 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
             jobs: jobRows,
             skills: skillRows,
             equipments: equipRows,
+            items: itemRows,
+            relics: relicRows,
+            shops: shopRows,
             // 旧缓存里可能存着数组形态，读出来也统一还原
             enums: normalizeEnums(enumRow?.value),
             version: (versionRow?.value as number) ?? null,
@@ -776,10 +856,14 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
 
         const remote = await fetchDataVersion();
         const cachedVersion = (await database.meta.get('dataVersion'))?.value as number | undefined;
-        const cachedSkills = await database.skills.count();
+        const [cachedSkills, cachedItems] = await Promise.all([
+            database.skills.count(),
+            database.items.count(),
+        ]);
 
         const needsRefresh =
             cachedSkills === 0 ||
+            cachedItems === 0 ||
             cachedVersion === undefined ||
             (remote !== null && remote.version !== cachedVersion);
 
@@ -822,6 +906,22 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         return pending;
     }
 
+    /**
+     * 只重拉 ``Api/GetV2Enum``（字典 + 效果种类名表 ``kinds``）。
+     * 调效果种类的中文名 / 参数标注时用：不用清整库、也不用动 ``Data:Version.json``。
+     */
+    async function refreshEnums(): Promise<void> {
+        const database = getDb();
+        const enumData = await fetchEnums();
+
+        enums.value = normalizeEnums(enumData.enums);
+        await database.meta.put({ key: 'enums', value: enums.value });
+        if (enumData.kinds) {
+            await database.meta.put({ key: 'effectKindNames', value: enumData.kinds });
+            mergeEffectKinds(enumData.kinds);
+        }
+    }
+
     /** drop the cache and pull everything again */
     async function refresh(): Promise<void> {
         const database = getDb();
@@ -829,6 +929,9 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         await database.jobs.clear();
         await database.skills.clear();
         await database.equipments.clear();
+        await database.items.clear();
+        await database.relics.clear();
+        await database.shops.clear();
         await database.meta.clear();
         // 装备名称 / 阶级变了，杂物整理结果也要重算
         await database.junk.clear();
@@ -843,6 +946,12 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         jobs,
         skills,
         equipments,
+        /** 道具（`Api/GetV2Item.items`） */
+        items,
+        /** 遗物（`Api/GetV2Item.relics`） */
+        relics,
+        /** 商店（`Api/GetV2Shop.items`） */
+        shops,
         enums,
         characterExtras,
         characterRates,
@@ -855,5 +964,7 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         ready,
         init,
         refresh,
+        /** 只重拉 Enum（字典 + 效果种类名），调试用 */
+        refreshEnums,
     };
 });

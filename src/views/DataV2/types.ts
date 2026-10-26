@@ -270,6 +270,16 @@ export interface EquipmentListItem extends LocalizedName {
     /** 非装备类型特性 */
     traits: EquipmentRef[];
     set_skills: EquipmentSetSkill[];
+    /** 商店来源（空数组 = 商店买不到） */
+    shop: EquipmentShopRow[];
+}
+
+export interface EquipmentShopRow {
+    /** 商店展示名，如「金币商店 · 全城镇通用」 */
+    shop_name?: string;
+    price?: number;
+    /** 货币名；兑换点数时是实际点数名 */
+    currency_name?: string;
 }
 
 export interface EquipmentDetail extends EquipmentListItem {}
@@ -281,6 +291,22 @@ export interface EffectParamLabel {
     unit?: string;
 }
 
+/**
+ * 参数标注：优先直接写字符串（``"武器@eq"``），也兼容旧的 ``{ "name": "武器@eq" }`` 写法。
+ * 末尾 ``%`` = 百分数，末尾 ``@xx`` = 这个数字是某个枚举的 id（见 SkillDetail 的 REF_TAG）。
+ */
+export type EffectParamEntry = string | EffectParamLabel;
+
+/** 取出标注文本（字符串 / 对象都支持） */
+export const effectParamText = (entry?: EffectParamEntry | null): string => {
+    if (entry == null) return '';
+    return typeof entry === 'string' ? entry : entry.name;
+};
+
+/** 旧写法里的 ``unit``（只有对象才有） */
+export const effectParamUnit = (entry?: EffectParamEntry | null): string | undefined =>
+    entry != null && typeof entry !== 'string' ? entry.unit : undefined;
+
 export interface EffectKind {
     id: number;
     name: string | null;
@@ -289,7 +315,7 @@ export interface EffectKind {
     primary_category: number | null;
     count: number;
     /** labels for param_1..7; null position = unknown / unused */
-    params?: Array<EffectParamLabel | null> | null;
+    params?: Array<EffectParamEntry | null> | null;
     /** 互斥 / 互相移除的效果种类（暂无可读枚举） */
     invalid_kinds?: number[] | null;
     remove_kinds?: number[] | null;
@@ -343,6 +369,13 @@ export interface SubEffectBriefLeaf {
     turn: number | null;
     target: number | null;
     target_text: string | null;
+    /** 效果量（恢复量）：参照能力值、百分比与阈值窗口 */
+    calc_reference_parameter?: number | null;
+    calc_reference_parameter_2?: number | null;
+    calc_reference_parameter_rate?: number | null;
+    calc_reference_parameter_rate_2?: number | null;
+    calc_valid_cap_parameter_value?: number | null;
+    calc_valid_start_parameter_value?: number | null;
 }
 
 /** 只再展开一层：``children`` 是叶子 */
@@ -359,7 +392,7 @@ export interface SkillSubEffect {
     target_text: string | null;
     params?: Array<number | null>;
     /** labels for ``params``, from effect_kinds.json */
-    param_labels?: Array<EffectParamLabel | null> | null;
+    param_labels?: Array<EffectParamEntry | null> | null;
     /** where the sub effect was attached: the damage row, the effect group, or the attack start */
     from?: 'damage' | 'effect_group' | 'attack_start';
     /** ``SkillSubEffect.reference_parameter`` (SkillReferenceParamType id) */

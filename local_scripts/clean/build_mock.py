@@ -3,20 +3,25 @@
 The wiki stores short-key JSON (``dbCodec.encodeDoc``) in the ``Data:``
 namespace and serves it through ``Api/GetXxx`` as::
 
-    { "items": [...], "count": N, "page": 1, "limit": 10000 }
+    { "items": [...], ... }        （一次全量，没有 page / limit）
 
 This script produces the same payloads locally (no upload, no MediaWiki
 required) so the frontend can be developed against DEV mocks:
 
-    CharacterResponse.json    Api/GetV2Character   95 records (roster + stats/talent/skills/voice)
-    JobResponse.json          Api/GetV2Job         17 jobs
+    CharacterResponse.json    Api/GetV2Character   95 records (roster + stats/talent/skills/voice) + 顶层 jobs/extra/rates
     SkillResponse.json        Api/GetV2Skill       3,031 records (skill fields + description + levels)
     EquipmentResponse.json    Api/GetV2Equipment   839 records (weapon / armor stats + traits) + 顶层 baseStat
-    EnumResponse.json         Api/GetV2Enum        id dictionaries + effect kind 结构（名字在 GetV2EffectKind）
+    ItemResponse.json         Api/GetV2Item        2,684 items + 顶层 relics
+    ShopResponse.json         Api/GetV2Shop        122 shops（商品内嵌 items）
+    EnumResponse.json         Api/GetV2Enum        `{enum, kinds}`：字典 + 效果种类名
     VersionResponse.json      Api/GetV2Version     { version }
 
-``EffectKindResponse.json``（Api/GetEffectKind，效果种类名的手改表）不在这里生成：
-那份数据只在 wiki 上手工维护，DEV 直接把同名文件放到 ``public/mock`` 即可。
+    JobResponse.json / RelicResponse.json 前端不再请求，只作为上传脚本的输入
+    （Data:Job / Data:Relic 数据页仍由 GetV2Character.jobs、GetV2Item.relics 读取）
+
+``EffectKindResponse.json``（效果种类名的手改表）不在这里生成：那份数据只在 wiki 上
+手工维护（``Data:EffectKind.json``），DEV 直接把同名文件放到 ``public/mock``，
+本脚本把它读进 ``EnumResponse.json`` 的 ``kinds``。
 
 Compression rules (mirroring ``docs/data-wiki-api-indexeddb.md``):
 
@@ -50,7 +55,6 @@ from common import (  # noqa: E402
     read_config_json,
 )
 
-PAGE_LIMIT = 10000
 DEFAULT_DATA = os.path.join(ROOT, "data")
 DEFAULT_OUT = os.path.join(ROOT, "public", "mock")
 
@@ -204,6 +208,13 @@ SUB_BRIEF_LEAF = [
     ("turn", "t", "num"),
     ("target", "g", "num"),
     ("target_text", "gt", "str"),
+    # 效果量（恢复量）
+    ("calc_reference_parameter", "cp", "num"),
+    ("calc_reference_parameter_2", "c2", "num"),
+    ("calc_reference_parameter_rate", "cq", "num"),
+    ("calc_reference_parameter_rate_2", "c3", "num"),
+    ("calc_valid_cap_parameter_value", "cc", "num"),
+    ("calc_valid_start_parameter_value", "cv", "num"),
 ]
 
 SUB_BRIEF = SUB_BRIEF_LEAF + [("children", "cs", "objArr", SUB_BRIEF_LEAF)]
@@ -306,6 +317,39 @@ EQUIP_SET = [
     ("max_level", "ml", "num"),
     ("add_skill_level", "al", "num"),
 ]
+#: 商店来源（来自 shop.py 清洗后的店铺，不含限时商店）
+EQUIP_SHOP = [
+    ("shop_name", "sn", "str"),
+    ("price", "p", "num"),
+    ("currency_name", "cn", "str"),
+]
+
+# ---------- 遗物（Relic） ----------
+
+#: 掉落怪物（手工数据补充后才有值）
+RELIC_MONSTER = [
+    ("id", "i", "num"),
+    ("name", "n", "str"),
+]
+RELIC = [
+    ("id", "i", "raw"),
+    ("name", "zh", "str"),
+    # 遗物酒名
+    ("brew", "b", "str"),
+    # 遗物之力（技能名）与技能 identification
+    ("power", "p", "str"),
+    ("skill_id", "sk", "num"),
+    # 性格：善 / 中立 / 恶
+    ("align", "a", "str"),
+    ("grade", "g", "num"),
+    ("icon", "ic", "str"),
+    # 提升 / 降低属性
+    ("inc", "u", "strArr"),
+    ("dec", "d", "strArr"),
+    # 掉落怪物 / 推荐类别：手工数据，清洗阶段留空
+    ("monsters", "m", "objArr", RELIC_MONSTER),
+    ("categories", "c", "strArr"),
+]
 EQUIPMENT = [
     ("id", "i", "raw"),
     ("name", "zh", "str"),
@@ -346,6 +390,114 @@ EQUIPMENT = [
     ("bonus", "bn", "numArrArr"),
     # 材质补强（低于最高阶级时可继续提升，空数组 = 不能补强）
     ("over_rank", "or", "objArr", EQUIP_OVER_RANK),
+    # 商店来源（商店名 / 价格 / 货币名；空数组 = 商店买不到）
+    ("shop", "sh", "objArr", EQUIP_SHOP),
+]
+
+# ---------- 道具（Item） ----------
+
+ITEM_SHOP = [
+    ("shop_name", "sn", "str"),
+    ("shop_kind", "k", "num"),
+    ("price", "p", "num"),
+    ("currency", "cu", "num"),
+    ("currency_name", "cn", "str"),
+    ("quantity", "q", "num"),
+    ("limit_kind", "lk", "num"),
+    ("limit_num", "ln", "num"),
+    ("repeat", "rp", "bool"),
+    ("condition", "cd", "num"),
+    ("town", "t", "num"),
+    ("point_shop_id", "ps", "num"),
+]
+
+ITEM_FISHING = [
+    ("volume", "vo", "num"),
+    ("duration", "du", "num"),
+    ("min_meet", "mn", "num"),
+    ("max_meet", "mx", "num"),
+    ("min_success", "ms", "num"),
+    ("max_success", "xs", "num"),
+]
+
+ITEM_RELIC = [
+    ("grade", "g", "num"),
+    ("rank", "r", "num"),
+    ("alignment", "al", "num"),
+    ("skill_id", "si", "num"),
+]
+
+ITEM_SKILL = [("kind", "kd", "str"), ("id", "i", "num"), ("name", "n", "str")]
+
+#: 图鉴条目引用（只有部分道具进图鉴）：条目 id + 编号，说明 / 售价归图鉴模块
+ITEM_COLLECTION = [
+    ("id", "i", "num"),
+    ("no", "n", "num"),
+]
+
+ITEM = [
+    ("id", "i", "raw"),
+    ("name", "zh", "str"),
+    ("name_jp", "jp", "str"),
+    ("name_en", "en", "str"),
+    ("type", "ty", "str"),
+    ("category", "c", "str"),
+    ("desc", "d", "str"),
+    ("desc_lang", "dl", "str"),
+    ("icon", "ic", "str"),
+    ("list_icon", "li", "str"),
+    # 卖价（商店买价见 shop）
+    ("value", "v", "num"),
+    ("sort_id", "so", "num"),
+    ("use_skill", "sk", "obj", ITEM_SKILL),
+    ("shop", "sh", "objArr", ITEM_SHOP),
+    ("fishing", "fi", "obj", ITEM_FISHING),
+    ("relic", "re", "obj", ITEM_RELIC),
+    # 图鉴：出售 / 消耗品 / 贵重品 / 其他（只有进图鉴的道具有值）
+    ("collection_group", "cg", "str"),
+    ("collection", "col", "obj", ITEM_COLLECTION),
+    # 杂物二级分类：角色抽卡 / 装备抽卡 / 未分类（只有 Item::Junk 有值）
+    ("junk_group", "jg", "str"),
+]
+
+# ---------- 商店（Shop） ----------
+
+SHOP_ITEM = [
+    ("shop_id", "si", "num"),
+    ("name", "n", "str"),
+    ("content_type", "ct", "str"),
+    ("content_id", "ci", "num"),
+    # 装备商品的 identification（content_id 是档位行 id，点开装备弹窗要用它）
+    ("content_ident", "ce", "num"),
+    ("icon", "ic", "str"),
+    ("price", "p", "num"),
+    ("currency", "cu", "num"),
+    ("currency_name", "cn", "str"),
+    ("quantity", "q", "num"),
+    ("limit_kind", "lk", "num"),
+    ("limit_num", "ln", "num"),
+    ("repeat", "rp", "bool"),
+    ("condition", "cd", "num"),
+]
+
+SHOP = [
+    ("id", "i", "raw"),
+    ("key", "k", "str"),
+    ("group", "gp", "num"),
+    ("group_name", "gn", "str"),
+    ("kind", "kd", "num"),
+    ("kind_name", "kn", "str"),
+    ("town", "t", "num"),
+    ("town_name", "tn", "str"),
+    ("point_shop_id", "ps", "num"),
+    ("point_shop_name", "pn", "str"),
+    ("point_id", "pi", "num"),
+    ("point_name", "pt", "str"),
+    ("start_at", "sa", "num"),
+    ("end_at", "ea", "num"),
+    ("name", "zh", "str"),
+    ("count", "c", "num"),
+    ("items", "it", "objArr", SHOP_ITEM),
 ]
 
 #: list + detail fields merged (``id`` / ``grade`` are already in the list part;
@@ -498,7 +650,8 @@ def verify(encoded: list[dict], fields: list, label: str) -> None:
 
 def check_specs() -> None:
     """Merged specs must not reuse a short key (a later field would win silently)."""
-    for label, spec in (("CHAR", CHAR), ("SKILL", SKILL), ("JOB", JOB), ("EQUIPMENT", EQUIPMENT)):
+    for label, spec in (("CHAR", CHAR), ("SKILL", SKILL), ("JOB", JOB),
+                        ("EQUIPMENT", EQUIPMENT), ("ITEM", ITEM), ("SHOP", SHOP)):
         seen: dict[str, str] = {}
         for item in spec:
             long, short = item[0], item[1]
@@ -507,8 +660,9 @@ def check_specs() -> None:
             seen[short] = long
 
 
-def wrap(items: list, limit: int = PAGE_LIMIT) -> dict:
-    return {"items": items, "count": len(items), "page": 1, "limit": limit}
+def wrap(items: list) -> dict:
+    """接口形状：一次全量返回（线上 Lua 已去掉 page / limit，`count` 仅用于日志）。"""
+    return {"items": items, "count": len(items)}
 
 
 def main(argv: list[str]) -> int:
@@ -524,6 +678,18 @@ def main(argv: list[str]) -> int:
     jobs = read_json(os.path.join(data, "jobs.json"))
     skills = read_json(os.path.join(data, "skills.json"))
     equipments = read_json(os.path.join(data, "equipments.json"))
+    try:
+        items = read_json(os.path.join(data, "items.json"))
+    except FileNotFoundError:      # item.py 没跑过时跳过道具模块
+        items = []
+    try:
+        shops = read_json(os.path.join(data, "shops.json"))
+    except FileNotFoundError:      # shop.py 没跑过时跳过商店模块
+        shops = []
+    try:
+        relics = read_json(os.path.join(data, "relics.json"))
+    except FileNotFoundError:      # relic.py 没跑过时跳过遗物模块
+        relics = []
     effect_kinds = read_json(os.path.join(data, "effect_kinds.json"))
     enums = read_json(os.path.join(data, "enums.json"))
 
@@ -531,11 +697,17 @@ def main(argv: list[str]) -> int:
     job_rows = [encode_doc(row, JOB) for row in jobs]
     skill_rows = [encode_doc(row, SKILL) for row in skills]
     equip_rows = [encode_doc(row, EQUIPMENT) for row in equipments]
+    item_rows = [encode_doc(row, ITEM) for row in items]
+    shop_rows = [encode_doc(row, SHOP) for row in shops]
+    relic_rows = [encode_doc(row, RELIC) for row in relics]
 
     verify(char_rows, CHAR, "Character")
     verify(job_rows, JOB, "Job")
     verify(skill_rows, SKILL, "Skill")
     verify(equip_rows, EQUIPMENT, "Equipment")
+    verify(item_rows, ITEM, "Item")
+    verify(shop_rows, SHOP, "Shop")
+    verify(relic_rows, RELIC, "Relic")
 
     # 手工补充数据（config/Data_CharacterExtra.tabx.xlsx）放在 payload 顶层 `extra`：
     # 长键、不压缩，前端导入时按 id 合并，不进 items
@@ -566,18 +738,44 @@ def main(argv: list[str]) -> int:
             rates_by_id[cid] = {**row, "id": cid}
     char_rates = [rates_by_id[c["id"]] for c in characters if c["id"] in rates_by_id]
 
+    # 效果种类名表：线上由 ``Data:EffectKind.json`` 手工维护（``Api/GetV2Enum`` 的 ``kinds``），
+    # DEV 读同目录下手工维护的 ``EffectKindResponse.json``（本脚本只读不写）。
+    # 生成的数据里 kind 只有结构（id / count / params），名字全靠这张表。
+    kind_names_file = os.path.join(args.out, "EffectKindResponse.json")
+    if os.path.isfile(kind_names_file):
+        raw_kinds = read_json(kind_names_file)
+        kind_names = (raw_kinds.get("items") or [{}])[0] if isinstance(raw_kinds, dict) else raw_kinds
+    else:
+        kind_names = effect_kinds
+
     payloads = {
-        "CharacterResponse.json": {**wrap(char_rows), "extra": char_extra, "rates": char_rates},
-        "JobResponse.json": wrap(job_rows),
+        # 数据量小的类并到大一类的顶层（线上 Lua 同样形状）：Character 带 jobs，
+        # Item 带 relics，少开 Api/GetV2Job / Api/GetV2Relic 两个模块
+        "CharacterResponse.json": {
+            **wrap(char_rows),
+            "jobs": job_rows,
+            "extra": char_extra,
+            "rates": char_rates,
+        },
         "SkillResponse.json": wrap(skill_rows),
+        "ItemResponse.json": {**wrap(item_rows), "relics": relic_rows},
+        "ShopResponse.json": wrap(shop_rows),
+        # 下面两个前端不再请求，仅作为上传脚本的输入（Data:Job / Data:Relic 数据页仍由
+        # Api/GetV2Character.jobs 与 Api/GetV2Item.relics 读取）
+        "JobResponse.json": wrap(job_rows),
+        "RelicResponse.json": wrap(relic_rows),
         # baseStat 与线上 ``Api/GetV2Equipment`` 顶层同形状（不压缩），列表用它决定红绿配色；
         # 加护概率已并入每件装备的 ``bn``，这里只补 baseStat
         "EquipmentResponse.json": {
             **wrap(equip_rows),
             "baseStat": (read_config_json(EQUIP_API_JSON) or {}).get("baseStat") or {},
         },
-        # effect_kind 只有结构（名字在 Data:EffectKind.json，由 Api/GetV2EffectKind 提供）
-        "EnumResponse.json": wrap([{**enums, "effect_kind": effect_kinds}]),
+        # 字典 + 效果种类名表同一个模块返回：``{enum, kinds}``
+        # （``enum.effect_kind`` 只有结构，名字由 ``kinds`` 覆盖）
+        "EnumResponse.json": {
+            "enum": {**enums, "effect_kind": effect_kinds},
+            "kinds": kind_names,
+        },
         # the cache is keyed on this single value; nothing else belongs here
         "VersionResponse.json": {"version": int(time.strftime("%y%m%d%H%M"))},
     }
