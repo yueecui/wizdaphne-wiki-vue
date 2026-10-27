@@ -61,6 +61,33 @@
                                                 <th>阶级</th>
                                                 <td>{{ item.rank }}</td>
                                             </tr>
+                                            <tr v-if="jobLimitedText">
+                                                <th>职业限制</th>
+                                                <td>{{ jobLimitedText }}</td>
+                                            </tr>
+                                            <tr v-if="raceLimitedText">
+                                                <th>种族限制</th>
+                                                <td>{{ raceLimitedText }}</td>
+                                            </tr>
+                                            <tr v-if="showFairy">
+                                                <th>妖精</th>
+                                                <td :class="item.fa_can === 2 ? 'text-purple-300' : ''">
+                                                    {{ FAIRY_LABEL[item.fa_can] }}
+                                                </td>
+                                            </tr>
+                                            <!-- 获取途径：wiki 手工补充的 Data:EquipmentExtra.tabx（sou） -->
+                                            <tr v-if="item.sou.length">
+                                                <th>获取途径</th>
+                                                <td class="text-left">
+                                                    <div class="flex flex-col gap-2">
+                                                        <div
+                                                            v-for="(source, index) in item.sou"
+                                                            :key="index"
+                                                            v-html="convertDescription(source)"
+                                                        ></div>
+                                                    </div>
+                                                </td>
+                                            </tr>
                                             <!-- 购买来源：清洗后的店铺（不含限时商店） -->
                                             <tr v-if="item.shop.length">
                                                 <th>购买来源</th>
@@ -492,6 +519,7 @@ import ThemeConfigProvider from '../../layout/ThemeConfigProvider.vue';
 import { useWikiDataStore } from '../../stores/wikiData';
 import WikiImg from '../../components/huiji/WikiImg.vue';
 import SkillModal from './SkillModal.vue';
+import { convertDescription } from '../DataSearcher/utils/convertDescription';
 import { useDataV2Store } from './dataV2Store';
 import { getGradeColorClass, getQualityDisplay } from './junk/constants';
 import { hasJunkCache } from './junk/junkCache';
@@ -794,6 +822,25 @@ const BONUS_ATTRIBUTES = [
 
 const isWeapon = computed(
     () => item.value?.category === '武器' || item.value?.category === '工具',
+);
+
+/** 妖精标记：0 不适用 / 1 可用 / 2 专用 */
+const FAIRY_LABEL = ['不适用', '可用', '专用'] as const;
+
+/** 武器只有「专用 / 可用」才值得标；防具连「不适用」也显示（妖精穿不上或没效果） */
+const showFairy = computed(() => {
+    const row = item.value;
+    if (!row) return false;
+    return !isWeapon.value || row.fa_can > 0;
+});
+
+/** 装备条件：清洗时只存 id，名字从职业表 / 种族枚举里查 */
+const jobLimitedText = computed(() =>
+    (item.value?.job_limited ?? []).map((id) => store.jobById.get(id)?.name ?? `职业#${id}`).join(' / '),
+);
+
+const raceLimitedText = computed(() =>
+    (item.value?.race_limited ?? []).map((id) => store.raceName(id)).join(' / '),
 );
 
 const baseStatOf = (row: EquipmentListItem) =>

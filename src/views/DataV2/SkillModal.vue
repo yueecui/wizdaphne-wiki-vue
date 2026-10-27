@@ -160,6 +160,7 @@ const sourceLabel = (s: SkillListItem) => {
     if (s.sources.includes('potential')) return '潜在';
     if (s.sources.includes('fate')) return '才能';
     if (s.sources.includes('bond')) return '羁绊';
+    if (s.sources.includes('equip_set')) return '套装技能';
     return '';
 };
 

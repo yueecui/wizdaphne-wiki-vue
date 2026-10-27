@@ -59,7 +59,7 @@
                         />
                     </div>
                 </div>
-                <div class="flex flex-col">
+                <div v-if="!isWeaponGroup" class="flex flex-col">
                     <div class="flex justify-between items-center h-6">
                         <label class="text-sm">妖精</label>
                     </div>
@@ -68,10 +68,25 @@
                             v-model:value="filter.fairyFilter"
                             :options="[
                                 { label: '全部', value: '' },
-                                { label: '非妖精', value: '0' },
-                                { label: '可装备', value: '1' },
-                                { label: '限定妖精', value: '2' },
+                                { label: '不适用', value: '0' },
+                                { label: '可用', value: '1' },
+                                { label: '专用', value: '2' },
                             ]"
+                            class="w-40!"
+                        />
+                    </div>
+                </div>
+                <div v-if="!isWeaponGroup" class="flex flex-col">
+                    <div class="flex justify-between items-center h-6">
+                        <label class="text-sm">妖精技能</label>
+                    </div>
+                    <div class="flex flex-row gap-2 items-center h-12">
+                        <NSelect
+                            v-model:value="filter.fairySkill"
+                            :options="fairySkillOptions"
+                            clearable
+                            filterable
+                            placeholder="全部"
                             class="w-40!"
                         />
                     </div>
@@ -190,9 +205,10 @@
 
 <script setup lang="ts">
 import { NButton, NCheckbox, NInput, NPagination, NSelect } from 'naive-ui';
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import WikiImg from '../../components/huiji/WikiImg.vue';
 import { useDataV2Store } from './dataV2Store';
+import { usePersistentFilter } from './dataV2Settings';
 import EquipmentModal from './EquipmentModal.vue';
 import type { EquipmentListItem, EquipmentRef, EquipmentStatKey } from './types';
 
@@ -242,12 +258,15 @@ const STAT_LABEL: Record<EquipmentStatKey, string> = {
     etrap: '陷回',
 };
 
-const filter = reactive({
+// 过滤器持久化（对齐 V1 的 weaponFilter / armorFilter，这里武器防具共用一份）
+const filter = usePersistentFilter('equipment.filter', {
     category: '',
     searchText: '',
     skill: null as string | null,
     soucateFilter: 'all' as 'all' | 'show' | 'hide',
     fairyFilter: '' as '' | '0' | '1' | '2',
+    /** 妖精技能（= 套装技能名）；空 = 不过滤 */
+    fairySkill: null as string | null,
     showMaxLv: false,
     showMaxOverRank: false,
 });
@@ -263,6 +282,15 @@ const typeOrder = computed(() =>
         .map(([name]) => name),
 );
 
+// 分类按钮只在本分组内有效：本地存的分类不属于当前分组时清掉，避免进来就是空列表
+watch(
+    typeOrder,
+    (list) => {
+        if (list.length && filter.category && !list.includes(filter.category)) filter.category = '';
+    },
+    { immediate: true },
+);
+
 const skillOptions = computed(() => {
     const names = new Set<string>();
     for (const item of store.equipments) {
@@ -276,6 +304,16 @@ const skillOptions = computed(() => {
         { label: '全部', value: '' },
         ...[...names].sort((a, b) => a.localeCompare(b, 'zh')).map((name) => ({ label: name, value: name })),
     ];
+});
+
+/** 妖精技能下拉：防具里出现过的套装技能名（只在妖精专用装备上有） */
+const fairySkillOptions = computed(() => {
+    const names = new Set<string>();
+    for (const item of store.equipments) {
+        if (isWeapon(item)) continue;
+        for (const row of item.set_skills) if (row.skill_name) names.add(row.skill_name);
+    }
+    return [...names].sort((a, b) => a.localeCompare(b, 'zh')).map((name) => ({ label: name, value: name }));
 });
 
 const isMatch = (item: EquipmentListItem) => {
@@ -295,11 +333,17 @@ const isMatch = (item: EquipmentListItem) => {
     }
     if (filter.soucateFilter === 'show' && item.soucate !== 9) return false;
     if (filter.soucateFilter === 'hide' && item.soucate === 9) return false;
-    if (filter.fairyFilter) {
-        const can = item.fa_can ?? 0;
-        if (filter.fairyFilter === '0' && can !== 0) return false;
-        if (filter.fairyFilter === '1' && can !== 1 && can !== 2) return false;
-        if (filter.fairyFilter === '2' && can !== 2) return false;
+    // 妖精相关的两个过滤器只在防具页生效（武器页没有这两个控件，但会自动持久化）
+    if (!isWeaponGroup.value) {
+        if (filter.fairyFilter) {
+            const can = item.fa_can ?? 0;
+            if (filter.fairyFilter === '0' && can !== 0) return false;
+            if (filter.fairyFilter === '1' && can !== 1 && can !== 2) return false;
+            if (filter.fairyFilter === '2' && can !== 2) return false;
+        }
+        if (filter.fairySkill) {
+            if (!item.set_skills.some((row) => row.skill_name === filter.fairySkill)) return false;
+        }
     }
     return true;
 };
@@ -339,6 +383,7 @@ const resetFilter = () => {
     filter.skill = null;
     // V1 重置时保留特典过滤
     filter.fairyFilter = '';
+    filter.fairySkill = null;
     filter.showMaxLv = false;
     filter.showMaxOverRank = false;
     pageIndex.value = 1;

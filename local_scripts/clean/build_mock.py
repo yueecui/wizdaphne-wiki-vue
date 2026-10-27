@@ -378,6 +378,9 @@ EQUIPMENT = [
     ("fa_sk", "fs", "str"),
     # 妖精技能描述
     ("fa_sk_desc", "fd", "str"),
+    # 装备条件：职业限制（Job.id）/ 种族限制（CharacterSpecies.id），空 = 无限制
+    ("job_limited", "jl", "numArr"),
+    ("race_limited", "rl", "numArr"),
     ("reinforce_max", "rm", "num"),
     # 0 级数值 + 满强化推算
     ("stats", "st", "obj", EQUIP_STAT),

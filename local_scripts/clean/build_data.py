@@ -499,6 +499,9 @@ def main(argv: list[str]) -> int:
             "fa_can": item.get("fa_can"),
             "fa_sk": item.get("fa_sk"),
             "fa_sk_desc": item.get("fa_sk_desc"),
+            # 装备条件：职业限制（Job.id）/ 种族限制（CharacterSpecies.id）
+            "job_limited": item.get("job_limited"),
+            "race_limited": item.get("race_limited"),
             # 加护概率（4 槽 × 19 属性）与强化曲线（[{lv, atk, ...}]，每级完整数值，只输出与 +0 不同的等级）
             "bonus": item.get("bonus"),
             "levels": item.get("levels"),

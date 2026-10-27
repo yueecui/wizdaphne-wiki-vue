@@ -141,6 +141,7 @@ import { NButton, NCheckbox, NInput, NPagination, NSelect } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
 import { useWikiDataStore } from '../../stores/wikiData';
 import SkillModal from './SkillModal.vue';
+import { usePersistentRef } from './dataV2Settings';
 import { RELIC_ALIGNMENTS, RELIC_STAT_ORDER, sortRelicStats, type RelicDoc } from './relicTypes';
 
 interface RelicFilter {
@@ -166,7 +167,8 @@ const wiki = useWikiDataStore();
 const relics = computed(() => wiki.relics);
 const loading = computed(() => wiki.status === 'loading');
 
-const filter = ref<RelicFilter>(emptyFilter());
+// 过滤器持久化（对齐 V1 的 relicBrewFilter）
+const filter = usePersistentRef<RelicFilter>('relic.filter', emptyFilter());
 const showBrew = ref(false);
 const showPower = ref(false);
 

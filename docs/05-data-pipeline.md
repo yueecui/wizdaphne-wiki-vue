@@ -220,10 +220,13 @@ data/
 | `nt` / `rm` | note（客户端日文备注）/ reinforce_max | str / num |
 
 | `li` / `ic` | list_icon（列表小图）/ icon（背包大图）；均为去掉 `.png` 的资源名，空格→`_`、连续 `_` 合并（wiki 标题规则） | str |
-| `so` / `d` | soucate（9 = 特典）/ desc（中文说明）；解包与接口暂未提供，恒为空（占位） | num / str |
-| `su` / `rq` | sou（获取途径）/ req（装备需求）；暂未提供，恒为空（占位） | strArr |
-| `fc` / `fs` | fa_can（0 非妖精 / 1 可装备 / 2 限定）/ fa_sk（妖精技能）；暂未提供，恒为空（占位） | num / str |
-| `fd` | fa_sk_desc（妖精技能描述）；暂未提供，恒为空（占位） | str |
+| `so` | soucate 特典分类（9 = 特典，0 = 普通）：取自 `Api/GetV2Equipment` 顶层 `extra`，源头是 wiki 手工维护的 `Data:EquipmentExtra.tabx`；用于列表排序、特典着色、特典过滤器、杂物列表排序与底色 | num |
+| `su` | sou 获取途径：同样来自 `extra`。页面里一行一个字符串、多个来源用 `;` 连接，接口拆成数组；详情里按 wiki 文本渲染（支持 `[[页面|文字]]`） | strArr |
+| `d` / `rq` | desc（中文说明）/ req（装备需求）；解包与接口都没提供，恒为空（占位） | str / strArr |
+| `fc` | fa_can 妖精标记：0 不适用（妖精能穿但发挥不出性能）/ 1 可用 / 2 专用。取自解包 `Equipment.conditions_*` 的种族条件（条件 `10` 的种族列表：只有妖精 `6` → 2，含妖精也含别的种族 → 1，没有种族条件 → 0；`CharacterSpecies` 6 = 妖精） | num |
+| `fs` | fa_sk 妖精技能 = 套装技能名（`EquipSetSkillContents` → `EquipSetSkills` → `Skill`），多个用「、」连接；没有套装技能为空 | str |
+| `fd` | fa_sk_desc 妖精技能说明（套装技能 1 级说明，中文；各等级只差开头的「套装技能LvN」） | str |
+| `jl` / `rl` | job_limited / race_limited 装备条件：`Equipment.conditions_*` 里类型 9（职业）/ 10（种族）允许的 id 列表（两个槽位合并去重，空 = 无限制；例：圣骑士之盾 = `[104]` 骑士，遗志小盾 = 职业 `[108]` + 种族 `[1,2,3,4,6]`） | numArr |
 | `lv` | levels `[{l, at, c, mg, …}]`：强化曲线，每个等级一行「完整数值」（含不变化的攻击次数 `c`），只输出与 +0 不同的等级 | objArr |
 | `bn` | bonus `[[…],[…],[…],[…]]`：加护概率 4 槽 × 19 属性，来自 `Api/GetV2Equipment` 顶层 `bonus` | numArrArr |
 | `st` / `mx` | stats / max_stats `{at,c,mg,dv,df,md,sp,ac,sr,ev,rs,dt,dp,et}`；`dt` / `dp` / `et` = 探知 / 陷阱解除 / 陷阱回避，取自 `EquipmentParam` 的 `detection_base` / `trap_remove_base` / `trap_avoid_base`，和别的属性一样进 `lv` 强化曲线（只有手套 / 面具 / 饰品等少数装备有） | obj |
@@ -287,7 +290,7 @@ python local_scripts\clean\build_mock.py --data D:\tmp\data --out D:\tmp\mock
 
 | 项 | 状态 | 说明 |
 |---|---|---|
-| 上传脚本（mock → `Data:` 页面） | **已完成** | `local_scripts/wiki/uploadDataToWiki.ts`（`yarn update:wiki`）：记录级 `Data:Character|Job|Skill|Equipment/<id>.json` + `dtype`，单条目 `Data:Enum.json`；`Data:Version.json`、`Data:EffectKind.json` 不由脚本维护（后者在 wiki 上手工改）；增量缓存为 sqlite（`D:\WizardyDaphne\workspace\wikitext.sqlite`） |
+| 上传脚本（mock → `Data:` 页面） | **已完成** | `local_scripts/wiki/uploadDataToWiki.ts`（`yarn update:wiki`）：记录级 `Data:Character|Job|Skill|Equipment/<id>.json` + `dtype`，单条目 `Data:Enum.json`；`Data:Version.json`、`Data:EffectKind.json` 不由脚本维护（后者在 wiki 上手工改）；增量缓存为 sqlite（`D:\WizardyDaphne\workspace\wikitext.sqlite`）。装备类跑完会再同步 `Data:EquipmentExtra.tabx`：先拉线上页面，只把本地有、页面上没有的装备**追加**进去（已有行不动、页面解析失败直接跳过），`--dry-run` 只打印会追加哪些 id |
 | `Api/GetXxx` lua 模块 | 未做 | 按 `dtype` 从 `mw.huiji.db` 取对应 `Data:` 条目，包成 `{items,count,page,limit}`；单条目页直接读 `Data:Enum.json` / `Data:Version.json` |
 | 前端 `decodeDoc` / `DOC_SPECS` | **已完成** | `src/api/dbCodec.ts`（CHAR / JOB / SKILL / EQUIP 四套 spec，与本文 §3.3 一致） |
 | IndexedDB 缓存层 | **已完成** | `src/stores/wikiData.ts`（Dexie，版本比对 + 整库重拉），`DataV2` 已切到该数据源 |

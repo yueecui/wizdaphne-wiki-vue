@@ -95,6 +95,7 @@ import { NButton, NInput, NPagination, NSelect } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
 import { useWikiDataStore } from '../../stores/wikiData';
 import ItemModal from './ItemModal.vue';
+import { usePersistentRef } from './dataV2Settings';
 import {
     cleanDescription,
     COLLECTION_GROUPS,
@@ -142,11 +143,12 @@ const NAV_SECTIONS: Array<Array<JunkGroup | ItemGroup>> = [
     ['角色抽卡', '装备抽卡', '通行证'],
 ];
 
-const keyword = ref('');
+// 过滤器持久化（对齐 V1 的 itemFilter）
+const keyword = usePersistentRef('item.keyword', '');
 /** 类型筛选：`Item::Expendable` 这类原始类型的英文短名 */
-const type = ref<string | null>(null);
+const type = usePersistentRef<string | null>('item.type', null);
 /** 二级导航：全部 / 图鉴四类 / 杂物细分 / 类型组 / 未分类 */
-const group = ref<GroupKey>('all');
+const group = usePersistentRef<GroupKey>('item.group', 'all');
 const page = ref(1);
 
 const showModal = ref(false);

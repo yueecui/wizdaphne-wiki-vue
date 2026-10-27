@@ -94,6 +94,7 @@ import { getGradeColorClass, getTierTableDisplayName } from './junk/constants';
 import { hasJunkCache } from './junk/junkCache';
 import { useJunkStore } from './junk/junkStore';
 import { useJunkModalStore } from './junk/junkModalStore';
+import { usePersistentRef } from './dataV2Settings';
 import type { IJunkFilter } from './junk/types';
 
 const DEFAULT_FILTER: IJunkFilter = {
@@ -105,7 +106,8 @@ const DEFAULT_FILTER: IJunkFilter = {
 
 const { openModal } = useJunkModalStore();
 
-const filter = ref<IJunkFilter>({ ...DEFAULT_FILTER });
+// 过滤器持久化（对齐 V1 的 junkFilter）
+const filter = usePersistentRef<IJunkFilter>('junk.filter', { ...DEFAULT_FILTER });
 
 // 监听过滤器变化，重置页码
 watch(

@@ -43,12 +43,12 @@
 
             <NSpin :show="busy">
                 <CharacterPanel v-if="activeKey === 'character'" />
-                <JobPanel v-else-if="activeKey === 'job'" />
                 <SkillPanel v-else-if="activeKey === 'skill'" />
                 <EquipmentPanel
                     v-else-if="activeKey === 'weapon' || activeKey === 'armor'"
                     :group="activeKey"
                 />
+                <FairyPanel v-else-if="activeKey === 'fairy'" />
                 <JunkPanel v-else-if="activeKey === 'junk'" />
                 <ItemPanel v-else-if="activeKey === 'item'" />
                 <ShopPanel v-else-if="activeKey === 'shop'" />
@@ -66,13 +66,14 @@ import { computed, onMounted, ref } from 'vue';
 import ThemeConfigProvider from '../../layout/ThemeConfigProvider.vue';
 import CharacterPanel from './CharacterPanel.vue';
 import EquipmentPanel from './EquipmentPanel.vue';
+import FairyPanel from './FairyPanel.vue';
 import ItemPanel from './ItemPanel.vue';
-import JobPanel from './JobPanel.vue';
 import ShopPanel from './ShopPanel.vue';
 import RelicPanel from './RelicPanel.vue';
 import JunkPanel from './JunkPanel.vue';
 import SkillPanel from './SkillPanel.vue';
 import { useDataV2Store } from './dataV2Store';
+import { DATA_V2_TAB_KEY, DATA_V2_TAB_PARAM } from './dataV2Settings';
 
 defineOptions({ name: '数据查询V2' });
 
@@ -81,10 +82,10 @@ const { manifest, state, error, fromCache } = storeToRefs(store);
 
 const tabs = [
     { key: 'character', label: '角色' },
-    { key: 'job', label: '职业' },
     { key: 'skill', label: '技能' },
     { key: 'weapon', label: '武器' },
     { key: 'armor', label: '防具' },
+    { key: 'fairy', label: '妖精' },
     { key: 'junk', label: '杂物' },
     { key: 'item', label: '物品' },
     { key: 'shop', label: '商店' },
@@ -93,23 +94,31 @@ const tabs = [
 
 type TabKey = (typeof tabs)[number]['key'];
 
-// 兼容旧链接：v2tab=equipment 归到武器页
-const rawTab = new URLSearchParams(window.location.search).get('v2tab');
+// 页签参数和 V1 一样用 `tab`；`v2tab` 只做旧链接兼容（v2tab=equipment 归到武器页）
+const searchParams = new URLSearchParams(window.location.search);
+const rawTab = searchParams.get(DATA_V2_TAB_PARAM) ?? searchParams.get('v2tab');
 const urlTab = (rawTab === 'equipment' ? 'weapon' : rawTab) as TabKey | null;
-const activeKey = ref<TabKey>(urlTab && tabs.some((t) => t.key === urlTab) ? urlTab : 'character');
+const storedTab = localStorage.getItem(DATA_V2_TAB_KEY) as TabKey | null;
+const initialTab = urlTab ?? storedTab;
+const activeKey = ref<TabKey>(
+    initialTab && tabs.some((t) => t.key === initialTab) ? initialTab : 'character',
+);
 
 const selectTab = (key: TabKey) => {
     activeKey.value = key;
+    localStorage.setItem(DATA_V2_TAB_KEY, key);
     const params = new URLSearchParams(window.location.search);
-    params.set('v2tab', key);
+    params.delete('v2tab');
+    params.set(DATA_V2_TAB_PARAM, key);
     window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
 };
 
 const busy = computed(() => {
     const s = state.value;
     if (activeKey.value === 'character') return s.characters === 'loading';
-    if (activeKey.value === 'job') return s.jobs === 'loading';
-    if (activeKey.value === 'weapon' || activeKey.value === 'armor') return s.equipments === 'loading';
+    if (activeKey.value === 'weapon' || activeKey.value === 'armor' || activeKey.value === 'fairy') {
+        return s.equipments === 'loading';
+    }
     // 杂物走自己的库；物品 / 商店 / 遗物和角色等在同一批全量下载里就绪
     if (activeKey.value === 'junk') return false;
     if (
@@ -142,6 +151,8 @@ const reloadEnums = async () => {
     error.value = null;
     try {
         await store.refreshEnums();
+        const kinds = Object.keys(store.effectKinds).length;
+        window.wiz.$message.success(`Enum 已重载（效果种类 ${kinds} 条）`);
     } catch (e) {
         error.value = `Enum 重载失败：${e instanceof Error ? e.message : String(e)}`;
     } finally {

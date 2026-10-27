@@ -92,39 +92,85 @@ export const formatCollectionNo = (no?: number) => {
     return isCollectionEx(no) ? 'EX' : String(no);
 };
 
-/** 描述片段：纯文本或游戏内图标 */
-export type DescSegment = { type: 'text'; text: string } | { type: 'image'; name: string };
-
-/** `[[页面|显示文字]]` / `[[页面]]` / `[icon=rankN]` */
-const DESC_TOKEN = /\[\[([^\]|]+)\|([^\]]+)\]\]|\[\[([^\]]+)\]\]|\[icon=([a-zA-Z_]+)(\d+)\]/gi;
+/** 描述片段：纯文本（可带颜色）或游戏内图标 */
+export type DescSegment =
+    | { type: 'text'; text: string; color?: string }
+    | { type: 'image'; name: string };
 
 /**
- * 把说明文本拆成文本与图标片段：
+ * `[[页面|显示文字]]` / `[[页面]]` / `[icon=rankN]` / `<color=…>` / `</color>` / 其他标签。
+ * 最后一条只吃「像标签」的（`<` 后面跟字母 / `/` / `!` / `?`），`HP<50` 这类正文保留。
+ */
+const DESC_TOKEN =
+    /\[\[([^\]|]+)\|([^\]]+)\]\]|\[\[([^\]]+)\]\]|\[icon=([a-zA-Z_]+)(\d+)\]|<color=([^>]*)>|(<\s*\/\s*color\s*>)|(<[/!?a-zA-Z][^>]*>)/gi;
+
+/** 只认十六进制色值或少量颜色名，其余一律丢弃（避免把任意字符串塞进 style） */
+const HEX_COLOR = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+const COLOR_NAMES = new Set([
+    'red',
+    'orange',
+    'yellow',
+    'green',
+    'blue',
+    'purple',
+    'white',
+    'black',
+    'gray',
+    'grey',
+    'gold',
+    'silver',
+]);
+
+const safeColor = (value?: string): string | undefined => {
+    const color = (value ?? '').trim();
+    if (!color) return undefined;
+    if (HEX_COLOR.test(color)) return color;
+    const lower = color.toLowerCase();
+    return COLOR_NAMES.has(lower) ? lower : undefined;
+};
+
+/**
+ * 把说明文本拆成文本 / 图标片段：
  * - `[[页面|显示文字]]` → 显示文字
  * - `[icon=rankN]` → 游戏内的装备阶级图标 `Grade_info_iconN.png`
  *   （铁矿石的 `[icon=rank1]`～`[icon=rank5]` 表示 1～5 阶装备，不是星级）
+ * - `<color=#RRGGBB>…</color>` → 带颜色的文本（可嵌套，渲染成 `span` 的 style.color）
+ * - 其余尖括号标签（`<b>`、`<script>` 之类）**整段丢弃**：说明里只可能出现颜色标签，
+ *   别的一律当非法标记过滤，渲染端也不用 `v-html`，不会带出注入
  * - 其余方括号内容（`[Vol. II]`、`[売却専用]` 等）是正文，原样保留
  */
 export const parseDescription = (text?: string): DescSegment[] => {
     if (!text) return [];
     const segments: DescSegment[] = [];
+    /** 颜色嵌套栈，栈顶即当前颜色 */
+    const colors: string[] = [];
+
     const pushText = (value: string) => {
         if (!value) return;
+        const color = colors[colors.length - 1];
         const last = segments[segments.length - 1];
-        if (last?.type === 'text') last.text += value;
-        else segments.push({ type: 'text', text: value });
+        if (last?.type === 'text' && last.color === color) last.text += value;
+        else segments.push({ type: 'text', text: value, color });
     };
 
     let cursor = 0;
     for (const match of text.matchAll(DESC_TOKEN)) {
         const index = match.index ?? 0;
         pushText(text.slice(cursor, index));
-        const [, , linkLabel, linkPlain, iconKind, iconNumber] = match;
+
+        const [, , linkLabel, linkPlain, iconKind, iconNumber, colorValue, colorClose] = match;
         if (linkLabel) pushText(linkLabel);
         else if (linkPlain) pushText(linkPlain);
         else if (iconKind && iconKind.toLowerCase() === 'rank' && iconNumber) {
             segments.push({ type: 'image', name: `Grade_info_icon${iconNumber}.png` });
+        } else if (colorValue !== undefined) {
+            // 认不出的颜色（如 `<color=expression(alert(1))>`）整段忽略，只保留文字
+            const color = safeColor(colorValue);
+            if (color) colors.push(color);
+        } else if (colorClose !== undefined) {
+            colors.pop();
         }
+        // 其他标签（最后一条分支）直接跳过，不进入正文
         cursor = index + match[0].length;
     }
     pushText(text.slice(cursor));

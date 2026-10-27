@@ -376,6 +376,8 @@ export const useDataV2Store = defineStore('data-v2', () => {
         fa_can: raw.fa_can || 0,
         fa_sk: raw.fa_sk || null,
         fa_sk_desc: raw.fa_sk_desc || null,
+        job_limited: raw.job_limited ?? [],
+        race_limited: raw.race_limited ?? [],
         levels: raw.levels ?? [],
         bonus: raw.bonus ?? null,
         reinforce_max: raw.reinforce_max,

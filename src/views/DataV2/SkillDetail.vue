@@ -80,9 +80,9 @@
                                 :style="row.depth ? { paddingLeft: `${0.5 + row.depth * 0.9}rem` } : undefined"
                             >
                                 <template v-if="row.group">
-                                    <!-- 有编辑权限时标出 sub effect id，方便对照 EffectKind 表 -->
+                                    <!-- 标出 sub effect id，方便对照 EffectKind 表（所有人都能看） -->
                                     <NTag
-                                        v-if="canEdit && row.kind != null"
+                                        v-if="row.kind != null"
                                         size="tiny"
                                         :bordered="false"
                                         type="warning"
@@ -198,7 +198,6 @@
 <script setup lang="ts">
 import { NEmpty, NSpin, NTag } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
-import { MwConfig } from '../../huiji/MwConfig';
 import { useDataV2Store } from './dataV2Store';
 import { effectParamText, effectParamUnit } from './types';
 import type {
@@ -215,9 +214,6 @@ defineOptions({ name: '技能详情V2' });
 
 const props = defineProps<{ identification: number }>();
 const store = useDataV2Store();
-
-/** 有编辑权限的人才会看到 sub effect id（方便去改 EffectKind 表） */
-const canEdit = MwConfig.getInstance().canEdit;
 
 /** 参数里识别出的技能可以点开详情（由外面的 SkillModal 切换当前技能） */
 const emit = defineEmits<{ openSkill: [identification: number] }>();
@@ -321,8 +317,6 @@ interface Row {
     depth?: number;
     /** 没有任何数值也要占一行（例如无参数的子效果） */
     always?: boolean;
-    /** 即使整组只有这一行，也保留「· 参数名」（组里有参数引用时需要靠它区分） */
-    keepName?: boolean;
     /** dim the value itself (e.g. 「依武器」) */
     dim?: boolean;
     /** 每格如果识别出了技能，这里放它的 identification（可点击打开详情） */
@@ -692,6 +686,14 @@ const powerRef = computed(() => {
 
 const powerLabel = computed(() => (powerRef.value ? `威力 · ${powerRef.value}` : '威力'));
 
+/** 被动技能（与「类型」行同一判定口径）；被动技能没有射程，不显示该行 */
+const isPassive = computed(() => {
+    const d = data.value;
+    if (!d) return false;
+    if (SPELL_KINDS.has(d.kind ?? 0)) return false;
+    return Boolean(d.is_passive) || PASSIVE_TIMING.has(levels.value[0]?.use_timing ?? 0);
+});
+
 const rows = computed<Row[]>(() => {
     const out: Row[] = [];
     const add = (row: Row | null) => {
@@ -737,10 +739,12 @@ const rows = computed<Row[]>(() => {
         ),
     );
 
-    // 射程放在攻击次数前；「依武器」和攻击次数一样变暗
-    const rangeRow = collect('射程', (lv) => store.rangeName(lv.range_type));
-    if (rangeRow && rangeRow.values.every((v) => v === '依武器')) rangeRow.dim = true;
-    add(rangeRow);
+    // 射程放在攻击次数前；「依武器」和攻击次数一样变暗；被动技能没有射程，整行不显示
+    if (!isPassive.value) {
+        const rangeRow = collect('射程', (lv) => store.rangeName(lv.range_type));
+        if (rangeRow && rangeRow.values.every((v) => v === '依武器')) rangeRow.dim = true;
+        add(rangeRow);
+    }
 
     const countRow = damageValues('攻击次数', (d) => {
         if (!d.damage_count) return '';
@@ -809,8 +813,6 @@ const rows = computed<Row[]>(() => {
                     group: label,
                     name: `${prefix} · ${name}`,
                     kind: kindId,
-                    // 即使整组只剩这一行，也要保留「参数N · 扩展参数K」
-                    keepName: true,
                 });
             }
         }
@@ -846,8 +848,6 @@ const rows = computed<Row[]>(() => {
                 group: label,
                 name,
                 kind: kindId,
-                // 组里有参数引用时，参数名要和「参数N · 扩展参数K」区分开，不能省
-                keepName: refRows.size > 0,
                 links: perLevel.map((fields) => fields.find((f) => f.skill != null)?.skill),
             });
         }
@@ -976,19 +976,6 @@ const rows = computed<Row[]>(() => {
     };
     dropIfSame('双手威力', powerLabel.value);
     dropIfSame('双手阈值', '阈值');
-
-    // 整个 sub effect 只输出一行时（例如 5010 只有一个参数有值），省掉「· 参数名」，
-    // 只保留效果名。判断依据是最终行数，而不是参数个数：一个参数也可能同时带了
-    // 强度 / 回合 / 施加率，那样仍然是多行。
-    const groupSizes = new Map<string, number>();
-    for (const row of out) {
-        if (row.kind != null && row.group) groupSizes.set(row.group, (groupSizes.get(row.group) ?? 0) + 1);
-    }
-    for (const row of out) {
-        if (row.kind != null && row.group && !row.keepName && groupSizes.get(row.group) === 1) {
-            row.name = undefined;
-        }
-    }
 
     return out;
 });

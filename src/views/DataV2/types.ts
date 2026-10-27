@@ -239,20 +239,28 @@ export interface EquipmentListItem extends LocalizedName {
     list_icon: string | null;
     /** 背包大图标资源名（不含 ``.png``） */
     icon: string | null;
-    /** 特典分类：9 = 特典（解包/接口暂未提供，占位，0 为普通） */
+    /** 特典分类：9 = 特典，0 = 普通（来自 ``Api/GetV2Equipment`` 的 extra） */
     soucate: number;
     /** 中文说明（解包/接口暂未提供，占位） */
     desc: string | null;
-    /** 获取途径（解包/接口暂未提供，占位） */
+    /** 获取途径（wiki 手工补充，支持 ``[[页面|文字]]`` 链接） */
     sou: string[];
     /** 装备需求（解包/接口暂未提供，占位） */
     req: string[];
-    /** 妖精可装备：0 不支持 / 1 可装备 / 2 限定妖精（暂未提供，占位） */
+    /**
+     * 妖精标记（解包 ``Equipment.conditions_*`` 的种族条件）：
+     * 0 = 不适用（妖精能穿但发挥不出性能）/ 1 = 可用（妖精与非妖精都能穿）/
+     * 2 = 专用（只有妖精能穿）
+     */
     fa_can: number;
-    /** 妖精专属技能（暂未提供，占位） */
+    /** 妖精技能 = 套装技能名；多个用「、」连接，没有套装技能为 null */
     fa_sk: string | null;
-    /** 妖精技能描述（暂未提供，占位） */
+    /** 妖精技能说明（套装技能说明，中文） */
     fa_sk_desc: string | null;
+    /** 职业限制（``Job.id``）；空数组 = 不限职业 */
+    job_limited: number[];
+    /** 种族限制（``CharacterSpecies.id``）；空数组 = 不限种族 */
+    race_limited: number[];
     /** 强化曲线（每个等级一行完整数值） */
     levels: EquipmentLevel[];
     /** 加护概率：4 个槽位 × 19 个属性 */

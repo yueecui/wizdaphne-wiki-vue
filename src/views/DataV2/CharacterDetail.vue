@@ -218,7 +218,7 @@
                         </div>
                     </div>
 
-                    <!-- 第二页：特性值 -->
+                    <!-- 第二页：特性/能力值 -->
                     <div v-else class="flex flex-col gap-3">
                         <!-- 参数 -->
                         <div class="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-sm">
@@ -275,6 +275,17 @@
                                     @update:value="setMental"
                                 />
                             </div>
+                            <div v-if="hasDiscipline" class="flex items-center gap-1.5 h-8">
+                                <span class="shrink-0">克己</span>
+                                <NSelect
+                                    size="small"
+                                    class="w-20!"
+                                    :value="disciplineLevel"
+                                    :options="disciplineOptions"
+                                    :consistent-menu-width="false"
+                                    @update:value="setDisciplineLevel"
+                                />
+                            </div>
                             <div v-if="hasSubJob" class="flex items-center gap-1.5 h-8">
                                 <span class="shrink-0">职业</span>
                                 <NSelect
@@ -314,6 +325,9 @@
                                                 :class="row.individual ? 'text-orange-300' : ''"
                                             >
                                                 {{ row.rangeText }}
+                                                <span v-if="row.discipline" class="opacity-60">
+                                                    (+{{ row.discipline }})
+                                                </span>
                                             </td>
                                             <td>
                                                 <div class="bonus-cell">
@@ -332,7 +346,8 @@
                                     </tbody>
                                 </table>
                                 <div class="text-xs opacity-60 mt-2">
-                                    所有特性值、能力值均不包含任何被动技能、装备等效果
+                                    所有特性值、能力值均不包含任何被动技能、装备等效果，克己技能除外：按上方的克己等级叠加，
+                                    括号内为克己部分
                                 </div>
                             </div>
 
@@ -415,6 +430,29 @@
                                         </tbody>
                                     </table>
                                 </div>
+
+                                <!-- 克己带来的额外能力值：不在上面两张小表里的（异常耐性等） -->
+                                <table
+                                    v-if="disciplineExtraRows.length"
+                                    class="wikitable my-0! w-full table-fixed text-center text-sm"
+                                >
+                                    <colgroup>
+                                        <col class="w-[50%]" />
+                                        <col />
+                                    </colgroup>
+                                    <thead>
+                                        <tr>
+                                            <th>克己能力值</th>
+                                            <th>数值</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="row in disciplineExtraRows" :key="row.label">
+                                            <th class="whitespace-nowrap">{{ row.label }}</th>
+                                            <td class="whitespace-nowrap">+{{ row.value }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -691,7 +729,7 @@ const gotoDetail = () => {
 type TabKey = 'basic' | 'stats';
 const TABS: Array<{ label: string; value: TabKey }> = [
     { label: '基本信息', value: 'basic' },
-    { label: '特性值', value: 'stats' },
+    { label: '特性/能力值', value: 'stats' },
 ];
 const tab = ref<TabKey>('basic');
 
@@ -810,6 +848,120 @@ const setBonus = (key: StatKey, value: number | null) => {
     bonus.value[key] = Math.max(0, Math.round(value ?? 0));
 };
 
+/* ------------------------------------------------------------------ */
+/* 克己加成（不改清洗数据，全部按 `skills.discipline` 的等级行现算）      */
+/* ------------------------------------------------------------------ */
+
+/** 克己等级 0~9；0 = 不计算克己加成 */
+const disciplineLevel = ref(0);
+const DISCIPLINE_LEVEL_MAX = 9;
+const disciplineOptions = Array.from({ length: DISCIPLINE_LEVEL_MAX + 1 }, (_, index) => ({
+    label: String(index),
+    value: index,
+}));
+
+/**
+ * 克己技能里出现的效果种类 → 能力值名称（硬编码）。
+ * 口径：105 个角色、95 个克己技能、level 1~9 的全部 sub effect，共 27 种 kind。
+ * 表里没有的种类（异常耐性等）走「额外能力值」表。
+ */
+const DISCIPLINE_ABILITY_KIND: Record<number, string> = {
+    5010: 'HP',
+    5020: 'MP',
+    5030: 'SP',
+    5040: '攻击力',
+    5050: '魔力',
+    5060: '神力',
+    5070: '防御力',
+    5080: '法术防御力',
+    5090: '命中',
+    5100: '回避',
+    5110: '抵抗',
+    5140: '会心',
+    5160: '行动速度',
+    5170: '探知',
+    5180: '陷阱解除',
+    5190: '陷阱回避',
+};
+
+/** 克己里提升「特性值」的种类：常時PIEアップ → 信仰心（会继续影响神力 / 法术防御 / 抵抗 / MP） */
+const DISCIPLINE_STAT_KIND: Record<number, StatKey> = { 8120: 'pie' };
+
+/** 额外能力值（异常耐性等）的显示名；表里没有的回退成 wiki 上的效果名 */
+const DISCIPLINE_EXTRA_LABEL: Record<number, string> = {
+    5300: '毒耐性',
+    5320: '睡眠耐性',
+    5330: '气绝耐性',
+    5340: '麻痹耐性',
+    5350: '诅咒耐性',
+    5370: '封印耐性',
+    5380: '恐惧耐性',
+    5390: '混乱耐性',
+    5400: '魅惑耐性',
+    5430: '暴击耐性',
+};
+
+/** 角色自带的克己技能（`skills.discipline` 第一条；各等级描述相同） */
+const disciplineSkill = computed(() => {
+    const first = data.value?.skills.discipline?.[0];
+    return first ? (store.skillById.get(first.identification) ?? null) : null;
+});
+
+const hasDiscipline = computed(() => Boolean(disciplineSkill.value));
+
+/** 当前克己等级的 sub effect 汇总：kind → 数值（同种类叠加） */
+const disciplineKindValues = computed(() => {
+    const map = new Map<number, number>();
+    const level = disciplineLevel.value;
+    if (level <= 0) return map;
+    const row = disciplineSkill.value?.levels.find((item) => item.level === level);
+    for (const sub of row?.sub_effects ?? []) {
+        if (sub.kind == null) continue;
+        const value = sub.params?.[0] ?? 0;
+        if (!value) continue;
+        map.set(sub.kind, (map.get(sub.kind) ?? 0) + value);
+    }
+    return map;
+});
+
+/** 特性值加成（信仰心等），参与能力值计算 */
+const disciplineStatBonus = computed(() => {
+    const out: Partial<Record<StatKey, number>> = {};
+    for (const [kind, value] of disciplineKindValues.value) {
+        const key = DISCIPLINE_STAT_KIND[kind];
+        if (key) out[key] = (out[key] ?? 0) + value;
+    }
+    return out;
+});
+
+/** 能力值加成：能力值名 → 数值（特性加成已经在 calcRows 里算过，不重复） */
+const disciplineAbilityBonus = computed(() => {
+    const out = new Map<string, number>();
+    for (const [kind, value] of disciplineKindValues.value) {
+        const label = DISCIPLINE_ABILITY_KIND[kind];
+        if (label) out.set(label, (out.get(label) ?? 0) + value);
+    }
+    return out;
+});
+
+/** 不在能力值小表里的加成（异常耐性等） */
+const disciplineExtraRows = computed(() => {
+    const rows: Array<{ label: string; value: number }> = [];
+    for (const [kind, value] of disciplineKindValues.value) {
+        if (DISCIPLINE_ABILITY_KIND[kind] || DISCIPLINE_STAT_KIND[kind]) continue;
+        const label =
+            DISCIPLINE_EXTRA_LABEL[kind] ?? store.effectKinds[String(kind)]?.name ?? `效果 #${kind}`;
+        rows.push({ label, value });
+    }
+    return rows.sort((a, b) => a.label.localeCompare(b.label, 'zh-Hans-CN'));
+});
+
+const setDisciplineLevel = (value: string | number | Array<string | number> | null) => {
+    const first = Array.isArray(value) ? value[0] : value;
+    const next = Number(first ?? 0);
+    disciplineLevel.value = Math.min(DISCIPLINE_LEVEL_MAX, Math.max(0, Number.isFinite(next) ? next : 0));
+};
+
 /** 抹平浮点误差后再向上取整 */
 const ceilGrowth = (growth: number, levelItem: number) => Math.ceil(Math.round(growth * levelItem * 1e6) / 1e6);
 
@@ -821,6 +973,8 @@ interface CalcRow {
     rangeText: string;
     valueMin: number;
     valueMax: number;
+    /** 克己给这一项特性加的点数（已计入特性值，界面上标个 `(+N)`） */
+    discipline: number;
 }
 
 const calcRows = computed<CalcRow[]>(() => {
@@ -836,13 +990,20 @@ const calcRows = computed<CalcRow[]>(() => {
         calcIndividual.value === 'none' ? {} : INDIVIDUAL_GROWTH[calcIndividual.value];
     const level = calcLevel.value;
     const extraLevels = INDIVIDUAL_LEVELS.filter((lv) => lv <= level).length;
+    const disciplineStats = disciplineStatBonus.value;
 
     return STAT_ROWS.map((row) => {
         const key = row.key;
         const individual = calcIndividual.value === key;
         const levelItem = level + (individual ? extraLevels : 0);
+        const discipline = disciplineStats[key] ?? 0;
 
-        const base = (stats.base[key] ?? 0) + (jobDetail?.base[key] ?? 0) + gradeBonus + (bonus.value[key] ?? 0);
+        const base =
+            (stats.base[key] ?? 0) +
+            (jobDetail?.base[key] ?? 0) +
+            gradeBonus +
+            (bonus.value[key] ?? 0) +
+            discipline;
         const growthBase = ((stats.growth[key] ?? 0) + (jobDetail?.growth?.[key] ?? 0)) / 100 + rarityBonus;
         const growthFix = individualGrowth[key] ?? 0;
         const growthMin = growthBase + RANDOM_GROWTH_MIN + growthFix;
@@ -863,6 +1024,7 @@ const calcRows = computed<CalcRow[]>(() => {
             rangeText,
             valueMin,
             valueMax,
+            discipline,
         };
     });
 });
@@ -1042,9 +1204,26 @@ const ABILITY_TOP_RIGHT = ['探知', '陷阱解除', '陷阱回避'];
 const ABILITY_BOTTOM_LEFT = ['攻击力', '魔力', '神力', '防御力', '法术防御力'];
 const ABILITY_BOTTOM_RIGHT = ['行动速度', '命中', '会心', '回避', '抵抗'];
 
+/** 数值可能是 `123~130` 这样的区间：两端一起加上克己加成 */
+const addExtra = (text: string, extra: number) => {
+    if (!extra) return text;
+    return text
+        .split('~')
+        .map((part) => {
+            const value = Number(part);
+            return Number.isFinite(value) ? String(value + extra) : part;
+        })
+        .join('~');
+};
+
 const abilityList = (labels: string[]) => {
     const values = abilityValues.value;
-    return labels.map((label) => ({ label, text: values[label] ?? '—' }));
+    const extras = disciplineAbilityBonus.value;
+    // 克己加成直接并进数值，不再单独写 (+N)
+    return labels.map((label) => ({
+        label,
+        text: addExtra(values[label] ?? '—', extras.get(label) ?? 0),
+    }));
 };
 
 const abilityTopLeftRows = computed(() => abilityList(ABILITY_TOP_LEFT));
@@ -1068,6 +1247,7 @@ watch(
         calcJobId.value = null;
         calcGrade.value = 'auto';
         calcIndividual.value = 'none';
+        disciplineLevel.value = 0;
         bonus.value = emptyStats();
         void load(id);
     },

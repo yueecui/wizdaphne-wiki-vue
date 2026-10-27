@@ -274,20 +274,24 @@ export interface RawEquipment {
     list_icon: string;
     /** 背包大图标资源名（``assets.lib/sprite/EquipmentIcon``，不含 ``.png``） */
     icon: string;
-    /** 特典分类：9 = 特典（解包/接口暂未提供，占位） */
+    /** 特典分类：9 = 特典，0 = 普通（来自 ``Api/GetV2Equipment`` 的 extra） */
     soucate: number;
     /** 中文说明（解包/接口暂未提供，占位） */
     desc: string;
-    /** 获取途径（解包/接口暂未提供，占位） */
+    /** 获取途径（wiki 手工补充 ``Data:EquipmentExtra.tabx``） */
     sou: string[];
     /** 装备需求（解包/接口暂未提供，占位） */
     req: string[];
-    /** 妖精可装备：0 不支持 / 1 可装备 / 2 限定妖精（暂未提供，占位） */
+    /** 妖精标记：0 不适用 / 1 可用 / 2 专用（解包 ``conditions_*`` 的种族条件） */
     fa_can: number;
-    /** 妖精专属技能（暂未提供，占位） */
+    /** 妖精技能 = 套装技能名（多个用「、」连接） */
     fa_sk: string;
-    /** 妖精技能描述（暂未提供，占位） */
+    /** 妖精技能说明（套装技能说明，中文） */
     fa_sk_desc: string;
+    /** 职业限制：``Job.id`` 列表，空 = 不限 */
+    job_limited: number[];
+    /** 种族限制：``CharacterSpecies.id`` 列表，空 = 不限 */
+    race_limited: number[];
     /** 强化曲线（每个等级一行完整数值，只输出与 +0 不同的等级） */
     levels: RawEquipmentLevel[];
     /** 加护概率：4 个槽位 × 19 个属性（``Api/GetV2Equipment`` 顶层 bonus） */
@@ -915,7 +919,9 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         const enumData = await fetchEnums();
 
         enums.value = normalizeEnums(enumData.enums);
-        await database.meta.put({ key: 'enums', value: enums.value });
+        // ref 里的是 Vue 的响应式代理，IndexedDB 结构化克隆不了，先转回普通对象再写
+        const plainEnums = JSON.parse(JSON.stringify(enums.value)) as EnumsPayload;
+        await database.meta.put({ key: 'enums', value: plainEnums });
         if (enumData.kinds) {
             await database.meta.put({ key: 'effectKindNames', value: enumData.kinds });
             mergeEffectKinds(enumData.kinds);

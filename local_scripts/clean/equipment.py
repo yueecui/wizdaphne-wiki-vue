@@ -43,10 +43,27 @@ No filtering except:
 Every other identification with a ``EquipmentParam`` row is emitted, and the
 V1 page's own subset can be compared by name.
 
-加护概率 ``bonus`` 取自 ``config/EquipmentApi.json``（``Api/GetV2Equipment`` 响应的
-本地备份）。V1 手工表（``EquipmentExtra`` / ``EquipmentSkill`` / ``EquipmentSetSkill`` /
-``EquipmentBonus`` / ``EquipmentBaseStat``）不再参与清洗：接口与解包都没提供的字段
-（特典分类 / 中文说明 / 获取途径 / 装备需求 / 妖精相关）一律留空占位，UI 仍保留位置。
+加护概率 ``bonus``、特典分类 ``soucate``、获取途径 ``sou`` 取自
+``config/EquipmentApi.json``（``Api/GetV2Equipment`` 响应的本地备份，其中 ``extra``
+就是 wiki 上手工维护的 ``Data:EquipmentExtra.tabx``）。V1 手工表（``EquipmentExtra`` /
+``EquipmentSkill`` / ``EquipmentSetSkill`` / ``EquipmentBonus`` / ``EquipmentBaseStat``）
+不再参与清洗（对应的参考文件已从 ``config/`` 删除）：接口与解包都没提供的字段
+（中文说明 / 装备需求）留空占位，UI 仍保留位置。
+
+妖精相关的三个字段也来自解包（V1 手工表只用于校验）：
+
+  * ``fa_can``：``Equipment.conditions_1`` = 10（种族条件）的种族列表。
+    只有妖精（``CharacterSpecies`` 6）→ 2 专用；含妖精也含别的种族 → 1 可用；
+    没有种族条件 → 0 不适用（妖精能穿但发挥不出性能）。与 V1 的
+    97 / 3 / 711 条一一对应；
+  * ``fa_sk`` / ``fa_sk_desc``：妖精专用装备的套装技能（``EquipSetSkillContents``
+    → ``EquipSetSkills`` → ``Skill``），技能名用「、」连接，说明取 1 级那条
+    （各等级只差开头的「套装技能LvN」）。
+
+装备条件同样是解包数据：``conditions_*`` 的类型 9 = 职业限制、10 = 种族限制，
+参数是被允许的 id 列表。清洗后输出成 ``job_limited``（``Job.id``）与
+``race_limited``（``CharacterSpecies.id``），两个槽位合并去重；空数组 = 无限制。
+种族条件也用来推 ``fa_can``（见 ``fairy_mark``）。
 
 图标也在这一步规范化：``list_icon`` / ``icon`` 就是 ``ListIcon_*`` 与
 ``equip_icon_*`` 去掉 ``.png`` 的名字，空格转下划线、连续下划线合并成一个
@@ -73,6 +90,7 @@ from common import (  # noqa: E402
     names,
     read_config_json,
     skill_identification,
+    text,
     write_json,
 )
 
@@ -152,6 +170,58 @@ LOCK_CONFIG_DESC = {
 
 #: 游戏里不存在的测试装备（图标资源也缺）：「残旧苦无」「残旧之刃」
 TEST_IDENTIFICATIONS = {106000200, 108000200}
+
+#: ``Equipment.conditions_*`` 里的条件类型：9 = 职业限制，10 = 种族限制
+CONDITION_JOB = 9
+CONDITION_RACE = 10
+#: ``CharacterSpecies``：6 = 妖精（1 人类 / 2 精灵 / 3 矮人 / 4 兽人 / 6 妖精）
+FAIRY_RACE_ID = 6
+
+
+def parse_id_list(value) -> list[int]:
+    """``"[6]"`` / ``[6]`` / ``""`` -> ``[6]``；解析不了的当空列表。"""
+    if isinstance(value, list):
+        raw = value
+    else:
+        try:
+            raw = json.loads(value or "[]")
+        except (TypeError, ValueError):
+            return []
+    if not isinstance(raw, list):
+        return []
+    return [int(v) for v in raw if str(v).lstrip("-").isdigit()]
+
+
+def condition_ids(rolls: list, condition: int) -> list[int]:
+    """取 ``conditions_*`` 里某一类条件的参数（职业 / 种族 id），两个槽位合并去重。
+
+    ``Equipment`` 每行最多两条条件：``conditions_1`` / ``conditions_2`` 是类型
+    （9 = 职业，10 = 种族），``conditions_param_*`` 是被允许的 id 列表。
+    """
+    out: list[int] = []
+    for slot in (1, 2):
+        if str(pick(rolls, f"conditions_{slot}") or "") != str(condition):
+            continue
+        for value in parse_id_list(pick(rolls, f"conditions_param_{slot}")):
+            if value not in out:
+                out.append(value)
+    return out
+
+
+def fairy_mark(races: list[int]) -> int:
+    """妖精标记（V1 的 ``fa_can``）：看种族条件里有没有妖精。
+
+    * 种族只有妖精 ``[6]``            -> ``2`` 妖精专用（非妖精穿不上）
+    * 含妖精也含别的种族 ``[1,2,3,4,6]`` -> ``1`` 妖精可用（都能穿）
+    * 没有种族条件                     -> ``0`` 妖精不适用（妖精能穿但发挥不出性能）
+
+    数据依据：``Equipment.conditions_1`` = 10（种族条件）、``conditions_param_1``
+    是种族 id 列表。武器 / 防具都适用，与 V1 手工表的 97 / 3 / 711 条完全对应。
+    """
+    allowed = set(races)
+    if FAIRY_RACE_ID not in allowed:
+        return 0
+    return 2 if allowed == {FAIRY_RACE_ID} else 1
 
 
 def has_cn_name(row: dict) -> bool:
@@ -252,6 +322,11 @@ def main(argv: list[str]) -> int:
     # 加护概率来自 ``Api/GetV2Equipment`` 的顶层 ``bonus``（按装备中文名索引）
     api_payload = read_config_json(EQUIP_API_JSON) or {}
     bonus_map: dict = {name: rows for name, rows in (api_payload.get("bonus") or [])}
+    # 特典分类 / 获取途径来自同一响应的顶层 ``extra``（按 identification 索引），
+    # 源头是 wiki 的 ``Data:EquipmentExtra.tabx``（手工维护，上传脚本只往里追加新装备）
+    extra_map: dict = {
+        int(row["id"]): row for row in (api_payload.get("extra") or []) if row.get("id")
+    }
 
     # ---------- 商店：只用 shop.py 清洗后的店铺（有结束时间的限时商店不算） ----------
     # 商店的 content_id 是具体档位 id（如 100000109），要折回 identification（100000100）
@@ -357,8 +432,11 @@ def main(argv: list[str]) -> int:
         if kind == 901:
             add_lock_config(10005)
 
-        # 套装技能（同组装备凑齐件数才生效）
+        # 套装技能（同组装备凑齐件数才生效）。妖精专用装备才有套装技能，
+        # 技能名 / 说明就是这个装备的「妖精技能」（V1 的 fa_sk / fa_sk_desc）。
         sets = []
+        fairy_skill_names: list[str] = []
+        fairy_skill_desc = None
         for content in set_contents.get(ident, []):
             set_row = set_skills.get(content.get("set_skill_id"))
             if not set_row:
@@ -366,14 +444,26 @@ def main(argv: list[str]) -> int:
             skill = skill_rows.get(set_row.get("skill_identification")) or skill_rows.get(
                 (set_row.get("skill_identification") or 0) // 100
             )
+            skill_name = names(skill).get("name") if skill else None
             sets.append({
                 "id": set_row["id"],
                 "skill_id": set_row.get("skill_identification"),
-                "skill_name": names(skill).get("name") if skill else None,
+                "skill_name": skill_name,
                 "require_count": set_row.get("require_count"),
-                "max_level": set_row.get("max_level"),
+                "max_level": set_row.get("max_skill_level"),
                 "add_skill_level": content.get("add_skill_level") or 0,
             })
+            if skill_name and skill_name not in fairy_skill_names:
+                fairy_skill_names.append(skill_name)
+            # 各等级说明只差开头的「套装技能LvN」，取 1 级那条即可
+            if fairy_skill_desc is None and skill:
+                fairy_skill_desc = text(skill.get("description"))[0]
+
+        # 装备条件（``conditions_*``）：9 = 职业限制，10 = 种族限制。
+        # 妖精标记（0 不适用 / 1 可用 / 2 专用）就是种族条件里有没有妖精
+        job_limited = condition_ids(rolls, CONDITION_JOB)
+        race_limited = condition_ids(rolls, CONDITION_RACE)
+        fa_can = fairy_mark(race_limited)
 
         # 强化曲线：每一行都是该等级的「完整数值」，只跳过与 +0 完全相同的等级。
         # 不能只写变化的属性：短键里 0 会被省略，前端解码时缺失的 num 字段补 0，
@@ -418,6 +508,7 @@ def main(argv: list[str]) -> int:
         element = pick(rolls, "element") or 0
         note = pick(rolls, "note")
         display_name = names(rolls[0]).get("name")
+        extra_row = extra_map.get(ident) or {}
         equipments.append({
             "id": ident,
             "name": display_name,
@@ -439,15 +530,20 @@ def main(argv: list[str]) -> int:
             "list_icon": icon_name(pick(rolls, "list_icon_resource")),
             "icon": icon_name(pick(rolls, "icon_resource")),
             # 以下字段解包与 ``Api/GetV2Equipment`` 都还没有，保留占位（UI 仍留着位置）：
-            # soucate 9 = 特典 / desc = 中文说明 / sou = 获取途径 / req = 装备需求
-            # fa_can / fa_sk / fa_sk_desc = 妖精相关
-            "soucate": 0,
+            # desc = 中文说明 / req = 装备需求
             "desc": None,
-            "sou": [],
             "req": [],
-            "fa_can": 0,
-            "fa_sk": None,
-            "fa_sk_desc": None,
+            # 特典分类（9 = 特典，0 = 普通）与获取途径：来自 ``Api/GetV2Equipment`` 的 extra，
+            # 即 wiki 上手工维护的 ``Data:EquipmentExtra.tabx``
+            "soucate": extra_row.get("soucate") or 0,
+            "sou": extra_row.get("sou") or [],
+            # 妖精：0 不适用 / 1 可用 / 2 专用；fa_sk 是套装技能名（多个用「、」连接）
+            "fa_can": fa_can,
+            "fa_sk": "、".join(fairy_skill_names) or None,
+            "fa_sk_desc": fairy_skill_desc,
+            # 装备条件：职业限制（Job.id）/ 种族限制（CharacterSpecies.id），空 = 无限制
+            "job_limited": job_limited,
+            "race_limited": race_limited,
             # 加护：4 个槽位 × 19 个属性的百分比（``Api/GetV2Equipment`` 顶层 bonus）
             "bonus": bonus_map.get(display_name),
             "levels": levels,

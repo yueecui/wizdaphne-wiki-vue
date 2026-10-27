@@ -415,6 +415,9 @@ export const EQUIP_FIELDS: FieldSpec[] = [
     { long: 'fa_sk', short: 'fs', kind: 'str' },
     // 妖精技能描述
     { long: 'fa_sk_desc', short: 'fd', kind: 'str' },
+    // 装备条件：职业限制（Job.id）/ 种族限制（CharacterSpecies.id），空 = 无限制
+    { long: 'job_limited', short: 'jl', kind: 'numArr' },
+    { long: 'race_limited', short: 'rl', kind: 'numArr' },
     { long: 'reinforce_max', short: 'rm', kind: 'num' },
     { long: 'stats', short: 'st', kind: 'obj', fields: EQUIP_STAT },
     { long: 'max_stats', short: 'mx', kind: 'obj', fields: EQUIP_STAT },

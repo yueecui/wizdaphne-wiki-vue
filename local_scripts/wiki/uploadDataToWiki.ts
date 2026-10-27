@@ -28,6 +28,8 @@
  * 顺序：character → job → skill → equipment → item → shop → relic → enum
  * （各自失败互不影响，最后汇总失败数）。
  * 效果种类名表（Data:EffectKind.json）在 wiki 上手工维护，不由本脚本上传。
+ * 装备跑完后还会检查 ``Data:EquipmentExtra.tabx``（手工维护的特典分类 / 获取途径），
+ * 把本地有、页面上没有的新装备**追加**进去（已有行不动，页面解析失败则跳过）。
  *
  * 运行（在本仓库根目录）：
  *   yarn update:wiki                              # 增量（默认全部记录级 + enum）
@@ -384,6 +386,95 @@ export async function uploadEntries(
     return { uploaded, skipped, failed };
 }
 
+// ==================== 手工补充表：Data:EquipmentExtra.tabx ====================
+
+/** wiki 上手工维护的装备补充表（特典分类 soucate / 获取途径 sou） */
+const EQUIP_EXTRA_TITLE = 'Data:EquipmentExtra.tabx';
+
+/** tabx 页面结构（`Data:*` 命名空间里的 JSON） */
+interface TabxPage {
+    description?: Record<string, string>;
+    schema: { fields: Array<{ name: string; type: string; title?: Record<string, string> }> };
+    data: unknown[][];
+}
+
+/**
+ * 把本地装备里**新出现**的条目追加到 ``Data:EquipmentExtra.tabx``。
+ *
+ * 这一页是手工维护的数据源（`Api/GetV2Equipment` 的 `extra` 就从它来），
+ * 所以只做「追加」：
+ *   * 已在页面里的行原样保留（本地名字 / 分类不一致也不改，人工为准）；
+ *   * 页面里多出来的行不删（可能是还没进解包的装备）；
+ *   * 页面解析失败直接报错，不覆盖。
+ */
+export async function syncEquipmentExtra(
+    bot: HuijiWiki,
+    options: { dryRun?: boolean } = {},
+): Promise<{ added: number; total: number }> {
+    const page = await bot.getPageRawTextByTitle(EQUIP_EXTRA_TITLE);
+    if (!page?.content) throw new Error(`读不到页面 ${EQUIP_EXTRA_TITLE}`);
+
+    let tabx: TabxPage;
+    try {
+        tabx = JSON.parse(page.content) as TabxPage;
+    } catch {
+        throw new Error(`${EQUIP_EXTRA_TITLE} 不是合法 JSON，已跳过（不覆盖手工数据）`);
+    }
+    if (!Array.isArray(tabx.data) || !Array.isArray(tabx.schema?.fields)) {
+        throw new Error(`${EQUIP_EXTRA_TITLE} 缺少 schema.fields / data，已跳过`);
+    }
+
+    const fields = tabx.schema.fields.map((field) => field.name);
+    const idIndex = fields.indexOf('id');
+    if (idIndex < 0) throw new Error(`${EQUIP_EXTRA_TITLE} 的 schema 里没有 id 字段`);
+
+    const known = new Set(tabx.data.map((row) => Number(row[idIndex])));
+    const payload = await readJson<MockPayload>(path.join(MOCK_DIR, 'EquipmentResponse.json'));
+
+    const added: unknown[][] = [];
+    for (const doc of payload.items ?? []) {
+        const id = Number(doc.i);
+        if (!Number.isFinite(id) || id <= 0 || known.has(id)) continue;
+        added.push(
+            fields.map((name) => {
+                switch (name) {
+                    case 'id':
+                        return id;
+                    case 'n':
+                        return doc.zh ?? null;
+                    case 'soucate':
+                        return Number(doc.so) || 0;
+                    // 页面里多个来源用 `;` 连接（接口那边按 `;` 拆回数组）
+                    case 'sou':
+                        return (doc.su as string[] | undefined)?.join(';') || null;
+                    default:
+                        return null;
+                }
+            }),
+        );
+        known.add(id);
+    }
+
+    if (added.length === 0) {
+        console.log(`  ${EQUIP_EXTRA_TITLE}: 没有新装备（现有 ${tabx.data.length} 行）`);
+        return { added: 0, total: tabx.data.length };
+    }
+
+    tabx.data.push(...added);
+    const total = tabx.data.length;
+    console.log(
+        `  ${EQUIP_EXTRA_TITLE}: 追加 ${added.length} 件新装备 -> ${total} 行` +
+            `（${added.map((row) => row[idIndex]).join(', ')}）`,
+    );
+    if (options.dryRun) return { added: added.length, total };
+
+    const res = await bot.editPage(EQUIP_EXTRA_TITLE, JSON.stringify(tabx, null, 4), {
+        summary: `追加 ${added.length} 件新装备`,
+    });
+    if (res.error) throw new Error(res.error.info ?? JSON.stringify(res.error));
+    return { added: added.length, total };
+}
+
 // ==================== 主逻辑 ====================
 
 const parseArgs = () => {
@@ -467,6 +558,17 @@ async function main(): Promise<void> {
         });
         failedTotal += failed;
         console.log(`  本类完成: 上传 ${uploaded} / 跳过 ${skipped} / 失败 ${failed}`);
+    }
+
+    // 装备手工补充表（Data:EquipmentExtra.tabx）：追加本地有、页面上没有的新装备
+    if (kinds.includes('equipment')) {
+        console.log(`\n===== equipment-extra (${EQUIP_EXTRA_TITLE}) =====`);
+        try {
+            await syncEquipmentExtra(bot, { dryRun });
+        } catch (err) {
+            failedTotal++;
+            console.error(`  × ${EQUIP_EXTRA_TITLE} 同步失败: ${err instanceof Error ? err.message : err}`);
+        }
     }
 
     cache?.close();

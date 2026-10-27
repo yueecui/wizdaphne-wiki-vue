@@ -76,6 +76,11 @@
                                                     class="inline-block h-4 align-text-bottom"
                                                     @error="hideBrokenImage"
                                                 />
+                                                <!-- `<color=…>` 片段：只带一个经过白名单校验的 color -->
+                                                <span
+                                                    v-else-if="segment.color"
+                                                    :style="{ color: segment.color }"
+                                                >{{ segment.text }}</span>
                                                 <template v-else>{{ segment.text }}</template>
                                             </template>
                                             <template v-if="!descSegments.length">—</template>
@@ -163,16 +168,16 @@
                             <thead>
                                 <tr>
                                     <th>商店</th>
-                                    <th>价格</th>
                                     <th>数量</th>
+                                    <th>价格</th>
                                     <th>限购</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr v-for="(row, index) in shopRows" :key="index">
                                     <td class="text-left">{{ row.shop }}</td>
-                                    <td class="whitespace-nowrap">{{ row.price }}</td>
                                     <td>{{ row.quantity }}</td>
+                                    <td class="whitespace-nowrap">{{ row.price }}</td>
                                     <td class="whitespace-nowrap">
                                         <template v-if="row.limit">{{ row.limit }}</template>
                                         <span v-else class="opacity-40">—</span>

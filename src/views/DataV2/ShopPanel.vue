@@ -11,10 +11,9 @@
             >
                 {{ tab.label }}
             </NButton>
-            <NInput v-model:value="keyword" placeholder="搜索商店 / 商品" clearable class="w-56" />
+            <NInput v-model:value="keyword" placeholder="搜索商店 / 商品" clearable class="w-60!" />
+            <NButton size="small" type="error" @click="resetFilter">重置</NButton>
             <span class="text-xs opacity-60">{{ filtered.length }} 家店 · {{ totalItems }} 件商品</span>
-            <div class="flex-1"></div>
-            <NButton size="tiny" :loading="loading" @click="wiki.refresh()">重新加载</NButton>
         </div>
 
         <div class="grid gap-3 md:grid-cols-[17rem_1fr]">
@@ -62,7 +61,6 @@
                             <tr>
                                 <th>商品</th>
                                 <th class="w-[10em]">价格</th>
-                                <th class="w-[5em]">数量</th>
                                 <th class="w-[9em]">限购</th>
                             </tr>
                         </thead>
@@ -78,9 +76,11 @@
                                     <span v-if="relicRank(item)" class="text-yellow-300 whitespace-nowrap">
                                         {{ '★'.repeat(relicRank(item)) }}
                                     </span>
+                                    <span v-if="(item.quantity ?? 1) > 1" class="ml-1 opacity-60 text-xs whitespace-nowrap">
+                                        ×{{ item.quantity }}
+                                    </span>
                                 </td>
                                 <td class="whitespace-nowrap">{{ item.price ?? 0 }}</td>
-                                <td>{{ item.quantity ?? 1 }}</td>
                                 <td class="whitespace-nowrap">
                                     <span v-if="limitText(item)">{{ limitText(item) }}</span>
                                     <span v-else class="opacity-40">—</span>
@@ -103,6 +103,7 @@ import { computed, ref, watch } from 'vue';
 import { useWikiDataStore } from '../../stores/wikiData';
 import EquipmentModal from './EquipmentModal.vue';
 import ItemModal from './ItemModal.vue';
+import { usePersistentRef } from './dataV2Settings';
 import { CURRENCY_LABELS, LIMIT_LABELS, type ItemDoc } from './itemTypes';
 import type { ShopDoc, ShopItemRow } from './shopTypes';
 
@@ -137,8 +138,9 @@ const shops = computed(() =>
 const active = ref<ShopDoc | null>(null);
 const loading = computed(() => wiki.status === 'loading');
 
-const groupKey = ref<GroupKey>(1);
-const keyword = ref('');
+// 过滤器持久化（一级分类 + 搜索词）
+const groupKey = usePersistentRef<GroupKey>('shop.group', 1);
+const keyword = usePersistentRef('shop.keyword', '');
 
 /** 当前一级分类下的店铺 */
 const inGroup = computed(() => shops.value.filter((shop) => (shop.group ?? 1) === groupKey.value));
@@ -179,6 +181,12 @@ watch(filtered, (list) => {
         active.value = list[0];
     }
 });
+
+/** 重置筛选：回到常驻商店、清空搜索词 */
+const resetFilter = () => {
+    groupKey.value = 1;
+    keyword.value = '';
+};
 
 /** 限购文案；空串 = 不限购（表格里显示为暗色横线） */
 const limitText = (item: ShopItemRow) => {

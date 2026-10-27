@@ -2,7 +2,7 @@
     <div class="flex flex-col gap-4">
         <!-- 筛选 -->
         <div class="flex flex-row flex-wrap gap-2">
-            <div class="flex flex-col w-full md:w-60">
+            <div class="flex flex-col w-full md:w-auto md:grow md:basis-[240px]">
                 <div class="flex justify-between items-center h-6">
                     <label class="text-sm">搜索词</label>
                 </div>
@@ -10,7 +10,7 @@
                     <NInput v-model:value="keyword" clearable placeholder="支持三语角色名 / 风格 / 技能名" />
                 </div>
             </div>
-            <div class="flex flex-col">
+            <div class="flex flex-col grow basis-[160px]">
                 <div class="flex justify-between items-center h-6">
                     <label class="text-sm">稀有度</label>
                 </div>
@@ -20,11 +20,11 @@
                         :options="rarityOptions"
                         clearable
                         placeholder="全部"
-                        class="w-40!"
+                        class="w-full!"
                     />
                 </div>
             </div>
-            <div class="flex flex-col">
+            <div class="flex flex-col grow basis-[96px]">
                 <div class="flex justify-between items-center h-6">
                     <label class="text-sm">组别</label>
                 </div>
@@ -34,19 +34,19 @@
                         :options="poolGroupOptions"
                         clearable
                         placeholder="全部"
-                        class="w-24!"
+                        class="w-full!"
                     />
                 </div>
             </div>
-            <div class="flex flex-col">
+            <div class="flex flex-col grow basis-[96px]">
                 <div class="flex justify-between items-center h-6">
                     <label class="text-sm">SP</label>
                 </div>
                 <div class="flex flex-row gap-2 items-center h-12">
-                    <NSelect v-model:value="spFilter" :options="spFilterOptions" class="w-24!" />
+                    <NSelect v-model:value="spFilter" :options="spFilterOptions" class="w-full!" />
                 </div>
             </div>
-            <div class="flex flex-col">
+            <div class="flex flex-col grow basis-[160px]">
                 <div class="flex justify-between items-center h-6 gap-2">
                     <label class="text-sm">职业</label>
                     <NCheckbox v-model:checked="onlyPrimary" size="small">仅初始职业</NCheckbox>
@@ -58,7 +58,7 @@
                         :value="jobFilter[0] ?? null"
                         clearable
                         placeholder="全部"
-                        class="w-40!"
+                        class="w-full!"
                         @update:value="(v: number | null) => (jobFilter = v == null ? [] : [v])"
                     />
                     <NSelect
@@ -69,19 +69,19 @@
                         clearable
                         :max-tag-count="1"
                         placeholder="最多两个职业"
-                        class="w-40!"
+                        class="w-full!"
                     />
                 </div>
             </div>
-            <div class="flex flex-col">
+            <div class="flex flex-col grow basis-[112px]">
                 <div class="flex justify-between items-center h-6">
                     <label class="text-sm">种族</label>
                 </div>
                 <div class="flex flex-row gap-2 items-center h-12">
-                    <NSelect v-model:value="race" :options="raceOptions" clearable placeholder="全部" class="w-28!" />
+                    <NSelect v-model:value="race" :options="raceOptions" clearable placeholder="全部" class="w-full!" />
                 </div>
             </div>
-            <div class="flex flex-col">
+            <div class="flex flex-col grow basis-[80px]">
                 <div class="flex justify-between items-center h-6">
                     <label class="text-sm">性别</label>
                 </div>
@@ -91,11 +91,11 @@
                         :options="genderOptions"
                         clearable
                         placeholder="全部"
-                        class="w-20!"
+                        class="w-full!"
                     />
                 </div>
             </div>
-            <div class="flex flex-col">
+            <div class="flex flex-col grow basis-[96px]">
                 <div class="flex justify-between items-center h-6">
                     <label class="text-sm">性格</label>
                 </div>
@@ -105,11 +105,11 @@
                         :options="alignmentOptions"
                         clearable
                         placeholder="全部"
-                        class="w-24!"
+                        class="w-full!"
                     />
                 </div>
             </div>
-            <div class="flex flex-col">
+            <div class="flex flex-col grow basis-[112px]">
                 <div class="flex justify-between items-center h-6">
                     <label class="text-sm">缘</label>
                 </div>
@@ -119,11 +119,12 @@
                         :options="fateTypeOptions"
                         clearable
                         placeholder="才能类型"
-                        class="w-28!"
+                        class="w-full!"
                     />
                 </div>
             </div>
-            <div class="flex flex-col">
+            <!-- 克己不参与伸展：多选控件拉全宽会太宽，保持 176px -->
+            <div class="flex flex-col shrink-0 basis-[176px]">
                 <div class="flex justify-between items-center h-6">
                     <label class="text-sm">克己</label>
                 </div>
@@ -133,9 +134,11 @@
                         :options="disciplineOptions"
                         multiple
                         clearable
+                        filterable
                         :max-tag-count="1"
+                        :menu-props="{ style: 'max-height: 15rem' }"
                         placeholder="额外提升"
-                        class="w-44!"
+                        class="w-full!"
                     />
                 </div>
             </div>
@@ -165,12 +168,7 @@
             </div>
             <div class="flex flex-col justify-end">
                 <div class="flex items-center h-12">
-                    <div
-                        class="cursor-pointer select-none px-3 py-1 text-sm rounded bg-red-500/20 text-red-300 border! border-solid border-red-400/40 hover:bg-red-500/30"
-                        @click="resetFilter"
-                    >
-                        重置
-                    </div>
+                    <NButton size="small" type="error" @click="resetFilter">重置</NButton>
                 </div>
             </div>
         </div>
@@ -253,31 +251,33 @@
 </template>
 
 <script setup lang="ts">
-import { NCheckbox, NEmpty, NInput, NModal, NSelect, NSpin } from 'naive-ui';
+import { NButton, NCheckbox, NEmpty, NInput, NModal, NSelect, NSpin } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
 import ElementIcon from '../../components/ElementIcon.vue';
 import WikiImg from '../../components/huiji/WikiImg.vue';
 import { ELEMENT_TYPE } from '../DataSearcher/data/enum';
 import CharacterDetail from './CharacterDetail.vue';
 import { useDataV2Store } from './dataV2Store';
+import { usePersistentRef } from './dataV2Settings';
 import type { CharacterDetail as CharacterDetailData, CharacterListItem } from './types';
 
 const store = useDataV2Store();
 
-const keyword = ref('');
-const rarity = ref<number | null>(null);
-const poolGroup = ref<number | null>(null);
-const spFilter = ref<'all' | 'show' | 'hide'>('all');
-const onlyPrimary = ref(true);
-const jobFilter = ref<number[]>([]);
-const race = ref<number | null>(null);
-const gender = ref<number | null>(null);
-const alignment = ref<number | null>(null);
-const attribute = ref<number | null>(null);
+// 过滤器全部持久化（对齐 V1 的 characterFilter）
+const keyword = usePersistentRef('character.keyword', '');
+const rarity = usePersistentRef<number | null>('character.rarity', null);
+const poolGroup = usePersistentRef<number | null>('character.group', null);
+const spFilter = usePersistentRef<'all' | 'show' | 'hide'>('character.spFilter', 'all');
+const onlyPrimary = usePersistentRef('character.onlyPrimary', true);
+const jobFilter = usePersistentRef<number[]>('character.jobFilter', []);
+const race = usePersistentRef<number | null>('character.race', null);
+const gender = usePersistentRef<number | null>('character.gender', null);
+const alignment = usePersistentRef<number | null>('character.alignment', null);
+const attribute = usePersistentRef<number | null>('character.attribute', null);
 /** 缘的才能类型，如「智慧」 */
-const fateType = ref<string | null>(null);
+const fateType = usePersistentRef<string | null>('character.fateType', null);
 /** 克己额外提升的属性标签，如「回避」 */
-const disciplineTags = ref<string[]>([]);
+const disciplineTags = usePersistentRef<string[]>('character.disciplineTags', []);
 
 const drawer = ref(false);
 const currentId = ref<number | null>(null);

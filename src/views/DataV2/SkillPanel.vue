@@ -21,7 +21,7 @@
             <NCheckbox v-model:checked="showAll">显示敌方 / 测试</NCheckbox>
             <div class="flex-1"></div>
             <div class="text-sm opacity-70">{{ filtered.length }} 条</div>
-            <NButton size="small" @click="resetFilter">重置</NButton>
+            <NButton size="small" type="error" @click="resetFilter">重置</NButton>
         </div>
 
         <NDataTable
@@ -44,20 +44,22 @@ import type { DataTableColumns } from 'naive-ui';
 import { computed, h, ref } from 'vue';
 import SkillModal from './SkillModal.vue';
 import { useDataV2Store } from './dataV2Store';
+import { usePersistentRef } from './dataV2Settings';
 import type { SkillListItem } from './types';
 
 defineOptions({ name: '技能面板V2' });
 
 const store = useDataV2Store();
 
-const keyword = ref('');
-const kind = ref<number | null>(null);
-const job = ref<number | null>(null);
-const source = ref<string | null>(null);
+// 过滤器全部持久化（对齐 V1 的 skillFilter）
+const keyword = usePersistentRef('skill.keyword', '');
+const kind = usePersistentRef<number | null>('skill.kind', null);
+const job = usePersistentRef<number | null>('skill.job', null);
+const source = usePersistentRef<string | null>('skill.source', null);
 /** 按 sub effect kind ID 精确筛选（空 = 不过滤） */
-const subKind = ref<number | null>(null);
+const subKind = usePersistentRef<number | null>('skill.subKind', null);
 /** debug 方便：默认连敌方 / 测试技能一起列出 */
-const showAll = ref(true);
+const showAll = usePersistentRef('skill.showAll', true);
 
 /** 下拉里同时给出 id 与名称，输入 id 或名字都能筛（filterable 默认按 label 匹配） */
 const subKindOptions = computed(() =>
