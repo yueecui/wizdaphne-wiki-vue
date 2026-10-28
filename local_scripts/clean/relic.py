@@ -10,8 +10,10 @@ Input : ``out/masterdata``
 
 Output: ``work/clean/relic/relics.json``
 
-每条遗物只取同组里阶级最低的一条作为代表；掉落怪物与推荐类别留空，
-后续由手工数据补。
+每条遗物只取同组里阶级最低的一条作为代表。掉落怪物与推荐类别来自手工数据
+（``config/Data_遗物酒.tabx.xlsx``），在 ``build_mock.py`` 里作为顶层
+``relics_extra`` / ``relics_ccate`` 输出；``relics_extra`` 的 ``id`` 是图鉴编号，
+前端按遗物 id 查道具表的 ``collection.no`` 后对上。
 
     python relic.py
 """
@@ -169,7 +171,8 @@ def main(argv: list[str]) -> int:
             "icon": item.get("icon_resource"),
             "inc": inc,
             "dec": dec,
-            # 掉落怪物 / 推荐类别：后续用手工数据补，清洗阶段留空
+            # 掉落怪物 / 推荐类别：手工数据（config/Data_遗物酒.tabx.xlsx）在
+            # build_mock.py 里作为顶层 ``relics_extra`` / ``relics_ccate`` 输出
             "monsters": [],
             "categories": [],
         }

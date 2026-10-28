@@ -6,8 +6,6 @@
             条目。
         </div>
 
-        <div v-if="store.state.equipments === 'loading'" class="text-sm text-gray-400">数据加载中…</div>
-
         <table v-if="blocks.length" class="wikitable text-sm text-center">
             <thead>
                 <tr>

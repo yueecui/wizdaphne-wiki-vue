@@ -41,6 +41,23 @@ EXTRA_XLSX = os.path.join(ROOT, "config", "Data_CharacterExtra.tabx.xlsx")
 #: 个体出现几率（线上 ``CharacterResponse.rates`` 的本地备份，只用于生成 mock）
 RATES_JSON = os.path.join(ROOT, "config", "CharacterRates.json")
 
+#: 遗物酒手工数据（推荐类别 / 掉落怪物），生成 ``relics_extra`` +
+#: ``relics_ccate`` 用；``id`` 列是遗物的物品图鉴编号（``CollectionItem.list_number``，
+#: 道具数据里的 ``collection.no``），前端靠它对回遗物。
+#: Tabx 导出带 ``.tabx`` 后缀，手工另存时可能没有，两种文件名都认。
+RELIC_XLSX_NAMES = ("Data_遗物酒.xlsx", "Data_遗物酒.tabx.xlsx")
+RELIC_XLSX = next(
+    (
+        path
+        for path in (os.path.join(ROOT, "config", name) for name in RELIC_XLSX_NAMES)
+        if os.path.isfile(path)
+    ),
+    os.path.join(ROOT, "config", RELIC_XLSX_NAMES[0]),
+)
+
+#: 推荐类别的展示顺序（``relics_ccate``）；手工表里没列到的类别排在其后
+RELIC_CATEGORY_ORDER = ("物理", "法系", "坦克", "开箱")
+
 #: ``Api/GetV2Equipment`` 响应的本地备份（``{items, baseStat, bonus, …}``）。
 #: 类型基准值 ``baseStat`` 与加护概率 ``bonus`` 都随接口返回，不再从 V1 手工表清洗：
 #:   * ``baseStat``：类型 -> 基准值 + 排序序号 ``i``（列表红绿配色 / 类型按钮顺序）
@@ -344,3 +361,47 @@ def character_extra() -> dict[int, dict]:
             "character_voice": row.get("character_voice") or None,
         }
     return out
+
+
+def _split_list(value) -> list[str]:
+    """``"1;65;75"`` / ``"坦克;物理"`` -> ``["1", "65", "75"]``（分隔符 ; 或 ,）。"""
+    if value is None:
+        return []
+    text_value = str(value).strip()
+    if not text_value:
+        return []
+    for sep in (";", ",", "|"):
+        if sep in text_value:
+            return [part.strip() for part in text_value.split(sep) if part.strip()]
+    return [text_value]
+
+
+def relic_extra() -> tuple[list[dict], list[str]]:
+    """``config/Data_遗物酒.tabx.xlsx`` -> (``relics_extra`` 行, 推荐类别可选项)。
+
+    每条 = ``{id, monster_id: [图鉴编号], c: [推荐类别]}``，``id`` 是遗物的物品图鉴编号
+    （``CollectionItem.list_number``）；``monster_id`` 是敌人的图鉴编号
+    （``CollectionEnemy.list_number``，前端用敌人表的 ``no`` 换名字）。
+    类别可选项即线上 ``relics_ccate``，按 ``RELIC_CATEGORY_ORDER`` 排，
+    手工表里新出现的类别排在后面。
+    """
+    if not os.path.isfile(RELIC_XLSX):
+        return [], []
+
+    rows: list[dict] = []
+    categories: list[str] = []
+    for row in read_tabx(RELIC_XLSX):
+        rid = row.get("id")
+        if not rid:
+            continue
+        cats = _split_list(row.get("c[]") or row.get("c"))
+        monster_ids = [int(v) for v in _split_list(row.get("monster_id[]") or row.get("monster_id")) if v.isdigit()]
+        for cat in cats:
+            if cat not in categories:
+                categories.append(cat)
+        rows.append({"id": int(rid), "monster_id": monster_ids, "c": cats})
+
+    order = {name: index for index, name in enumerate(RELIC_CATEGORY_ORDER)}
+    seen = {name: index for index, name in enumerate(categories)}
+    categories.sort(key=lambda name: (order.get(name, len(order)), seen[name]))
+    return rows, categories

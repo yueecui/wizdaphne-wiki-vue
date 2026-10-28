@@ -115,6 +115,13 @@ const SUB_BRIEF: FieldSpec[] = [
     { long: 'children', short: 'cs', kind: 'objArr', fields: SUB_BRIEF_LEAF },
 ];
 
+/** kind 2790「敵のバフ数によってStepReplace」：step（敌人 buff 数量档）-> 实际效果组 */
+const STEP_REPLACE: FieldSpec[] = [
+    { long: 'step', short: 's', kind: 'num' },
+    { long: 'effect_group', short: 'g', kind: 'num' },
+    { long: 'effects', short: 'e', kind: 'objArr', fields: SUB_BRIEF_LEAF },
+];
+
 const SUB_EFFECT: FieldSpec[] = [
     { long: 'kind', short: 'k', kind: 'num' },
     { long: 'params', short: 'p', kind: 'numArr' },
@@ -142,6 +149,8 @@ const SUB_EFFECT: FieldSpec[] = [
     { long: 'extension_effects', short: 'xe', kind: 'objArr', fields: SUB_BRIEF },
     // 参数里指向的效果（参数序号 -> 摘要），前端按缩进行显示
     { long: 'param_refs', short: 'pr', kind: 'map', fields: SUB_BRIEF },
+    // kind 2790：按敌人 buff 数量档替换的效果组
+    { long: 'step_replace', short: 'sx', kind: 'objArr', fields: STEP_REPLACE },
 ];
 
 const LEVEL: FieldSpec[] = [
@@ -155,6 +164,9 @@ const LEVEL: FieldSpec[] = [
     { long: 'skill_condition_ids', short: 'cd', kind: 'numArr' },
     { long: 'description', short: 'd', kind: 'str' },
     { long: 'description_lang', short: 'dl', kind: 'str' },
+    // 该等级自己的名字（多级技能名字不同时才有，如「隙ダメージ上書き90%」）
+    { long: 'name', short: 'nm', kind: 'str' },
+    { long: 'name_lang', short: 'nl', kind: 'str' },
     { long: 'damage', short: 'dm', kind: 'objArr', fields: DAMAGE },
     { long: 'sub_effects', short: 'sb', kind: 'objArr', fields: SUB_EFFECT },
 ];
@@ -314,6 +326,17 @@ export const SKILL_FIELDS: FieldSpec[] = [
     { long: 'level0', short: 'l0', kind: 'bool' },
     { long: 'sources', short: 's', kind: 'strArr' },
     { long: 'jobs', short: 'j', kind: 'numArr' },
+    // 召唤：被召唤敌人的分类 + 等级 + 数量（EnemyFriendLayout）
+    {
+        long: 'summons',
+        short: 'sm',
+        kind: 'objArr',
+        fields: [
+            { long: 'category', short: 'c', kind: 'num' },
+            { long: 'level', short: 'lv', kind: 'num' },
+            { long: 'count', short: 'n', kind: 'num' },
+        ],
+    },
     { long: 'description', short: 'd', kind: 'str' },
     { long: 'detail_description', short: 'd2', kind: 'str' },
     { long: 'description_lang', short: 'dl', kind: 'str' },
@@ -354,10 +377,7 @@ const EQUIP_STAT: FieldSpec[] = [
 ];
 
 /** 强化曲线的一行：等级 + 该等级的完整数值（只输出与 +0 不同的等级） */
-const EQUIP_LEVEL: FieldSpec[] = [
-    { long: 'lv', short: 'l', kind: 'num' },
-    ...EQUIP_STAT,
-];
+const EQUIP_LEVEL: FieldSpec[] = [{ long: 'lv', short: 'l', kind: 'num' }, ...EQUIP_STAT];
 
 /** 材质补强的一行：目标阶级 / 阶级内次数 / 金币 / 五项累计加成 */
 const EQUIP_OVER_RANK: FieldSpec[] = [
@@ -406,7 +426,8 @@ export const EQUIP_FIELDS: FieldSpec[] = [
     // 图标资源名：list_icon = 列表小图，icon = 背包大图（均不含 .png）
     { long: 'list_icon', short: 'li', kind: 'str' },
     { long: 'icon', short: 'ic', kind: 'str' },
-    // V1 手工字段：soucate 9 = 特典 / desc 中文说明 / 获取途径 / 妖精
+    // 特典分类 / 获取途径已搬到 ``Api/GetV2Extra.equipmentExtra``（运行时按 id 合并）；
+    // 旧数据页还带着这两列时仍按短键读出来当兜底。desc 中文说明 / 需求仍是占位。
     { long: 'soucate', short: 'so', kind: 'num' },
     { long: 'desc', short: 'd', kind: 'str' },
     { long: 'sou', short: 'su', kind: 'strArr' },
@@ -431,6 +452,222 @@ export const EQUIP_FIELDS: FieldSpec[] = [
     { long: 'over_rank', short: 'or', kind: 'objArr', fields: EQUIP_OVER_RANK },
     // 商店来源（空数组 = 商店买不到）
     { long: 'shop', short: 'sh', kind: 'objArr', fields: EQUIP_SHOP },
+];
+
+/** 敌人数值块：base / growth / correction（修正率，100 = 原值）+ HP 浮动上下限 */
+const ENEMY_STAT: FieldSpec[] = [
+    { long: 'base', short: 'b', kind: 'num' },
+    { long: 'growth', short: 'g', kind: 'num' },
+    { long: 'correction', short: 'cr', kind: 'num' },
+    { long: 'min', short: 'lo', kind: 'num' },
+    { long: 'max', short: 'hi', kind: 'num' },
+];
+
+/** 冻结 / 破冰：半冻结 / 完全冻结 / 破冰层数 + 自然回复 + 待机浮动 */
+const ENEMY_FREEZE: FieldSpec[] = [
+    { long: 'half', short: 'h', kind: 'num' },
+    { long: 'full', short: 'f', kind: 'num' },
+    { long: 'break', short: 'b', kind: 'num' },
+    { long: 'recovery', short: 'r', kind: 'num' },
+    { long: 'wait_min', short: 'wm', kind: 'num' },
+    { long: 'wait_max', short: 'wx', kind: 'num' },
+    { long: 'intelligence', short: 'iq', kind: 'num' },
+];
+
+/** 体型统计：同一分类下可能出现多种 body_size */
+const ENEMY_BODY: FieldSpec[] = [
+    { long: 'size', short: 's', kind: 'numArr' },
+    { long: 'count', short: 'c', kind: 'num' },
+];
+
+/** AI 技能池里的一行：技能 + 随机权重 + 选目标的条件文案 */
+const ENEMY_AI_SKILL: FieldSpec[] = [
+    { long: 'skill', short: 's', kind: 'num' },
+    { long: 'weight', short: 'w', kind: 'num' },
+    { long: 'target', short: 't', kind: 'str' },
+];
+
+/** 一条条件：整段文案，或「前缀 + 敌人分类 id / 子效果种类 id + 后缀」 */
+const ENEMY_AI_CONDITION: FieldSpec[] = [
+    { long: 'text', short: 't', kind: 'str' },
+    { long: 'label', short: 'l', kind: 'str' },
+    { long: 'ref', short: 'r', kind: 'num' },
+    { long: 'status', short: 'k', kind: 'num' },
+    { long: 'suffix', short: 'x', kind: 'str' },
+];
+
+/** AI 行动规则的一行 = 一条「条件成立 → 用这个技能池」 */
+const ENEMY_AI_RULE: FieldSpec[] = [
+    { long: 'priority', short: 'p', kind: 'num' },
+    { long: 'conditions', short: 'c', kind: 'objArr', fields: ENEMY_AI_CONDITION },
+    { long: 'skills', short: 's', kind: 'objArr', fields: ENEMY_AI_SKILL },
+];
+
+/** 一个出现变体：参数 id + 等级区间 + 技能 + 该变体的完整数值 */
+const ENEMY_VARIANT: FieldSpec[] = [
+    { long: 'id', short: 'i', kind: 'raw' },
+    { long: 'kind', short: 'k', kind: 'num' },
+    { long: 'param', short: 'p', kind: 'raw' },
+    { long: 'exp', short: 'e', kind: 'num' },
+    { long: 'ai', short: 'ai', kind: 'num' },
+    { long: 'level', short: 'lv', kind: 'numArr' },
+    { long: 'attribute', short: 'at', kind: 'numArr' },
+    { long: 'attack_attribute', short: 'aa', kind: 'numArr' },
+    { long: 'weak', short: 'wk', kind: 'numArr' },
+    { long: 'characteristics', short: 'ch', kind: 'numArr' },
+    { long: 'gimmicks', short: 'gm', kind: 'numArr' },
+    { long: 'fly', short: 'f', kind: 'bool' },
+    { long: 'body_size', short: 'bs', kind: 'numArr' },
+    // 全部技能（行动 + 插入 + 被动 + 挣扎）与分栏明细
+    { long: 'skills', short: 'sk', kind: 'numArr' },
+    // 引用到的技能等级（identification -> level），只有多级技能的非 0 等级才记
+    { long: 'skill_levels', short: 'sl', kind: 'numMap' },
+    { long: 'action_skills', short: 'ak', kind: 'numArr' },
+    // 插入技能：一次标记 + HP 触发阈值 + 触发条件文案
+    {
+        long: 'interrupts',
+        short: 'ir',
+        kind: 'objArr',
+        fields: [
+            { long: 'skill', short: 's', kind: 'num' },
+            { long: 'once', short: 'o', kind: 'bool' },
+            { long: 'hp', short: 'hp', kind: 'num' },
+            { long: 'conditions', short: 'c', kind: 'objArr', fields: ENEMY_AI_CONDITION },
+        ],
+    },
+    { long: 'passive_skills', short: 'pk', kind: 'numArr' },
+    { long: 'struggle_skill', short: 'sg', kind: 'num' },
+    // AI 行动规则：priority 升序，条件成立就用该技能池
+    { long: 'ai_plan', short: 'ap', kind: 'objArr', fields: ENEMY_AI_RULE },
+    // 键是属性名（hp / attack / …），值是 {b, g, cr, lo, hi}
+    { long: 'stats', short: 'st', kind: 'map', fields: ENEMY_STAT },
+    { long: 'resist', short: 'rs', kind: 'numMap' },
+    { long: 'freeze', short: 'fz', kind: 'obj', fields: ENEMY_FREEZE },
+];
+
+/** 一条 = 一个 EnemyCategory（图鉴条目 + 只在解包数据里存在的分类） */
+export const ENEMY_FIELDS: FieldSpec[] = [
+    { long: 'id', short: 'i', kind: 'raw' },
+    // 图鉴编号 / 图鉴条目 id；没有图鉴记录的分类为空
+    { long: 'no', short: 'n', kind: 'num' },
+    { long: 'book', short: 'bk', kind: 'raw' },
+    { long: 'name', short: 'zh', kind: 'str' },
+    { long: 'name_jp', short: 'jp', kind: 'str' },
+    { long: 'name_en', short: 'en', kind: 'str' },
+    // wiki 上的缩略图去掉 `_s.png` 后缀，例如 tmb_enemy_090_005_00
+    { long: 'thumbnail', short: 'th', kind: 'str' },
+    { long: 'boss', short: 'b', kind: 'bool' },
+    { long: 'race', short: 'ra', kind: 'num' },
+    { long: 'lineage', short: 'li', kind: 'num' },
+    // 体型档位（1 小 / 2 中 / 3 大 / 4 特大）
+    { long: 'size', short: 'sz', kind: 'num' },
+    { long: 'attack_type', short: 'at', kind: 'num' },
+    { long: 'damage_type', short: 'dt', kind: 'num' },
+    { long: 'attribute', short: 'ar', kind: 'numArr' },
+    { long: 'attack_attribute', short: 'aa', kind: 'numArr' },
+    { long: 'weak', short: 'wk', kind: 'numArr' },
+    { long: 'characteristics', short: 'ch', kind: 'numArr' },
+    { long: 'gimmicks', short: 'gm', kind: 'numArr' },
+    // 出现的强度档位（kind）
+    { long: 'kinds', short: 'ks', kind: 'numArr' },
+    {
+        long: 'level',
+        short: 'lv',
+        kind: 'obj',
+        fields: [
+            { long: 'min', short: 'lo', kind: 'num' },
+            { long: 'max', short: 'hi', kind: 'num' },
+        ],
+    },
+    { long: 'fly', short: 'f', kind: 'bool' },
+    { long: 'body_size', short: 'bs', kind: 'objArr', fields: ENEMY_BODY },
+    { long: 'resist', short: 'rs', kind: 'numMap' },
+    { long: 'freeze', short: 'fz', kind: 'obj', fields: ENEMY_FREEZE },
+    { long: 'skills', short: 'sk', kind: 'numArr' },
+    { long: 'variants', short: 'v', kind: 'objArr', fields: ENEMY_VARIANT },
+];
+
+// ---------- 地图（层为单位） / 敌群 ----------
+
+/** 层里出现过的敌人：只留 id 与等级范围，名称 / 属性由敌人模块提供 */
+const MAP_ENEMY: FieldSpec[] = [
+    { long: 'enemy_id', short: 'i', kind: 'num' },
+    { long: 'lv_min', short: 'lo', kind: 'num' },
+    { long: 'lv_max', short: 'hi', kind: 'num' },
+    { long: 'rows', short: 'r', kind: 'num' },
+];
+
+const MAP_MEMBER: FieldSpec[] = [
+    { long: 'enemy_id', short: 'i', kind: 'num' },
+    { long: 'lv_min', short: 'lo', kind: 'num' },
+    { long: 'lv_max', short: 'hi', kind: 'num' },
+    { long: 'pos_x', short: 'px', kind: 'num' },
+    { long: 'pos_y', short: 'py', kind: 'num' },
+    { long: 'notorious', short: 'no', kind: 'bool' },
+    { long: 'wanted', short: 'wa', kind: 'bool' },
+    { long: 'hate', short: 'ha', kind: 'bool' },
+];
+
+const MAP_FORMATION: FieldSpec[] = [
+    { long: 'formation_id', short: 'i', kind: 'num' },
+    { long: 'row_id', short: 'r', kind: 'num' },
+    { long: 'layout_id', short: 'l', kind: 'num' },
+    { long: 'weight', short: 'w', kind: 'num' },
+    { long: 'lv_min', short: 'lo', kind: 'num' },
+    { long: 'lv_max', short: 'hi', kind: 'num' },
+    { long: 'escape', short: 'e', kind: 'num' },
+    { long: 'surprise', short: 's', kind: 'num' },
+    { long: 'preemption', short: 'p', kind: 'num' },
+    { long: 'exp_rate', short: 'x', kind: 'num' },
+    { long: 'drop_id', short: 'd', kind: 'num' },
+    { long: 'special_drop_id', short: 'sd', kind: 'num' },
+    { long: 'drop_probability', short: 'dp', kind: 'num' },
+    { long: 'trap_id', short: 't', kind: 'num' },
+    { long: 'rare_trap_id', short: 'rt', kind: 'num' },
+    { long: 'condition_id', short: 'c', kind: 'num' },
+    { long: 'respawn_kind', short: 'rk', kind: 'num' },
+    { long: 'symbol_id', short: 'si', kind: 'num' },
+    { long: 'symbol_kind', short: 'sk', kind: 'num' },
+    { long: 'grade_id', short: 'g', kind: 'num' },
+    { long: 'friend_prob', short: 'fp', kind: 'num' },
+    { long: 'covert', short: 'cv', kind: 'num' },
+    { long: 'win_condition', short: 'wc', kind: 'num' },
+    { long: 'members', short: 'm', kind: 'objArr', fields: MAP_MEMBER },
+];
+
+/** 一条 = 一层（``DungeonFloor``）；分类标签在 ``Api/GetV2Map`` 顶层 ``maps`` */
+export const MAP_FIELDS: FieldSpec[] = [
+    { long: 'id', short: 'i', kind: 'raw' },
+    { long: 'name', short: 'n', kind: 'str' },
+    { long: 'map_id', short: 'mi', kind: 'num' },
+    { long: 'map_name', short: 'mn', kind: 'str' },
+    { long: 'area_id', short: 'a', kind: 'num' },
+    { long: 'scene_name', short: 'sc', kind: 'str' },
+    { long: 'ceiling', short: 'c', kind: 'bool' },
+    { long: 'floor_attribute', short: 'fa', kind: 'num' },
+    { long: 'enemy_placement', short: 'ep', kind: 'numArr' },
+    { long: 'bgm', short: 'bg', kind: 'str' },
+    { long: 'normal_enemies', short: 'ne', kind: 'objArr', fields: MAP_ENEMY },
+    { long: 'notorious_enemies', short: 'sn', kind: 'objArr', fields: MAP_ENEMY },
+    { long: 'formations', short: 'f', kind: 'objArr', fields: MAP_FORMATION },
+];
+
+/** 敌群能确定关联上的层 */
+const POOL_FLOOR: FieldSpec[] = [
+    { long: 'id', short: 'i', kind: 'num' },
+    { long: 'name', short: 'n', kind: 'str' },
+    { long: 'map_name', short: 'mn', kind: 'str' },
+];
+
+/** 一条 = 一个敌群（敌群页；含能确定关联的层，不做推断） */
+export const ENEMY_POOL_FIELDS: FieldSpec[] = [
+    { long: 'id', short: 'i', kind: 'num' },
+    { long: 'row_count', short: 'rc', kind: 'num' },
+    { long: 'lv_ranges', short: 'lr', kind: 'numArrArr' },
+    { long: 'normal_enemies', short: 'ne', kind: 'objArr', fields: MAP_ENEMY },
+    { long: 'notorious_enemies', short: 'sn', kind: 'objArr', fields: MAP_ENEMY },
+    { long: 'floors', short: 'fl', kind: 'objArr', fields: POOL_FLOOR },
+    { long: 'formations', short: 'f', kind: 'objArr', fields: MAP_FORMATION },
 ];
 
 const ITEM_SHOP: FieldSpec[] = [
@@ -502,13 +739,35 @@ export const ITEM_FIELDS: FieldSpec[] = [
     { long: 'junk_group', short: 'jg', kind: 'str' },
 ];
 
-/** 遗物掉落怪物（手工数据补充后才有值） */
+/** 遗物掉落怪物（id = 怪物图鉴编号 `EnemyCategory.no`，名字由敌人表补） */
 const RELIC_MONSTER: FieldSpec[] = [
     { long: 'id', short: 'i', kind: 'num' },
     { long: 'name', short: 'n', kind: 'str' },
 ];
 
-/** 遗物：一种遗物一条（同组取最低阶级），掉落怪物 / 推荐类别留给手工数据 */
+/**
+ * ``Api/GetV2Extra.equipmentExtra``：一条 = 装备 id + 特典分类 + 获取途径（长键）。
+ * 以前是并进每件装备条目的 ``so`` / ``su``，现在单独一块、按 id 对回装备。
+ */
+export const EQUIPMENT_EXTRA_FIELDS: FieldSpec[] = [
+    { long: 'id', short: 'id', kind: 'raw' },
+    { long: 'soucate', short: 'soucate', kind: 'num' },
+    { long: 'sou', short: 'sou', kind: 'strArr' },
+];
+
+/**
+ * ``Api/GetV2Item`` 顶层 ``relics_extra``：一条 = 遗物图鉴编号 + 掉落怪物编号 + 推荐类别。
+ * ``id`` 是遗物的物品图鉴编号（道具数据 ``collection.no``，即 ``CollectionItem.list_number``），
+ * 遗物行本身没有这个值，前端按 ``relics.id`` 查道具表再对回来。
+ * 这份数据是长键（``id`` / ``monster_id`` / ``c``），只有类别用了短键。
+ */
+export const RELIC_EXTRA_FIELDS: FieldSpec[] = [
+    { long: 'id', short: 'id', kind: 'raw' },
+    { long: 'monster_id', short: 'monster_id', kind: 'numArr' },
+    { long: 'categories', short: 'c', kind: 'strArr' },
+];
+
+/** 遗物：一种遗物一条（同组取最低阶级）；掉落怪物 / 推荐类别来自顶层 ``relics_extra`` */
 export const RELIC_FIELDS: FieldSpec[] = [
     { long: 'id', short: 'i', kind: 'raw' },
     { long: 'name', short: 'zh', kind: 'str' },
@@ -577,6 +836,19 @@ const reverseMap = (spec: FieldSpec) => {
     return cached;
 };
 
+/**
+ * 线上 Lua 模块序列化 table 时，「从 1 开始的连续整数 key」会被当成数组
+ * （``{1:"a",2:"b"}`` → ``["a","b"]``），前端 ``Object.entries`` 拿到的 key 就变成
+ * 0 起。这里把这种「0,1,2…」的连续数字键还原成 1 起；其余形态原样返回。
+ */
+export const restoreNumericKeys = <T>(entries: Array<[string, T]>): Array<[string, T]> => {
+    if (entries.length === 0) return entries;
+    if (!entries.every(([key]) => /^\d+$/.test(key))) return entries;
+    const zeroBased = entries.every(([key], index) => Number(key) === index);
+    if (!zeroBased) return entries;
+    return entries.map(([, value], index) => [String(index + 1), value] as [string, T]);
+};
+
 /** short-key document -> long-key document */
 export function decodeDoc<T = Doc>(src: Doc | null | undefined, fields: FieldSpec[]): T {
     const out: Doc = {};
@@ -594,7 +866,7 @@ export function decodeDoc<T = Doc>(src: Doc | null | undefined, fields: FieldSpe
                 break;
             case 'str': {
                 const value = typeof raw === 'string' ? raw : '';
-                out[spec.long] = spec.map ? reverseMap(spec)[value] ?? value : value;
+                out[spec.long] = spec.map ? (reverseMap(spec)[value] ?? value) : value;
                 break;
             }
             case 'bool':
@@ -611,14 +883,17 @@ export function decodeDoc<T = Doc>(src: Doc | null | undefined, fields: FieldSpe
                     : [];
                 break;
             case 'numMap':
-                out[spec.long] = raw && typeof raw === 'object' ? { ...(raw as Doc) } : {};
+                out[spec.long] =
+                    raw && typeof raw === 'object'
+                        ? Object.fromEntries(restoreNumericKeys(Object.entries(raw as Doc)))
+                        : {};
                 break;
             case 'obj':
                 out[spec.long] = decodeDoc(raw as Doc, spec.fields ?? []);
                 break;
             case 'map': {
                 const nested: Doc = {};
-                for (const [key, value] of Object.entries((raw as Doc) ?? {})) {
+                for (const [key, value] of restoreNumericKeys(Object.entries((raw as Doc) ?? {}))) {
                     nested[key] = decodeDoc(value as Doc, spec.fields ?? []);
                 }
                 out[spec.long] = nested;
@@ -629,8 +904,9 @@ export function decodeDoc<T = Doc>(src: Doc | null | undefined, fields: FieldSpe
                 break;
             case 'objArrMap': {
                 const nested: Doc = {};
-                for (const [key, rows] of Object.entries((raw as Record<string, Doc[]>) ?? {})) {
-                    nested[key] = (rows ?? []).map((item) => decodeDoc(item, spec.fields ?? []));
+                const rows = (raw as Record<string, Doc[]>) ?? {};
+                for (const [key, value] of restoreNumericKeys(Object.entries(rows))) {
+                    nested[key] = ((value as Doc[]) ?? []).map((item) => decodeDoc(item, spec.fields ?? []));
                 }
                 out[spec.long] = nested;
                 break;

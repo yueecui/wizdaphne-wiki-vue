@@ -17,11 +17,7 @@
                         <label class="text-sm">性格</label>
                     </div>
                     <div class="flex items-center h-12">
-                        <NSelect
-                            v-model:value="filter.align"
-                            size="small"
-                            :options="alignOptions"
-                        />
+                        <NSelect v-model:value="filter.align" size="small" :options="alignOptions" />
                     </div>
                 </div>
 
@@ -48,11 +44,7 @@
                         <label class="text-sm">推荐类别</label>
                     </div>
                     <div class="flex items-center h-12">
-                        <NSelect
-                            v-model:value="filter.category"
-                            size="small"
-                            :options="categoryOptions"
-                        />
+                        <NSelect v-model:value="filter.category" size="small" :options="categoryOptions" />
                     </div>
                 </div>
 
@@ -61,9 +53,7 @@
                         <label class="text-sm"></label>
                     </div>
                     <div class="flex items-center h-12">
-                        <NCheckbox v-model:checked="filter.showOnlyDoubleInc">
-                            仅显示双提升遗物
-                        </NCheckbox>
+                        <NCheckbox v-model:checked="filter.showOnlyDoubleInc">仅显示双提升遗物</NCheckbox>
                     </div>
                 </div>
             </div>
@@ -79,12 +69,7 @@
 
         <div class="text-xs opacity-70">共 {{ filtered.length }} 件遗物</div>
 
-        <NPagination
-            v-if="pageCount > 1"
-            v-model:page="page"
-            :page-count="pageCount"
-            size="small"
-        />
+        <NPagination v-if="pageCount > 1" v-model:page="page" :page-count="pageCount" size="small" />
 
         <table class="wikitable w-full text-center m-0!">
             <thead>
@@ -101,38 +86,51 @@
             <tbody>
                 <tr v-if="!filtered.length">
                     <td :colspan="columns" class="text-gray-400">
-                        {{ loading ? '加载中…' : '没有符合条件的遗物' }}
+                        没有符合条件的遗物
                     </td>
                 </tr>
-                <tr
-                    v-for="relic in paged"
-                    :key="relic.id"
-                    class="hover:bg-[#3a312a]! cursor-pointer"
-                    @click="openSkill(relic)"
-                >
-                    <td class="text-left">{{ relic.name ?? '—' }}</td>
+                <tr v-for="relic in paged" :key="relic.id" class="hover:bg-[#3a312a]!">
+                    <td class="text-left">
+                        <span
+                            v-if="relic.skill_id != null"
+                            class="cursor-pointer hover:text-light"
+                            @click="openSkill(relic)"
+                        >
+                            {{ relic.name ?? '—' }}
+                        </span>
+                        <template v-else>{{ relic.name ?? '—' }}</template>
+                    </td>
                     <td v-if="showBrew">{{ relic.brew ?? '—' }}</td>
                     <td v-if="showPower">{{ relic.power ?? '—' }}</td>
                     <td>{{ relic.align ?? '—' }}</td>
                     <td>{{ sortRelicStats(relic.inc).join(' / ') || '—' }}</td>
                     <td>{{ sortRelicStats(relic.dec).join(' / ') || '—' }}</td>
                     <td>
-                        <template v-if="monsterText(relic)">{{ monsterText(relic) }}</template>
+                        <template v-if="relic.monsters?.length">
+                            <template v-for="(monster, index) in relic.monsters" :key="monster.id ?? index">
+                                <span
+                                    v-if="enemyIdOf(monster.id) != null"
+                                    class="cursor-pointer hover:text-light"
+                                    @click="openEnemy(monster.id)"
+                                >
+                                    {{ monster.name ?? `#${monster.id}` }}
+                                </span>
+                                <template v-else>{{ monster.name ?? `#${monster.id}` }}</template>
+                                <span v-if="index < relic.monsters.length - 1" class="opacity-40"> / </span>
+                            </template>
+                        </template>
                         <span v-else class="opacity-40">—</span>
                     </td>
                 </tr>
             </tbody>
         </table>
 
-        <NPagination
-            v-if="pageCount > 1"
-            v-model:page="page"
-            :page-count="pageCount"
-            size="small"
-        />
+        <NPagination v-if="pageCount > 1" v-model:page="page" :page-count="pageCount" size="small" />
 
-        <!-- 点击遗物 → 展开它的遗物之力（技能详情） -->
+        <!-- 点击遗物名称 → 展开它的遗物之力（技能详情） -->
         <SkillModal v-model:show="skillShow" :identification="skillId" />
+        <!-- 点击掉落怪物 → 展开对应敌人详情 -->
+        <EnemyModal v-model:show="enemyShow" :enemy-id="enemyId" />
     </div>
 </template>
 
@@ -140,7 +138,9 @@
 import { NButton, NCheckbox, NInput, NPagination, NSelect } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
 import { useWikiDataStore } from '../../stores/wikiData';
+import EnemyModal from './EnemyModal.vue';
 import SkillModal from './SkillModal.vue';
+import { useDataV2Store } from './dataV2Store';
 import { usePersistentRef } from './dataV2Settings';
 import { RELIC_ALIGNMENTS, RELIC_STAT_ORDER, sortRelicStats, type RelicDoc } from './relicTypes';
 
@@ -172,26 +172,17 @@ const filter = usePersistentRef<RelicFilter>('relic.filter', emptyFilter());
 const showBrew = ref(false);
 const showPower = ref(false);
 
-const alignOptions = [
-    { label: '全部', value: '' },
-    ...RELIC_ALIGNMENTS.map((value) => ({ label: value, value })),
-];
+const alignOptions = [{ label: '全部', value: '' }, ...RELIC_ALIGNMENTS.map((value) => ({ label: value, value }))];
 
-const statOptions = [
-    { label: '全部', value: '' },
-    ...RELIC_STAT_ORDER.map((value) => ({ label: value, value })),
-];
+const statOptions = [{ label: '全部', value: '' }, ...RELIC_STAT_ORDER.map((value) => ({ label: value, value }))];
 
-/** 推荐类别来自数据（手工数据补充后才有值） */
+/** 推荐类别：顺序以 `relics_ccate` 为准，缺省时按遗物上出现过的类别兜底 */
 const categoryOptions = computed(() => {
-    const categories = new Set<string>();
-    for (const relic of relics.value) {
-        for (const category of relic.categories ?? []) categories.add(category);
-    }
-    return [
-        { label: '全部', value: '' },
-        ...[...categories].map((value) => ({ label: value, value })),
-    ];
+    const fromData = wiki.relicCategories;
+    const categories = fromData.length
+        ? fromData
+        : [...new Set(relics.value.flatMap((relic) => relic.categories ?? []))];
+    return [{ label: '全部', value: '' }, ...categories.map((value) => ({ label: value, value }))];
 });
 
 const filtered = computed(() => {
@@ -217,9 +208,7 @@ const columns = computed(() => 5 + (showBrew.value ? 1 : 0) + (showPower.value ?
 const pageSize = 20;
 const page = ref(1);
 const pageCount = computed(() => Math.max(1, Math.ceil(filtered.value.length / pageSize)));
-const paged = computed(() =>
-    filtered.value.slice((page.value - 1) * pageSize, page.value * pageSize),
-);
+const paged = computed(() => filtered.value.slice((page.value - 1) * pageSize, page.value * pageSize));
 
 watch(
     () => filter.value,
@@ -242,9 +231,25 @@ const openSkill = (relic: RelicDoc) => {
     skillShow.value = true;
 };
 
-const monsterText = (relic: RelicDoc) =>
-    (relic.monsters ?? [])
-        .map((monster) => monster.name ?? '')
-        .filter(Boolean)
-        .join(' / ');
+/** 敌人模块按图鉴分类 id 打开，遗物里给的是图鉴编号（`no`），先建索引反查 */
+const store = useDataV2Store();
+const enemyIdByNo = computed(() => {
+    const out = new Map<number, number>();
+    for (const enemy of store.enemies) {
+        if (enemy.no != null) out.set(enemy.no, enemy.id);
+    }
+    return out;
+});
+
+const enemyIdOf = (no?: number) => (no == null ? null : enemyIdByNo.value.get(no) ?? null);
+
+const enemyShow = ref(false);
+const enemyId = ref<number | null>(null);
+
+const openEnemy = (no?: number) => {
+    const id = enemyIdOf(no);
+    if (id == null) return;
+    enemyId.value = id;
+    enemyShow.value = true;
+};
 </script>

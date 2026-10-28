@@ -18,30 +18,60 @@
                 placeholder="sub effect"
                 class="w-56!"
             />
-            <NCheckbox v-model:checked="showAll">显示敌方 / 测试</NCheckbox>
             <div class="flex-1"></div>
             <div class="text-sm opacity-70">{{ filtered.length }} 条</div>
             <NButton size="small" type="error" @click="resetFilter">重置</NButton>
         </div>
 
-        <NDataTable
-            size="small"
-            :columns="columns"
-            :data="filtered"
-            :loading="store.state.skills === 'loading'"
-            :pagination="{ pageSize: 25 }"
-            :row-props="rowProps"
-            :scroll-x="820"
-        />
+        <div class="flex flex-col gap-3">
+            <NPagination v-model:page="page" :page-count="pageCount" />
+
+            <div class="overflow-x-auto">
+                <table class="wikitable w-full table-fixed! text-center m-0!">
+                    <thead class="sticky top-0 z-10">
+                        <tr>
+                            <th class="w-[7em]">ID</th>
+                            <th>技能</th>
+                            <th class="w-[8em]">类型</th>
+                            <th class="w-[10em]">职业</th>
+                            <th class="w-[10em]">来源</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-if="!filtered.length">
+                            <td colspan="5" class="opacity-40!">
+                                没有符合条件的技能
+                            </td>
+                        </tr>
+                        <tr
+                            v-for="row in pageRows"
+                            :key="row.identification"
+                            class="cursor-pointer hover:bg-[#3a312a]! transition-colors select-none"
+                            @click="open(row.identification)"
+                        >
+                            <td class="whitespace-nowrap opacity-60">{{ row.identification }}</td>
+                            <td class="text-left">
+                                <div>{{ row.name ?? '—' }}</div>
+                                <div class="text-xs opacity-40">{{ row.name_jp }}</div>
+                            </td>
+                            <td class="whitespace-nowrap">{{ row.kind_name ?? '—' }}</td>
+                            <td class="break-words">{{ jobText(row) }}</td>
+                            <td class="break-words">{{ sourceText(row) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <NPagination v-model:page="page" :page-count="pageCount" />
+        </div>
 
         <SkillModal v-model:show="modal" :identification="currentId" />
     </div>
 </template>
 
 <script setup lang="ts">
-import { NButton, NCheckbox, NDataTable, NInput, NSelect, NTag } from 'naive-ui';
-import type { DataTableColumns } from 'naive-ui';
-import { computed, h, ref } from 'vue';
+import { NButton, NInput, NPagination, NSelect } from 'naive-ui';
+import { computed, ref, watch } from 'vue';
 import SkillModal from './SkillModal.vue';
 import { useDataV2Store } from './dataV2Store';
 import { usePersistentRef } from './dataV2Settings';
@@ -58,8 +88,6 @@ const job = usePersistentRef<number | null>('skill.job', null);
 const source = usePersistentRef<string | null>('skill.source', null);
 /** 按 sub effect kind ID 精确筛选（空 = 不过滤） */
 const subKind = usePersistentRef<number | null>('skill.subKind', null);
-/** debug 方便：默认连敌方 / 测试技能一起列出 */
-const showAll = usePersistentRef('skill.showAll', true);
 
 /** 下拉里同时给出 id 与名称，输入 id 或名字都能筛（filterable 默认按 label 匹配） */
 const subKindOptions = computed(() =>
@@ -86,7 +114,7 @@ const SOURCE_LABEL: Record<string, string> = {
     equip_set: '套装',
     relic: '遗物',
     fate: '才能',
-    bond: '羁绊',
+    bond: '缘',
 };
 
 const kindOptions = computed(() => {
@@ -110,7 +138,6 @@ const filtered = computed(() => {
     // a pure number is always an exact id lookup, never a fuzzy name match
     const asId = /^\d+$/.test(kw);
     return store.skills.filter((s) => {
-        if (!showAll.value && !s.player) return false;
         if (kind.value != null && s.kind !== kind.value) return false;
         if (job.value != null && !s.jobs.includes(job.value)) return false;
         if (source.value && !s.sources.includes(source.value)) return false;
@@ -123,48 +150,24 @@ const filtered = computed(() => {
     });
 });
 
-const rowProps = (row: SkillListItem) => ({
-    style: 'cursor: pointer;',
-    onClick: () => open(row.identification),
+const PAGE_SIZE = 20;
+const page = ref(1);
+
+const pageRows = computed(() =>
+    filtered.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE),
+);
+
+const pageCount = computed(() => Math.max(1, Math.ceil(filtered.value.length / PAGE_SIZE)));
+
+watch(filtered, () => {
+    page.value = 1;
 });
 
-const columns = computed<DataTableColumns<SkillListItem>>(() => [
-    {
-        title: '技能',
-        key: 'name',
-        minWidth: 220,
-        render: (row) =>
-            h('div', { class: 'flex flex-col' }, [
-                h('span', { class: 'flex items-center gap-1' }, [
-                    row.name,
-                    row.flags.test ? h(NTag, { size: 'tiny', type: 'warning', bordered: false }, { default: () => '测试' }) : null,
-                    !row.player ? h(NTag, { size: 'tiny', bordered: false }, { default: () => '敌方' }) : null,
-                ]),
-                h('span', { class: 'text-xs opacity-40' }, row.name_jp ?? ''),
-            ]),
-    },
-    { title: '类型', key: 'kind_name', width: 96 },
-    { title: '上限', key: 'max_level', width: 60 },
-    {
-        title: '职业',
-        key: 'jobs',
-        width: 130,
-        render: (row) =>
-            row.jobs.length
-                ? row.jobs.map((id) => store.jobById.get(id)?.name ?? id).join(' / ')
-                : '—',
-    },
-    {
-        title: '来源',
-        key: 'sources',
-        width: 170,
-        render: (row) =>
-            row.sources.length
-                ? row.sources.map((s) => SOURCE_LABEL[s] ?? s).join(' / ')
-                : '—',
-    },
-    { title: 'ID', key: 'identification', width: 120 },
-]);
+const jobText = (row: SkillListItem) =>
+    row.jobs.length ? row.jobs.map((id) => store.jobById.get(id)?.name ?? id).join(' / ') : '—';
+
+const sourceText = (row: SkillListItem) =>
+    row.sources.length ? row.sources.map((s) => SOURCE_LABEL[s] ?? s).join(' / ') : '—';
 
 const resetFilter = () => {
     keyword.value = '';
@@ -172,6 +175,5 @@ const resetFilter = () => {
     job.value = null;
     source.value = null;
     subKind.value = null;
-    showAll.value = false;
 };
 </script>

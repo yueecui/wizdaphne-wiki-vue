@@ -21,10 +21,12 @@ Layout (``--out`` defaults to ``<repo>/data``)::
     skills.json                   3,031 rows (totals; skill fields + description + levels)
     equipments.json               841 rows (totals; weapon / armor fields + stats)
     effect_kinds.json             414 sub-effect kinds -> id + usage count + param slots
+    enemies.json                  321 rows  (one per EnemyCategory; variants + formula inputs)
     character/<id>.json           one character
     job/<id>.json                 one job
     skill/<identification>.json   one skill
     equipment/<identification>.json  one equipment
+    enemy/<category_id>.json      one enemy category
 
 Totals live in the root for grepping; the per-record files under
 ``character/ job/ skill/`` make a single entry easy to read in an editor.
@@ -193,6 +195,10 @@ def main(argv: list[str]) -> int:
         relics = read_clean("relic", "relics.json")
     except FileNotFoundError:      # relic.py 没跑过时不影响其它模块
         relics = []
+    try:
+        enemies = read_clean("enemy", "enemies.json")
+    except FileNotFoundError:      # enemy.py 没跑过时不影响其它模块
+        enemies = []
 
     roster, excluded = [], []
     for row in characters:
@@ -209,6 +215,10 @@ def main(argv: list[str]) -> int:
         "use_timing": {str(k): v for k, v in USE_TIMING.items()},
         "rarity": {}, "race": {}, "attribute": {}, "gender": {}, "personality": {},
         "grade": {}, "job": {}, "target": {}, "equipment_type": {},
+        # 敌人种族（EnemySpecies，与角色的 race 是两套表）
+        "enemy_species": {},
+        # 敌人特性（EnemyCharacteristic：不死 / 幻灵 / 史莱姆 …）
+        "enemy_characteristic": {},
     }
 
     # whole-table dictionaries first: character rows only cover what they use
@@ -219,6 +229,8 @@ def main(argv: list[str]) -> int:
         ("personality", "Personality"),
         ("attribute", "Attribute"),
         ("job", "Job"),
+        ("enemy_species", "EnemySpecies"),
+        ("enemy_characteristic", "EnemyCharacteristic"),
     ):
         enums[key] = enum_table(table)
 
@@ -415,6 +427,8 @@ def main(argv: list[str]) -> int:
                     "child_sub_effects": s.get("child_sub_effects"),
                     "extension_effects": s.get("extension_effects"),
                     "param_refs": s.get("param_refs"),
+                    # kind 2790：按「敌人 buff 数量档」替换到的效果组（StepReplace）
+                    "step_replace": s.get("step_replace"),
                     "calc_reference_parameter": s.get("calc_reference_parameter"),
                     "calc_reference_parameter_2": s.get("calc_reference_parameter_2"),
                     "calc_reference_parameter_rate": s.get("calc_reference_parameter_rate"),
@@ -433,6 +447,8 @@ def main(argv: list[str]) -> int:
                 "skill_condition_ids": lv.get("skill_condition_ids"),
                 "description": lv.get("description"),
                 "description_lang": lv.get("description_lang"),
+                "name": lv.get("name"),
+                "name_lang": lv.get("name_lang"),
                 "damage": damage,
                 "sub_effects": subs,
             })
@@ -454,6 +470,8 @@ def main(argv: list[str]) -> int:
             "level0": bool(flags.get("level0")),
             "sources": skill.get("sources"),
             "jobs": skill.get("jobs"),
+            # 召唤出来的单位：敌人分类 + 等级 + 数量（来自 EnemyFriendLayout）
+            "summons": skill.get("summons"),
             # --- detail part ---
             "description": skill.get("description"),
             "detail_description": skill.get("detail_description"),
@@ -614,6 +632,20 @@ def main(argv: list[str]) -> int:
     relic_rows = [compact(row) for row in relics]
     write_json(os.path.join(out, "relics.json"), relic_rows, indent=1)
 
+    # ---------- enemies（敌人）：一条 = 一个 EnemyCategory ----------
+    # 图鉴 252 条 + 只在解包数据里存在的分类；数值是公式输入（base/growth/correction），
+    # 前端按「(base + growth * lv / 100) * correction / 100」自己算等级快照。
+    enemy_rows = [compact(row) for row in enemies]
+    write_json(os.path.join(out, "enemies.json"), enemy_rows, indent=1)
+    enemy_dir = os.path.join(out, "enemy")
+    keep = {f"{row['id']}.json" for row in enemy_rows}
+    if os.path.isdir(enemy_dir):
+        for name in os.listdir(enemy_dir):
+            if name.endswith(".json") and name not in keep:
+                os.remove(os.path.join(enemy_dir, name))
+    for row in enemy_rows:
+        write_json(os.path.join(enemy_dir, f"{row['id']}.json"), row, indent=1)
+
     write_json(os.path.join(out, "meta.json"), {
         "schema_version": SCHEMA_VERSION,
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -629,6 +661,9 @@ def main(argv: list[str]) -> int:
             "shops": len(shop_rows),
             "effect_kinds": len(kinds),
             "targets": len(enums["target"]),
+            "enemies": len(enemy_rows),
+            "enemy_bestiary": sum(1 for e in enemy_rows if e.get("no")),
+            "enemy_variants": sum(len(e.get("variants") or []) for e in enemy_rows),
         },
         "notes": [
             "reference objects are reduced to ids; names live in enums.json",
@@ -640,7 +675,8 @@ def main(argv: list[str]) -> int:
 
     print(f"{len(char_rows)} characters (+{len(excluded)} excluded), {len(job_list)} jobs, "
           f"{len(skill_rows)} skills, {len(equipment_rows)} equipments, "
-          f"{len(item_rows)} items, {len(shop_rows)} shops, {len(kinds)} effect kinds -> {out}")
+          f"{len(item_rows)} items, {len(shop_rows)} shops, {len(kinds)} effect kinds, "
+          f"{len(enemy_rows)} enemies -> {out}")
     return 0
 
 

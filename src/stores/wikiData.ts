@@ -18,9 +18,14 @@ import { defineStore } from 'pinia';
 import { computed, reactive, ref } from 'vue';
 import {
     CHAR_FIELDS,
+    ENEMY_FIELDS,
+    ENEMY_POOL_FIELDS,
     EQUIP_FIELDS,
+    EQUIPMENT_EXTRA_FIELDS,
     ITEM_FIELDS,
     JOB_FIELDS,
+    MAP_FIELDS,
+    RELIC_EXTRA_FIELDS,
     RELIC_FIELDS,
     SHOP_FIELDS,
     SKILL_FIELDS,
@@ -30,12 +35,16 @@ import {
     asArray,
     fetchDataVersion,
     fetchEnums,
+    fetchExtra,
     fetchModule,
+    type EffectKind,
     type EffectKindMap,
+    type ExtraPayload,
 } from '../api/wikiData';
+import { IS_DEV } from '../util';
 import type { ItemDoc } from '../views/DataV2/itemTypes';
 import type { SerializedJunkItem } from '../views/DataV2/junk/types';
-import type { RelicDoc } from '../views/DataV2/relicTypes';
+import type { RelicDoc, RelicExtra } from '../views/DataV2/relicTypes';
 import type { ShopDoc } from '../views/DataV2/shopTypes';
 
 export interface EnumEntry {
@@ -81,6 +90,10 @@ export interface EnumsPayload {
     target: Record<string, EnumEntry>;
     /** ``Skill.equipment_limited``: 单手剑 / 双手斧 / … */
     equipment_type: Record<string, EnumEntry>;
+    /** ``EnemySpecies``：敌人种族（与角色的 ``race`` 是两套表） */
+    enemy_species: Record<string, EnumEntry>;
+    /** ``EnemyCharacteristic``：不死 / 幻灵 / 史莱姆 … */
+    enemy_characteristic: Record<string, EnumEntry>;
     effect_kind: Record<string, EffectKindEntry>;
 }
 
@@ -391,6 +404,16 @@ export interface RawSubEffectBrief extends RawSubEffectBriefLeaf {
     children?: RawSubEffectBriefLeaf[];
 }
 
+/**
+ * kind 2790「敵のバフ数によってStepReplace」的档位：
+ * ``step`` 是敌人能力提升效果数量的档，指向实际执行的技能效果组
+ */
+export interface RawStepReplace {
+    step: number;
+    effect_group: number;
+    effects?: RawSubEffectBriefLeaf[];
+}
+
 export interface RawSkillSubEffect {
     kind: number;
     params: number[];
@@ -419,6 +442,8 @@ export interface RawSkillSubEffect {
     extension_effects?: RawSubEffectBrief[];
     /** 参数里指向的效果（参数序号 -> 被引用效果的摘要） */
     param_refs?: Record<string, RawSubEffectBrief>;
+    /** kind 2790：按敌人 buff 数量档替换的效果组 */
+    step_replace?: RawStepReplace[];
     /** 效果量（恢复量等）：参照能力值、百分比与阈值窗口 */
     calc_reference_parameter?: number;
     calc_reference_parameter_2?: number;
@@ -443,6 +468,9 @@ export interface RawSkillLevel {
     skill_condition_ids?: number[];
     description?: string;
     description_lang?: string;
+    /** 该等级自己的名字（多级技能名字不同时才有） */
+    name?: string;
+    name_lang?: string;
     damage: RawSkillDamage[];
     sub_effects: RawSkillSubEffect[];
 }
@@ -460,6 +488,8 @@ export interface RawSkill {
     level0: boolean;
     sources: string[];
     jobs: number[];
+    /** 被召唤出来的单位（``EnemyFriendLayout``）：敌人分类 + 等级 + 数量 */
+    summons?: Array<{ category: number; level: number; count: number }>;
     description?: string;
     detail_description?: string;
     description_lang?: string;
@@ -468,6 +498,243 @@ export interface RawSkill {
     tags: number[];
     learn: Array<{ job: number; get_lv: number }>;
     levels: RawSkillLevel[];
+}
+
+/** 敌人数值块：`(base + growth * level / 100) * correction / 100`，HP 另按 min/max 浮动 */
+export interface RawEnemyStat {
+    base: number;
+    growth: number;
+    /** 修正率，100 = 原值（缺省 100） */
+    correction: number;
+    /** HP 浮动下限（百分数，缺省 100） */
+    min: number;
+    /** HP 浮动上限（百分数，缺省 100） */
+    max: number;
+}
+
+/** 冻结 / 破冰 */
+export interface RawEnemyFreeze {
+    half: number;
+    full: number;
+    break: number;
+    recovery: number;
+    wait_min: number;
+    wait_max: number;
+    intelligence: number;
+}
+
+/** 体型统计：同一分类下可能出现多种 body_size */
+export interface RawEnemyBodySize {
+    size: number[];
+    count: number;
+}
+
+/** AI 技能池里的一行：技能 + 随机权重 + 选目标的条件文案（默认目标为空） */
+export interface RawEnemyAiSkill {
+    /** 技能 identification */
+    skill: number;
+    /** 随机抽选权重 */
+    weight: number;
+    /** 选目标的条件文案，空 = 默认目标 */
+    target?: string;
+}
+
+/** 一条触发条件：整段文案，或「前缀 + 敌人分类 id / 子效果种类 id + 后缀」 */
+export interface RawEnemyAiCondition {
+    /** 整段文案（没有链接时使用，未知类型是 ``type N``） */
+    text?: string;
+    /** 链接前缀，例如「单位」/「敌人分类」/「我方」 */
+    label?: string;
+    /** ``EnemyCategory.id`` */
+    ref?: number;
+    /** ``SkillSubEffectKind.id``（前端用效果种类名表换成状态名） */
+    status?: number;
+    /** 链接后缀，例如「存在」/「2 人以上」 */
+    suffix?: string;
+}
+
+/** AI 行动规则的一行 = 一条「条件成立 → 用这个技能池」（``EnemyAi`` + ``EnemySkillGroup``） */
+export interface RawEnemyAiRule {
+    /** 判定顺序，小的先检查 */
+    priority: number;
+    /** 触发条件（多条之间是「且」） */
+    conditions: RawEnemyAiCondition[];
+    skills: RawEnemyAiSkill[];
+}
+
+/** 插入（割り込み）技能：``EnemyInterruptAction`` 按技能合并后的一种触发方式 */
+export interface RawEnemyInterrupt {
+    /** 技能 identification */
+    skill: number;
+    /** 整场战斗只能用一次 */
+    once: boolean;
+    /** HP 阈值（%），0 = 不是 HP 触发 */
+    hp: number;
+    /** 触发条件的展示文案（与 AI 行动规则同一套结构） */
+    conditions?: RawEnemyAiCondition[];
+}
+
+/** 一个出现变体（一个 ``Enemy`` 行） */
+export interface RawEnemyVariant {
+    id: number;
+    /** 强度档位：0 普通 / 1 强化1 / 2 强化2 / 3 首领 / 4 强敌（待核对） */
+    kind: number;
+    param: number;
+    exp: number;
+    ai: number;
+    /** [最低等级, 最高等级] */
+    level: number[];
+    attribute: number[];
+    attack_attribute: number[];
+    weak: number[];
+    characteristics: number[];
+    gimmicks: number[];
+    fly: boolean;
+    body_size: number[];
+    /** 技能 identification（行动 + 插入 + 被动 + 挣扎 的并集） */
+    skills: number[];
+    /** 引用到的技能等级：``identification -> level``（多级技能里实际使用的等级） */
+    skill_levels?: Record<number, number>;
+    /** 行动技能（``EnemyAi`` 给该 ``ai_id`` 挂的技能组，不含插入） */
+    action_skills?: number[];
+    /** 插入（割り込み）技能，带「一次」标记与 HP 触发条件 */
+    interrupts?: RawEnemyInterrupt[];
+    /** 被动（``Enemy.standard_skill_ids``） */
+    passive_skills?: number[];
+    /** 挣扎（``Enemy.skill_struggle``），0 / 缺省 = 无 */
+    struggle_skill?: number;
+    /** AI 行动规则：priority 升序，条件成立就用该技能池 */
+    ai_plan?: RawEnemyAiRule[];
+    stats: Record<string, RawEnemyStat>;
+    resist: Record<string, number>;
+    freeze: RawEnemyFreeze;
+}
+
+/** 一条 = 一个 ``EnemyCategory``（图鉴条目 + 只在解包数据里存在的分类） */
+export interface RawEnemy {
+    id: number;
+    /** 图鉴编号；0 = 没有图鉴记录 */
+    no: number;
+    book: number | null;
+    name: string;
+    name_jp: string;
+    name_en: string;
+    /** wiki 缩略图（去掉 ``_s.png`` 后缀），例如 ``tmb_enemy_090_005_00`` */
+    thumbnail: string;
+    boss: boolean;
+    /** ``EnemySpecies.id`` */
+    race: number;
+    lineage: number;
+    /** 体型档位：1 小 / 2 中 / 3 大 / 4 特大 */
+    size: number;
+    attack_type: number;
+    damage_type: number;
+    attribute: number[];
+    attack_attribute: number[];
+    weak: number[];
+    characteristics: number[];
+    gimmicks: number[];
+    kinds: number[];
+    level: { min: number; max: number };
+    fly: boolean;
+    body_size: RawEnemyBodySize[];
+    resist: Record<string, number>;
+    freeze: RawEnemyFreeze;
+    skills: number[];
+    variants: RawEnemyVariant[];
+}
+
+/** 层里出现过的敌人：只有 id 与等级范围，名称 / 属性查敌人模块 */
+export interface RawMapEnemyRef {
+    enemy_id: number;
+    lv_min: number;
+    lv_max: number;
+    rows: number;
+}
+
+export interface RawMapMember {
+    enemy_id: number;
+    lv_min: number;
+    lv_max: number;
+    pos_x: number;
+    pos_y: number;
+    notorious: boolean;
+    wanted: boolean;
+    hate: boolean;
+}
+
+/** 一行 = 一个具体的敌群组合（``EnemyFormation`` 的一行） */
+export interface RawMapFormation {
+    formation_id: number;
+    row_id: number;
+    layout_id: number;
+    weight: number;
+    lv_min: number;
+    lv_max: number;
+    escape: number;
+    surprise: number;
+    preemption: number;
+    exp_rate: number;
+    drop_id: number;
+    special_drop_id: number;
+    drop_probability: number;
+    trap_id: number;
+    rare_trap_id: number;
+    condition_id: number;
+    respawn_kind: number;
+    symbol_id: number;
+    symbol_kind: number;
+    grade_id: number;
+    friend_prob: number;
+    covert: number;
+    win_condition: number;
+    members: RawMapMember[];
+}
+
+/** ``Api/GetV2Map.items``：一条 = 一层（DungeonFloor） */
+export interface RawMapFloor {
+    id: number;
+    name: string;
+    map_id: number;
+    map_name: string;
+    area_id: number;
+    scene_name: string;
+    ceiling: boolean;
+    floor_attribute: number;
+    enemy_placement: number[];
+    bgm: string;
+    normal_enemies: RawMapEnemyRef[];
+    notorious_enemies: RawMapEnemyRef[];
+    formations: RawMapFormation[];
+}
+
+/** ``Api/GetV2Map.maps``：地图分类标签（DungeonSelect） */
+export interface MapCategory {
+    id: number;
+    name: string;
+    kind: number;
+    group_id: number;
+    town_name: string;
+    floor_ids: number[];
+}
+
+/** 敌群能确定关联上的层 */
+export interface RawPoolFloor {
+    id: number;
+    name: string;
+    map_name: string;
+}
+
+/** ``Api/GetV2EnemyPool.items``：一条 = 一个敌群 */
+export interface RawEnemyPool {
+    id: number;
+    row_count: number;
+    lv_ranges: number[][];
+    normal_enemies: RawMapEnemyRef[];
+    notorious_enemies: RawMapEnemyRef[];
+    /** 能确定关联上的层；挂不到层的敌群为空，不做推断 */
+    floors: RawPoolFloor[];
+    formations: RawMapFormation[];
 }
 
 interface MetaRow {
@@ -481,7 +748,7 @@ const DB_NAME = 'wizdaphne-wiki-v2';
  * 新增表（v3 的 items / relics / shops）不用改这个值：Dexie 升级会建空表，
  * ``load()`` 发现表是空的会自动重新下载，还能保住耗时的杂物整理缓存。
  */
-export const DB_SCHEMA_VERSION = 12;
+export const DB_SCHEMA_VERSION = 13;
 
 /**
  * 杂物整理结果（官网抓包 → JunkItem 全量几率组合）。
@@ -506,6 +773,11 @@ class WikiDataDb extends Dexie {
     items!: Table<ItemDoc, number>;
     relics!: Table<RelicDoc, number>;
     shops!: Table<ShopDoc, number>;
+    enemies!: Table<RawEnemy, number>;
+    /** 地图：一条 = 一层 */
+    mapFloors!: Table<RawMapFloor, number>;
+    /** 敌群：一条 = 一个敌群（含能确定关联的层） */
+    enemyPools!: Table<RawEnemyPool, number>;
     meta!: Table<MetaRow, string>;
     junk!: Table<JunkCacheRow, string>;
 
@@ -522,6 +794,10 @@ class WikiDataDb extends Dexie {
         this.version(2).stores({ junk: 'key' });
         // v3：道具 / 遗物 / 商店也缓存（此前这几个页面每次进都重新拉接口）
         this.version(3).stores({ items: 'id', relics: 'id', shops: 'id' });
+        // v4：敌人（一个 EnemyCategory 一条）
+        this.version(4).stores({ enemies: 'id' });
+        // v5：地图（一条 = 一层）+ 敌群（一条 = 一个敌群）
+        this.version(5).stores({ mapFloors: 'id', enemyPools: 'id' });
     }
 }
 
@@ -545,6 +821,8 @@ const emptyEnums = (): EnumsPayload => ({
     job: {},
     target: {},
     equipment_type: {},
+    enemy_species: {},
+    enemy_characteristic: {},
     effect_kind: {},
 });
 
@@ -555,7 +833,7 @@ const emptyEnums = (): EnumsPayload => ({
  * 恰好也从 1 开始连续的 rarity / grade / job 等）——这里统一还原成
  * ``{"1": ...}`` 形态（数组下标 0 对应 key 1），组件就不用区分线上 / DEV。
  */
-const toKeyedRecord = <T,>(value: unknown): Record<string, T> => {
+const toKeyedRecord = <T>(value: unknown): Record<string, T> => {
     if (Array.isArray(value)) {
         const out: Record<string, T> = {};
         value.forEach((item, index) => {
@@ -568,8 +846,7 @@ const toKeyedRecord = <T,>(value: unknown): Record<string, T> => {
 
 /** 把载荷里的字典统一成对象（数组形态按 Lua 的 1 起下标还原） */
 const normalizeEnums = (raw: unknown): EnumsPayload => {
-    const source =
-        raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+    const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
     const base = emptyEnums() as unknown as Record<string, unknown>;
     const out: Record<string, unknown> = {};
     for (const key of Object.keys(base)) {
@@ -602,6 +879,46 @@ export interface RawCharacterRate {
     rbase?: number;
 }
 
+/**
+ * 遗物掉落怪物 / 推荐类别：``Api/GetV2Item`` 顶层的 ``relics_extra`` 以**遗物的物品图鉴编号**
+ * 为键（道具数据 ``collection.no``，即 ``CollectionItem.list_number``），遗物行自己没有这个值，
+ * 所以先按 ``relic.id`` 查道具表拿到图鉴编号再对。怪物还要把 ``monster_id``（敌人图鉴编号）
+ * 换成名字（``EnemyCategory.no`` -> ``name``）。
+ * 遗物行里已经带值的（手工数据填好的 ``monsters`` / ``categories``）优先保留。
+ */
+function mergeRelicExtras(relics: RelicDoc[], extras: RelicExtra[], enemies: RawEnemy[], items: ItemDoc[]): RelicDoc[] {
+    if (relics.length === 0 || extras.length === 0) return relics;
+
+    const extraById = new Map<number, RelicExtra>();
+    for (const extra of extras) {
+        if (extra.id != null) extraById.set(extra.id, extra);
+    }
+    if (extraById.size === 0) return relics;
+
+    // 遗物道具 id -> 图鉴编号
+    const bookNoByItem = new Map<number, number>();
+    for (const item of items) {
+        const bookNo = item.collection?.no;
+        if (item.id != null && bookNo) bookNoByItem.set(item.id, bookNo);
+    }
+
+    const nameByNo = new Map<number, string>();
+    for (const enemy of enemies) {
+        if (enemy.no && enemy.name) nameByNo.set(enemy.no, enemy.name);
+    }
+
+    return relics.map((relic) => {
+        const bookNo = relic.id == null ? undefined : bookNoByItem.get(relic.id);
+        const extra = bookNo == null ? undefined : extraById.get(bookNo);
+        if (!extra) return relic;
+        const monsters = relic.monsters?.length
+            ? relic.monsters
+            : (extra.monster_id ?? []).map((id) => ({ id, name: nameByNo.get(id) ?? '' }));
+        const categories = relic.categories?.length ? relic.categories : (extra.categories ?? []);
+        return { ...relic, monsters, categories };
+    });
+}
+
 /** ``extra`` 数组 -> ``{id: 补充数据}``；结构不对时当没有补充数据 */
 function extraMap(raw: unknown): Record<number, RawCharacterExtra> {
     const out: Record<number, RawCharacterExtra> = {};
@@ -622,6 +939,100 @@ function rateMap(raw: unknown): Record<number, RawCharacterRate> {
     return out;
 }
 
+/** ``Api/GetV2Extra.equipmentExtra`` 解出的一条 */
+export interface EquipmentExtraRow {
+    id?: number;
+    /** 特典分类：9 = 特典，0 = 普通 */
+    soucate?: number;
+    /** 获取途径（wiki 手工补充，支持 ``[[页面|文字]]`` 链接） */
+    sou?: string[];
+}
+
+/** 人工表（``Api/GetV2Extra``）解出来的六块 */
+interface ExtraSections {
+    characterExtras: Record<number, RawCharacterExtra>;
+    equipmentBaseStat: Record<string, EquipmentBaseStatEntry>;
+    equipmentExtras: EquipmentExtraRow[];
+    relicExtras: RelicExtra[];
+    relicCategories: string[];
+    effectKinds: EffectKindMap | null;
+}
+
+const emptyExtraSections = (): ExtraSections => ({
+    characterExtras: {},
+    equipmentBaseStat: {},
+    equipmentExtras: [],
+    relicExtras: [],
+    relicCategories: [],
+    effectKinds: null,
+});
+
+/**
+ * 装备特典分类 / 获取途径合并进装备行：人工表里有这条就整条覆盖，
+ * 没有的沿用解包数据自带的值（旧数据页还把这两列并进了每件装备）。
+ */
+function mergeEquipmentExtras(equipments: RawEquipment[], extras: EquipmentExtraRow[]): RawEquipment[] {
+    if (equipments.length === 0 || extras.length === 0) return equipments;
+
+    const byId = new Map<number, EquipmentExtraRow>();
+    for (const extra of extras) {
+        if (extra.id != null) byId.set(extra.id, extra);
+    }
+    if (byId.size === 0) return equipments;
+
+    return equipments.map((equipment) => {
+        const extra = byId.get(equipment.id);
+        if (!extra) return equipment;
+        return { ...equipment, soucate: extra.soucate ?? 0, sou: extra.sou ?? [] };
+    });
+}
+
+/**
+ * ``Api/GetV2Extra`` -> 六块。``fallback`` 是旧接口的同名字段
+ * （``GetV2Character.extra`` / ``GetV2Equipment.baseStat`` / ``GetV2Item.relics_extra`` …），
+ * 接口还在灰度、Extra 模块缺失时照旧能用。
+ */
+function decodeExtraSections(
+    extra: ExtraPayload | null,
+    fallback: {
+        characterExtra?: unknown;
+        baseStat?: unknown;
+        relicsExtra?: unknown;
+        relicsCategories?: unknown;
+        kinds?: EffectKindMap | null;
+    } = {},
+): ExtraSections {
+    const relicExtras = asArray(extra?.relicExtra ?? fallback.relicsExtra)
+        .map((row) => decodeDoc<RelicExtra>(row as never, RELIC_EXTRA_FIELDS))
+        .filter((row) => row.id != null);
+    const equipmentExtras = asArray(extra?.equipmentExtra)
+        .map((row) => decodeDoc<EquipmentExtraRow>(row as never, EQUIPMENT_EXTRA_FIELDS))
+        .filter((row) => row.id != null);
+
+    return {
+        characterExtras: extraMap(extra?.characterExtra ?? fallback.characterExtra),
+        equipmentBaseStat:
+            ((extra?.equipmentBaseStat ?? fallback.baseStat) as Record<string, EquipmentBaseStatEntry>) ?? {},
+        equipmentExtras,
+        relicExtras,
+        relicCategories: asArray<string>(extra?.relicCategory ?? fallback.relicsCategories).filter(
+            (name) => typeof name === 'string' && name !== '',
+        ),
+        effectKinds: extra?.effectKinds ?? fallback.kinds ?? null,
+    };
+}
+
+/** 人工表六块 + 版本号写进 meta 的行（键名沿用旧结构，老缓存也能读） */
+const extraMetaRows = (sections: ExtraSections, version: number): MetaRow[] => [
+    { key: 'extraVersion', value: version },
+    { key: 'characterExtras', value: sections.characterExtras },
+    { key: 'equipmentBaseStat', value: sections.equipmentBaseStat },
+    { key: 'equipmentExtras', value: sections.equipmentExtras },
+    { key: 'relicExtras', value: sections.relicExtras },
+    { key: 'relicCategories', value: sections.relicCategories },
+    { key: 'effectKindNames', value: sections.effectKinds ?? {} },
+];
+
 export const useWikiDataStore = defineStore('wiki-data', () => {
     const characters = ref<RawCharacter[]>([]);
     const jobs = ref<RawJob[]>([]);
@@ -629,17 +1040,33 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
     const equipments = ref<RawEquipment[]>([]);
     /** ``Api/GetV2Item`` 的道具（图鉴 / 商店商品都按 id 查这张表） */
     const items = ref<ItemDoc[]>([]);
-    /** ``Api/GetV2Item`` 顶层的 ``relics`` */
+    /** ``Api/GetV2Item`` 顶层的 ``relics``（已并入 ``relics_extra`` 的掉落怪物 / 推荐类别） */
     const relics = ref<RelicDoc[]>([]);
+    /** ``Api/GetV2Item`` 顶层的 ``relics_ccate``：推荐类别可选项（含顺序） */
+    const relicCategories = ref<string[]>([]);
     /** ``Api/GetV2Shop`` */
     const shops = ref<ShopDoc[]>([]);
+    /** ``Api/GetV2Enemy``：一条 = 一个敌人分类（含出现变体） */
+    const enemies = ref<RawEnemy[]>([]);
+    /** ``Api/GetV2Map``：一条 = 一层 */
+    const mapFloors = ref<RawMapFloor[]>([]);
+    /** ``Api/GetV2Map`` 顶层 ``maps``：地图分类标签 */
+    const mapCategories = ref<MapCategory[]>([]);
+    /** ``Api/GetV2EnemyPool``：一条 = 一个敌群 */
+    const enemyPools = ref<RawEnemyPool[]>([]);
     const enums = ref<EnumsPayload>(emptyEnums());
-    /** ``Api/GetV2Character`` 顶层的 extra，按角色 id 索引 */
+    /** ``Api/GetV2Extra.characterExtra``，按角色 id 索引（卡池组 / 上线日期 / 声优） */
     const characterExtras = ref<Record<number, RawCharacterExtra>>({});
-    /** ``Api/GetV2Character`` 顶层的 rates，按角色 id 索引 */
+    /** ``Api/GetV2Character`` 顶层的 rates，按角色 id 索引（抓包数据，跟着解包版本走） */
     const characterRates = ref<Record<number, RawCharacterRate>>({});
-    /** ``Api/GetV2Equipment`` 顶层的 baseStat，按键是类型名（含 ``R{阶级}`` 变体） */
+    /** ``Api/GetV2Extra.equipmentBaseStat``，按键是类型名（含 ``R{阶级}`` 变体） */
     const equipmentBaseStat = ref<Record<string, EquipmentBaseStatEntry>>({});
+
+    /** 原始（未合并人工表）的装备 / 遗物：人工表单独刷新时按它们重算 */
+    let rawEquipments: RawEquipment[] = [];
+    let rawRelics: RelicDoc[] = [];
+    /** 当前生效的人工表分块：只刷新 Extra 时，接口缺的块沿用这里 */
+    let extraSections: ExtraSections = emptyExtraSections();
 
     const version = ref<number | null>(null);
     const status = ref<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -655,50 +1082,88 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         items: 0,
         relics: 0,
         shops: 0,
+        enemies: 0,
+        mapFloors: 0,
+        enemyPools: 0,
     });
 
     let pending: Promise<void> | null = null;
 
     const getDb = getWikiDb;
 
-    function apply(database: WikiDataDb, payload: {
-        characters: RawCharacter[];
-        jobs: RawJob[];
-        skills: RawSkill[];
-        equipments: RawEquipment[];
-        enums: EnumsPayload;
-        version: number | null;
-        items?: ItemDoc[];
-        relics?: RelicDoc[];
-        shops?: ShopDoc[];
-        extras?: Record<number, RawCharacterExtra>;
-        rates?: Record<number, RawCharacterRate>;
-        /** 装备类型基准值（顶层 baseStat） */
-        baseStat?: Record<string, EquipmentBaseStatEntry> | null;
-    }) {
+    function apply(
+        database: WikiDataDb,
+        payload: {
+            characters: RawCharacter[];
+            jobs: RawJob[];
+            skills: RawSkill[];
+            equipments: RawEquipment[];
+            enums: EnumsPayload;
+            version: number | null;
+            items?: ItemDoc[];
+            relics?: RelicDoc[];
+            shops?: ShopDoc[];
+            enemies?: RawEnemy[];
+            mapFloors?: RawMapFloor[];
+            mapCategories?: MapCategory[];
+            enemyPools?: RawEnemyPool[];
+            rates?: Record<number, RawCharacterRate>;
+            /** 人工表（``Api/GetV2Extra``）解出来的六块 */
+            extraSections?: ExtraSections;
+        },
+    ) {
         characters.value = payload.characters;
         jobs.value = payload.jobs;
         skills.value = payload.skills;
-        equipments.value = payload.equipments;
         items.value = payload.items ?? [];
-        relics.value = payload.relics ?? [];
         shops.value = payload.shops ?? [];
+        enemies.value = payload.enemies ?? [];
+        mapFloors.value = payload.mapFloors ?? [];
+        mapCategories.value = payload.mapCategories ?? [];
+        enemyPools.value = payload.enemyPools ?? [];
         enums.value = normalizeEnums(payload.enums);
         version.value = payload.version;
-        characterExtras.value = payload.extras ?? {};
         characterRates.value = payload.rates ?? {};
-        equipmentBaseStat.value = payload.baseStat ?? {};
+
+        rawEquipments = payload.equipments;
+        rawRelics = payload.relics ?? [];
+        // 装备特典 / 遗物类别要跟人工表合并，放在最后统一算
+        applyExtraSections(payload.extraSections ?? emptyExtraSections());
 
         counts.characters = payload.characters.length;
         counts.jobs = payload.jobs.length;
         counts.skills = payload.skills.length;
         counts.playerSkills = payload.skills.filter((s) => s.player).length;
-        counts.equipments = payload.equipments.length;
         counts.items = items.value.length;
-        counts.relics = relics.value.length;
         counts.shops = shops.value.length;
+        counts.enemies = enemies.value.length;
+        counts.mapFloors = mapFloors.value.length;
+        counts.enemyPools = enemyPools.value.length;
 
         void database;
+    }
+
+    /** 人工表分块落地：只动 extra 相关的东西，然后重算派生数据 */
+    function applyExtraSections(sections: ExtraSections) {
+        extraSections = sections;
+        characterExtras.value = sections.characterExtras;
+        equipmentBaseStat.value = sections.equipmentBaseStat;
+        // 效果种类名 / 参数名盖在字典的 effect_kind 之上
+        if (sections.effectKinds) mergeEffectKinds(toKeyedRecord<EffectKind>(sections.effectKinds));
+        recomputeDerived();
+    }
+
+    /** 装备 / 遗物与人工表的合并，只依赖内存里的原始数据（刷新 Extra 时复用） */
+    function recomputeDerived() {
+        equipments.value = mergeEquipmentExtras(rawEquipments, extraSections.equipmentExtras);
+        // 掉落怪物按图鉴编号对道具表 / 敌人表
+        relics.value = mergeRelicExtras(rawRelics, extraSections.relicExtras, enemies.value, items.value);
+        // 类别顺序以 ``relicCategory`` 为准；缺省时按遗物上出现过的类别兜底
+        relicCategories.value = extraSections.relicCategories.length
+            ? extraSections.relicCategories
+            : [...new Set(relics.value.flatMap((relic) => relic.categories ?? []))];
+        counts.equipments = equipments.value.length;
+        counts.relics = relics.value.length;
     }
 
     /** effect kind：名称 + 各位置参数名 */
@@ -721,29 +1186,36 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         enums.value = { ...enums.value, effect_kind: next };
     }
 
-    /**
-     * 效果种类名表：随 ``Api/GetV2Enum`` 的 ``kinds`` 下发，下载时写进 meta；
-     * 这里从缓存读出来盖在 ``enums.effect_kind`` 上（名字改了要走一次版本刷新）。
-     */
-    async function applyEffectKindNames(database: WikiDataDb) {
-        const cached = (await database.meta.get('effectKindNames'))?.value as
-            | EffectKindMap
-            | undefined;
-        if (cached) mergeEffectKinds(cached);
-    }
-
-    async function download(database: WikiDataDb, remoteVersion: number) {
-        const [charPayload, skillPayload, equipPayload, itemPayload, shopPayload, enumData] =
-            await Promise.all([
-                fetchModule('Character'),
-                fetchModule('Skill'),
-                fetchModule('Equipment'),
-                // 道具与遗物同一个模块返回（`{items, relics}`）
-                fetchModule('Item'),
-                fetchModule('Shop'),
-                // 字典与效果种类名表在同一个模块里返回（`{enum, kinds}`）
-                fetchEnums(),
-            ]);
+    async function download(database: WikiDataDb, remoteVersion: number, remoteExtraVersion: number) {
+        const [
+            charPayload,
+            skillPayload,
+            equipPayload,
+            itemPayload,
+            shopPayload,
+            enemyPayload,
+            mapPayload,
+            poolPayload,
+            enumData,
+            extraPayload,
+        ] = await Promise.all([
+            fetchModule('Character'),
+            fetchModule('Skill'),
+            fetchModule('Equipment'),
+            // 道具与遗物同一个模块返回（`{items, relics}`）
+            fetchModule('Item'),
+            fetchModule('Shop'),
+            // 敌人：items = 敌人分类，顶层 enemy_pool = 敌群（线上同一个模块）
+            fetchModule('Enemy'),
+            // 地图：map = 层，map_meta.maps = 分类标签
+            fetchModule('Map'),
+            // 敌群：线上随 Enemy 一起返回；DEV 仍读单独的 mock 快照
+            IS_DEV ? fetchModule('EnemyPool') : Promise.resolve(null),
+            // 字典（效果种类名已搬到 Extra，这里只留兜底）
+            fetchEnums(),
+            // 人工表：模块还没上线时按空块处理，页面照旧能用
+            fetchExtra().catch(() => null),
+        ]);
 
         const decoded = {
             characters: charPayload.items.map((row) => decodeDoc<RawCharacter>(row as never, CHAR_FIELDS)),
@@ -757,12 +1229,25 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
                 .map((row) => decodeDoc<RelicDoc>(row as never, RELIC_FIELDS))
                 .filter((row) => row.id != null),
             shops: shopPayload.items.map((row) => decodeDoc<ShopDoc>(row as never, SHOP_FIELDS)),
+            enemies: enemyPayload.items.map((row) => decodeDoc<RawEnemy>(row as never, ENEMY_FIELDS)),
+            mapFloors: mapPayload.items.map((row) => decodeDoc<RawMapFloor>(row as never, MAP_FIELDS)),
+            mapCategories: asArray<MapCategory>(mapPayload.maps),
+            // 线上敌群在 `enemy_pool`，DEV 从单独的 EnemyPool mock 读
+            enemyPools: asArray<unknown>(enemyPayload.enemyPool ?? poolPayload?.items)
+                .map((row) => decodeDoc<RawEnemyPool>(row as never, ENEMY_POOL_FIELDS)),
             // 线上可能把连续整数 key 的字典转成数组，统一还原成对象再落库
             enums: normalizeEnums(enumData.enums),
             version: remoteVersion,
-            extras: extraMap(charPayload.extra),
             rates: rateMap(charPayload.rates),
-            baseStat: (equipPayload.baseStat as Record<string, EquipmentBaseStatEntry>) ?? null,
+            // 人工表六块：Extra 优先，旧接口的顶层字段兜底
+            extraSections: decodeExtraSections(extraPayload, {
+                characterExtra: charPayload.extra,
+                baseStat: equipPayload.baseStat,
+                relicsExtra: itemPayload.relicsExtra,
+                relicsCategories: itemPayload.relicsCategories,
+                kinds: enumData.kinds,
+            }),
+            extraVersion: remoteExtraVersion,
         };
 
         await database.transaction(
@@ -775,6 +1260,9 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
                 database.items,
                 database.relics,
                 database.shops,
+                database.enemies,
+                database.mapFloors,
+                database.enemyPools,
                 database.meta,
             ],
             async () => {
@@ -785,6 +1273,9 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
                 await database.items.clear();
                 await database.relics.clear();
                 await database.shops.clear();
+                await database.enemies.clear();
+                await database.mapFloors.clear();
+                await database.enemyPools.clear();
                 await database.characters.bulkPut(decoded.characters);
                 await database.jobs.bulkPut(decoded.jobs);
                 await database.skills.bulkPut(decoded.skills);
@@ -792,14 +1283,17 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
                 await database.items.bulkPut(decoded.items);
                 await database.relics.bulkPut(decoded.relics);
                 await database.shops.bulkPut(decoded.shops);
+                await database.enemies.bulkPut(decoded.enemies);
+                await database.mapFloors.bulkPut(decoded.mapFloors);
+                await database.enemyPools.bulkPut(decoded.enemyPools);
                 await database.meta.bulkPut([
                     { key: 'dataVersion', value: remoteVersion },
+                    // 地图分类（层是 items，分类单独存 meta）
+                    { key: 'mapCategories', value: decoded.mapCategories },
                     { key: 'enums', value: decoded.enums },
-                    // 效果种类名表（`Api/GetV2Enum.kinds`）盖在生成数据之上
-                    { key: 'effectKindNames', value: enumData.kinds ?? {} },
-                    { key: 'characterExtras', value: decoded.extras },
                     { key: 'characterRates', value: decoded.rates },
-                    { key: 'equipmentBaseStat', value: decoded.baseStat },
+                    // 人工表（`Api/GetV2Extra`）单独存，版本号单独存：改了只重拉这一块
+                    ...extraMetaRows(decoded.extraSections, decoded.extraVersion),
                 ]);
             },
         );
@@ -808,25 +1302,55 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
     }
 
     async function readCache(database: WikiDataDb) {
-        const [chars, jobRows, skillRows, equipRows, itemRows, relicRows, shopRows, metaRows] =
-            await Promise.all([
-                database.characters.toArray(),
-                database.jobs.toArray(),
-                database.skills.toArray(),
-                database.equipments.toArray(),
-                database.items.toArray(),
-                database.relics.toArray(),
-                database.shops.toArray(),
-                database.meta.bulkGet([
-                    'dataVersion',
-                    'enums',
-                    'characterExtras',
-                    'characterRates',
-                    'equipmentBaseStat',
-                ]),
-            ]);
+        const [
+            chars,
+            jobRows,
+            skillRows,
+            equipRows,
+            itemRows,
+            relicRows,
+            shopRows,
+            enemyRows,
+            mapRows,
+            poolRows,
+            metaRows,
+        ] = await Promise.all([
+            database.characters.toArray(),
+            database.jobs.toArray(),
+            database.skills.toArray(),
+            database.equipments.toArray(),
+            database.items.toArray(),
+            database.relics.toArray(),
+            database.shops.toArray(),
+            database.enemies.toArray(),
+            database.mapFloors.toArray(),
+            database.enemyPools.toArray(),
+            database.meta.bulkGet([
+                'dataVersion',
+                'enums',
+                'characterExtras',
+                'characterRates',
+                'equipmentBaseStat',
+                'equipmentExtras',
+                'mapCategories',
+                'relicExtras',
+                'relicCategories',
+                'effectKindNames',
+            ]),
+        ]);
 
-        const [versionRow, enumRow, extrasRow, ratesRow, baseStatRow] = metaRows;
+        const [
+            versionRow,
+            enumRow,
+            characterExtrasRow,
+            ratesRow,
+            baseStatRow,
+            equipmentExtrasRow,
+            mapCategoriesRow,
+            relicExtrasRow,
+            relicCategoriesRow,
+            effectKindRow,
+        ] = metaRows;
 
         apply(database, {
             characters: chars,
@@ -836,12 +1360,22 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
             items: itemRows,
             relics: relicRows,
             shops: shopRows,
+            enemies: enemyRows,
+            mapFloors: mapRows,
+            mapCategories: (mapCategoriesRow?.value as MapCategory[]) ?? [],
+            enemyPools: poolRows,
             // 旧缓存里可能存着数组形态，读出来也统一还原
             enums: normalizeEnums(enumRow?.value),
             version: (versionRow?.value as number) ?? null,
-            extras: (extrasRow?.value as Record<number, RawCharacterExtra>) ?? {},
-            baseStat: (baseStatRow?.value as Record<string, EquipmentBaseStatEntry>) ?? null,
             rates: (ratesRow?.value as Record<number, RawCharacterRate>) ?? {},
+            extraSections: {
+                characterExtras: (characterExtrasRow?.value as Record<number, RawCharacterExtra>) ?? {},
+                equipmentBaseStat: (baseStatRow?.value as Record<string, EquipmentBaseStatEntry>) ?? {},
+                equipmentExtras: (equipmentExtrasRow?.value as EquipmentExtraRow[]) ?? [],
+                relicExtras: (relicExtrasRow?.value as RelicExtra[]) ?? [],
+                relicCategories: (relicCategoriesRow?.value as string[]) ?? [],
+                effectKinds: (effectKindRow?.value as EffectKindMap) ?? null,
+            },
         });
     }
 
@@ -860,14 +1394,23 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
 
         const remote = await fetchDataVersion();
         const cachedVersion = (await database.meta.get('dataVersion'))?.value as number | undefined;
-        const [cachedSkills, cachedItems] = await Promise.all([
+        const cachedExtraVersion = (await database.meta.get('extraVersion'))?.value as number | undefined;
+        const [cachedSkills, cachedItems, cachedEnemies, cachedMaps, cachedPools] = await Promise.all([
             database.skills.count(),
             database.items.count(),
+            // 敌人表是后加的：老缓存版本号一致但表是空的，必须补一次下载
+            database.enemies.count(),
+            // 地图 / 敌群同理（v5 新增）
+            database.mapFloors.count(),
+            database.enemyPools.count(),
         ]);
 
         const needsRefresh =
             cachedSkills === 0 ||
             cachedItems === 0 ||
+            cachedEnemies === 0 ||
+            cachedMaps === 0 ||
+            cachedPools === 0 ||
             cachedVersion === undefined ||
             (remote !== null && remote.version !== cachedVersion);
 
@@ -876,7 +1419,7 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
             // 等 Api/Version 可用后版本不一致会自动重拉。
             if (!remote) console.warn('[wikiData] 取不到数据版本，先按空版本拉取数据');
             try {
-                await download(database, remote?.version ?? 0);
+                await download(database, remote?.version ?? 0, remote?.extra ?? 0);
             } catch (e) {
                 throw new Error(`拉取数据失败：${e instanceof Error ? e.message : String(e)}`);
             }
@@ -884,12 +1427,21 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         } else {
             await readCache(database);
             fromCache.value = true;
+
+            // 人工维护的数据有自己的版本号：只重拉 `Api/GetV2Extra`，不动解包表
+            if (
+                remote !== null &&
+                (cachedExtraVersion === undefined || (remote.extra > 0 && remote.extra !== cachedExtraVersion))
+            ) {
+                try {
+                    await refreshExtra(remote.extra);
+                } catch (e) {
+                    console.warn('[wikiData] 人工表刷新失败，先用缓存里的版本', e);
+                }
+            }
         }
 
         await database.meta.put({ key: 'dbSchemaVersion', value: DB_SCHEMA_VERSION });
-
-        // 效果种类名表盖在生成数据之上，所以放在最后一步
-        await applyEffectKindNames(database);
         status.value = 'ready';
     }
 
@@ -911,21 +1463,34 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
     }
 
     /**
-     * 只重拉 ``Api/GetV2Enum``（字典 + 效果种类名表 ``kinds``）。
-     * 调效果种类的中文名 / 参数标注时用：不用清整库、也不用动 ``Data:Version.json``。
+     * 只重拉 ``Api/GetV2Extra``（人工维护的那六块），只更新 IndexedDB 里对应的 meta，
+     * 解包表（角色 / 技能 / 装备 / 道具 …）一条都不动。
+     *
+     * 改完效果种类名、装备特典、遗物类别后点一下调试按钮走这里；
+     * ``extraVersion`` 传空时顺手把 ``Api/GetV2Version`` 的 ``extra`` 记下来。
      */
-    async function refreshEnums(): Promise<void> {
+    async function refreshExtra(extraVersion?: number): Promise<void> {
         const database = getDb();
-        const enumData = await fetchEnums();
+        const extra = await fetchExtra();
+        const sections = decodeExtraSections(extra);
+        // 接口这次缺的块沿用当前内存里的，避免一次异常把已有数据清空
+        const merged: ExtraSections = {
+            characterExtras: extra.characterExtra ? sections.characterExtras : extraSections.characterExtras,
+            equipmentBaseStat: extra.equipmentBaseStat ? sections.equipmentBaseStat : extraSections.equipmentBaseStat,
+            equipmentExtras: extra.equipmentExtra ? sections.equipmentExtras : extraSections.equipmentExtras,
+            relicExtras: extra.relicExtra ? sections.relicExtras : extraSections.relicExtras,
+            relicCategories: extra.relicCategory ? sections.relicCategories : extraSections.relicCategories,
+            effectKinds: sections.effectKinds ?? extraSections.effectKinds,
+        };
 
-        enums.value = normalizeEnums(enumData.enums);
-        // ref 里的是 Vue 的响应式代理，IndexedDB 结构化克隆不了，先转回普通对象再写
-        const plainEnums = JSON.parse(JSON.stringify(enums.value)) as EnumsPayload;
-        await database.meta.put({ key: 'enums', value: plainEnums });
-        if (enumData.kinds) {
-            await database.meta.put({ key: 'effectKindNames', value: enumData.kinds });
-            mergeEffectKinds(enumData.kinds);
+        let nextVersion = extraVersion;
+        if (nextVersion === undefined) {
+            nextVersion = (await fetchDataVersion())?.extra ?? 0;
         }
+        // ref 里的是 Vue 的响应式代理，IndexedDB 结构化克隆不了，先转回普通对象再落库
+        const plain = JSON.parse(JSON.stringify(merged)) as ExtraSections;
+        await database.meta.bulkPut(extraMetaRows(plain, nextVersion));
+        applyExtraSections(plain);
     }
 
     /** drop the cache and pull everything again */
@@ -938,6 +1503,9 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         await database.items.clear();
         await database.relics.clear();
         await database.shops.clear();
+        await database.enemies.clear();
+        await database.mapFloors.clear();
+        await database.enemyPools.clear();
         await database.meta.clear();
         // 装备名称 / 阶级变了，杂物整理结果也要重算
         await database.junk.clear();
@@ -954,10 +1522,20 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         equipments,
         /** 道具（`Api/GetV2Item.items`） */
         items,
-        /** 遗物（`Api/GetV2Item.relics`） */
+        /** 遗物（`Api/GetV2Item.relics`，掉落怪物 / 推荐类别已由 `Api/GetV2Extra` 合并） */
         relics,
+        /** 遗物推荐类别可选项（`Api/GetV2Extra.relicCategory`） */
+        relicCategories,
         /** 商店（`Api/GetV2Shop.items`） */
         shops,
+        /** 敌人（`Api/GetV2Enemy.items`，一条 = 一个敌人分类） */
+        enemies,
+        /** 地图（`Api/GetV2Map.items`，一条 = 一层） */
+        mapFloors,
+        /** 地图分类（`Api/GetV2Map.maps`） */
+        mapCategories,
+        /** 敌群（`Api/GetV2EnemyPool.items`，一条 = 一个敌群） */
+        enemyPools,
         enums,
         characterExtras,
         characterRates,
@@ -970,7 +1548,7 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         ready,
         init,
         refresh,
-        /** 只重拉 Enum（字典 + 效果种类名），调试用 */
-        refreshEnums,
+        /** 只重拉人工表（`Api/GetV2Extra`），调试用 */
+        refreshExtra,
     };
 });

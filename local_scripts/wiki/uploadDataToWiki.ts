@@ -12,6 +12,10 @@
  *   Data:Item/<id>.json        dtype: "item"
  *   Data:Shop/<id>.json        dtype: "shop"
  *   Data:Relic/<id>.json       dtype: "relic"
+ *   Data:Enemy/<id>.json       dtype: "enemy"
+ *   Data:Map/<id>.json         dtype: "map"
+ *   Data:EnemyPool/<id>.json   dtype: "enemy_pool"
+ *   Data:MapMeta.json          整表（地图分类，层在 Data:Map/<id>.json）
  *   Data:Enum.json             整表（id 字典 + effect_kind），单条目
  *
  * `Data:Version.json` **不由本脚本维护**（版本号另行处理，避免上传脚本自动把前端缓存刷掉）。
@@ -25,7 +29,8 @@
  *   缓存表 wikitext_cache（sqlite）：条目名 -> 上次上传的内容，
  *   默认 `D:\WizardyDaphne\workspace\wikitext.sqlite`，可用 `WIKI_CACHE_SQLITE_PATH` 覆盖。
  *
- * 顺序：character → job → skill → equipment → item → shop → relic → enum
+ * 顺序：character → job → skill → equipment → item → shop → relic →
+ *       enemy → map → map_meta → enemy_pool → enum
  * （各自失败互不影响，最后汇总失败数）。
  * 效果种类名表（Data:EffectKind.json）在 wiki 上手工维护，不由本脚本上传。
  * 装备跑完后还会检查 ``Data:EquipmentExtra.tabx``（手工维护的特典分类 / 获取途径），
@@ -89,13 +94,31 @@ interface KindSpec {
     singleton?: boolean;
     /** 单条目页面的内容取自响应里的哪个顶层键（如 Enum 的 `enum`） */
     field?: string;
+    /**
+     * 取出的 `field` 是数组时，包成 `{ "<field>": [...] }` 再写入。
+     * wiki 的 Data 页面只接受 JSON 对象（不允许顶层是数组），如 MapMeta。
+     */
+    wrapField?: boolean;
     /** 是否在默认上传列表里 */
     byDefault: boolean;
     /** 说明（日志用） */
     note?: string;
 }
 
-const KIND_NAMES = ['character', 'job', 'skill', 'equipment', 'item', 'shop', 'relic', 'enum'] as const;
+const KIND_NAMES = [
+    'character',
+    'job',
+    'skill',
+    'equipment',
+    'item',
+    'shop',
+    'relic',
+    'enemy',
+    'map',
+    'map_meta',
+    'enemy_pool',
+    'enum',
+] as const;
 type KindName = (typeof KIND_NAMES)[number];
 
 const KINDS: Record<KindName, KindSpec> = {
@@ -151,6 +174,42 @@ const KINDS: Record<KindName, KindSpec> = {
         idKey: 'i',
         byDefault: true,
         note: '遗物（61 种，同组取最低阶级；含遗物酒 / 遗物之力 / 提升与降低属性）',
+    },
+    enemy: {
+        sub: 'Enemy',
+        file: 'EnemyResponse.json',
+        dtype: 'enemy',
+        idKey: 'i',
+        byDefault: true,
+        note: '敌人（分类 + 出现变体 / 能力值公式 / AI 规则 / 技能引用等级）',
+    },
+    map: {
+        sub: 'Map',
+        file: 'MapResponse.json',
+        dtype: 'map',
+        idKey: 'i',
+        byDefault: true,
+        note: '地图层（敌人配置 / 敌群站位）；地图分类见 Data:MapMeta.json',
+    },
+    map_meta: {
+        sub: null,
+        title: 'MapMeta',
+        file: 'MapResponse.json',
+        // 响应是 `{items, maps}`：层走 Data:Map/<id>.json，分类标签单独一页，
+        // 避免每个层都重复一份地图分类信息
+        field: 'maps',
+        wrapField: true,
+        singleton: true,
+        byDefault: true,
+        note: '地图分类（城镇 / 分组 / 包含层 id）',
+    },
+    enemy_pool: {
+        sub: 'EnemyPool',
+        file: 'EnemyPoolResponse.json',
+        dtype: 'enemy_pool',
+        idKey: 'i',
+        byDefault: true,
+        note: '敌群（全部编队分组，含关联层 / 队伍数与成员站位）',
     },
     enum: {
         sub: null,
@@ -286,7 +345,9 @@ export async function buildEntries(
 
         const keys = Object.keys(doc).length;
         console.log(`  ${kind}: 单条目 ${title}（${keys} 个顶层键）`);
-        return [{ title, text: JSON.stringify(doc) }];
+        const text =
+            spec.wrapField && Array.isArray(doc) ? JSON.stringify({ [spec.field!]: doc }) : JSON.stringify(doc);
+        return [{ title, text }];
     }
 
     // ---- 记录级页面 ----

@@ -10,7 +10,7 @@
                     <NInput v-model:value="keyword" clearable placeholder="支持三语角色名 / 风格 / 技能名" />
                 </div>
             </div>
-            <div class="flex flex-col grow basis-[160px]">
+            <div class="flex flex-col shrink-0 basis-[160px]">
                 <div class="flex justify-between items-center h-6">
                     <label class="text-sm">稀有度</label>
                 </div>
@@ -24,7 +24,7 @@
                     />
                 </div>
             </div>
-            <div class="flex flex-col grow basis-[96px]">
+            <div class="flex flex-col shrink-0 basis-[96px]">
                 <div class="flex justify-between items-center h-6">
                     <label class="text-sm">组别</label>
                 </div>
@@ -38,7 +38,7 @@
                     />
                 </div>
             </div>
-            <div class="flex flex-col grow basis-[96px]">
+            <div class="flex flex-col shrink-0 basis-[96px]">
                 <div class="flex justify-between items-center h-6">
                     <label class="text-sm">SP</label>
                 </div>
@@ -46,7 +46,7 @@
                     <NSelect v-model:value="spFilter" :options="spFilterOptions" class="w-full!" />
                 </div>
             </div>
-            <div class="flex flex-col grow basis-[160px]">
+            <div class="flex flex-col shrink-0 basis-[160px]">
                 <div class="flex justify-between items-center h-6 gap-2">
                     <label class="text-sm">职业</label>
                     <NCheckbox v-model:checked="onlyPrimary" size="small">仅初始职业</NCheckbox>
@@ -73,7 +73,7 @@
                     />
                 </div>
             </div>
-            <div class="flex flex-col grow basis-[112px]">
+            <div class="flex flex-col shrink-0 basis-[112px]">
                 <div class="flex justify-between items-center h-6">
                     <label class="text-sm">种族</label>
                 </div>
@@ -81,7 +81,7 @@
                     <NSelect v-model:value="race" :options="raceOptions" clearable placeholder="全部" class="w-full!" />
                 </div>
             </div>
-            <div class="flex flex-col grow basis-[80px]">
+            <div class="flex flex-col shrink-0 basis-[80px]">
                 <div class="flex justify-between items-center h-6">
                     <label class="text-sm">性别</label>
                 </div>
@@ -95,7 +95,7 @@
                     />
                 </div>
             </div>
-            <div class="flex flex-col grow basis-[96px]">
+            <div class="flex flex-col shrink-0 basis-[96px]">
                 <div class="flex justify-between items-center h-6">
                     <label class="text-sm">性格</label>
                 </div>
@@ -109,7 +109,7 @@
                     />
                 </div>
             </div>
-            <div class="flex flex-col grow basis-[112px]">
+            <div class="flex flex-col shrink-0 basis-[112px]">
                 <div class="flex justify-between items-center h-6">
                     <label class="text-sm">缘</label>
                 </div>
@@ -176,8 +176,7 @@
         <div class="text-sm">共有 {{ filtered.length }} 个符合条件的角色</div>
 
         <!-- 角色卡片 -->
-        <NSpin :show="store.state.characters === 'loading'">
-            <div v-if="filtered.length" class="flex flex-wrap -mx-2">
+        <div v-if="filtered.length" class="flex flex-wrap -mx-2">
                 <div
                     v-for="c in filtered"
                     :key="c.id"
@@ -238,7 +237,6 @@
                 </div>
             </div>
             <NEmpty v-else description="没有符合条件的角色" class="py-10" />
-        </NSpin>
 
         <NModal v-model:show="drawer">
             <div
@@ -251,7 +249,7 @@
 </template>
 
 <script setup lang="ts">
-import { NButton, NCheckbox, NEmpty, NInput, NModal, NSelect, NSpin } from 'naive-ui';
+import { NButton, NCheckbox, NEmpty, NInput, NModal, NSelect } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
 import ElementIcon from '../../components/ElementIcon.vue';
 import WikiImg from '../../components/huiji/WikiImg.vue';

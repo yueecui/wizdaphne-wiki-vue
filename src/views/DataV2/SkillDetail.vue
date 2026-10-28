@@ -1,11 +1,6 @@
 <template>
     <NSpin :show="loading">
         <div v-if="data" class="flex flex-col gap-4 text-sm">
-            <div v-if="data.flags.test || !data.player" class="flex flex-wrap items-center gap-1.5">
-                <NTag v-if="data.flags.test" size="small" :bordered="false" type="error">测试数据</NTag>
-                <NTag v-if="!data.player" size="small" :bordered="false">敌方专用</NTag>
-            </div>
-
             <table class="wikitable w-full table-fixed! text-center text-sm border-collapse m-0!">
                 <!-- 两个标题列定宽，剩下的宽度由第 2 / 4 列平分，保证值列起点一致 -->
                 <colgroup>
@@ -33,6 +28,25 @@
                                     <NTag v-for="tag in cell.tags" :key="tag" size="small" :bordered="false">
                                         {{ tag }}
                                     </NTag>
+                                </div>
+                                <div
+                                    v-else-if="cell.summons?.length"
+                                    class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1"
+                                >
+                                    <span
+                                        v-for="(unit, unitIndex) in cell.summons"
+                                        :key="unit.category"
+                                        class="whitespace-nowrap"
+                                    >
+                                        <span
+                                            class="cursor-pointer text-sky-300 underline decoration-dotted decoration-1 underline-offset-2 hover:text-light"
+                                            @click="openEnemy(unit.category)"
+                                        >
+                                            {{ unit.name }}
+                                        </span>
+                                        ×{{ unit.count }}
+                                        <span v-if="unitIndex < cell.summons.length - 1" class="opacity-40">、</span>
+                                    </span>
                                 </div>
                                 <template v-else>{{ cell.value }}</template>
                             </td>
@@ -145,43 +159,97 @@
                 </colgroup>
                 <tbody>
                     <tr>
-                        <th colspan="2" class="bg-black/50 px-2 py-1 border! border-[#463d38]!">学习 / 获取</th>
+                        <th colspan="2" class="bg-black/50 px-2 py-1 border! border-[#463d38]!">
+                            来源 / 用途 / 装备
+                        </th>
                     </tr>
-                    <template v-if="learnRows.length || sourceTags.length">
-                        <tr v-if="learnRows.length">
-                            <th class="h-9 px-2 py-1 align-middle whitespace-nowrap border! border-[#463d38]!">学习</th>
+                    <template v-if="sourceEntries.length || usageEntries.length || equipmentRows.length">
+                        <tr v-if="sourceEntries.length">
+                            <th class="h-9 px-2 py-1 align-middle whitespace-nowrap border! border-[#463d38]!">来源</th>
                             <td
-                                class="h-9 px-2 py-1 align-middle whitespace-normal break-words border! border-[#463d38]!"
+                                class="h-9 px-2 py-1 align-middle whitespace-normal break-words text-left border! border-[#463d38]!"
                             >
-                                <div class="flex flex-wrap items-center justify-center gap-1">
-                                    <NTag
-                                        v-for="learn in learnRows"
-                                        :key="learn"
-                                        size="small"
-                                        :bordered="false"
-                                        type="info"
-                                    >
-                                        {{ learn }}
-                                    </NTag>
+                                <div class="flex flex-col gap-1">
+                                    <div v-for="entry in sourceEntries" :key="entry.label">
+                                        <span class="opacity-60">{{ entry.label }}：</span>
+                                        <template v-if="entry.characters.length">
+                                            <span
+                                                v-for="(character, index) in entry.characters"
+                                                :key="character.id"
+                                            >
+                                                <span
+                                                    class="cursor-pointer hover:text-light"
+                                                    @click="openCharacter(character.id)"
+                                                >
+                                                    {{ character.name }}
+                                                </span>
+                                                <span
+                                                    v-if="index < entry.characters.length - 1"
+                                                    class="opacity-40"
+                                                >
+                                                    &nbsp;/&nbsp;
+                                                </span>
+                                            </span>
+                                        </template>
+                                        <template v-else-if="entry.values.length">
+                                            {{ entry.values.join(' / ') }}
+                                        </template>
+                                    </div>
                                 </div>
                             </td>
                         </tr>
-                        <tr v-if="sourceTags.length">
-                            <th class="h-9 px-2 py-1 align-middle whitespace-nowrap border! border-[#463d38]!">获取</th>
+                        <tr v-if="usageEntries.length">
+                            <th class="h-9 px-2 py-1 align-middle whitespace-nowrap border! border-[#463d38]!">用途</th>
                             <td
-                                class="h-9 px-2 py-1 align-middle whitespace-normal break-words border! border-[#463d38]!"
+                                class="h-9 px-2 py-1 align-middle whitespace-normal break-words text-left border! border-[#463d38]!"
                             >
-                                <div class="flex flex-wrap items-center justify-center gap-1">
-                                    <NTag
-                                        v-for="s in sourceTags"
-                                        :key="s"
-                                        size="small"
-                                        :bordered="false"
-                                        type="success"
-                                    >
-                                        {{ s }}
-                                    </NTag>
+                                <div class="flex flex-col gap-1">
+                                    <div v-for="entry in usageEntries" :key="entry.label">
+                                        <span class="opacity-60">{{ entry.label }}</span>
+                                        <template v-if="entry.characters.length">
+                                            ：
+                                            <span
+                                                v-for="(character, index) in entry.characters"
+                                                :key="character.id"
+                                            >
+                                                <span
+                                                    class="cursor-pointer hover:text-light"
+                                                    @click="openCharacter(character.id)"
+                                                >
+                                                    {{ character.name }}
+                                                </span>
+                                                <span
+                                                    v-if="index < entry.characters.length - 1"
+                                                    class="opacity-40"
+                                                >
+                                                    &nbsp;/&nbsp;
+                                                </span>
+                                            </span>
+                                        </template>
+                                    </div>
                                 </div>
+                            </td>
+                        </tr>
+                        <tr v-if="equipmentRows.length">
+                            <th class="h-9 px-2 py-1 align-middle whitespace-nowrap border! border-[#463d38]!">装备</th>
+                            <td
+                                class="h-9 px-2 py-1 align-middle whitespace-normal break-words text-left border! border-[#463d38]!"
+                            >
+                                <span v-for="(item, index) in equipmentRows" :key="item.id">
+                                    <span
+                                        class="cursor-pointer hover:text-light"
+                                        @click="openEquipment(item.id)"
+                                    >
+                                        {{ item.name }}
+                                    </span>
+                                    <span
+                                        v-if="index < equipmentRows.length - 1 || equipmentMore > 0"
+                                        class="opacity-40"
+                                    >
+                                        &nbsp;/&nbsp;
+                                    </span>
+                                </span>
+                                <span v-if="equipmentMore > 0" class="opacity-50">+{{ equipmentMore }}</span>
                             </td>
                         </tr>
                     </template>
@@ -192,12 +260,27 @@
             </table>
         </div>
         <NEmpty v-else-if="!loading" description="加载失败" />
+
+        <!-- 来源 / 用途里点开的角色详情 -->
+        <NModal v-model:show="characterShow">
+            <div
+                class="w-[90%] md:w-[min(960px,94vw)] m-auto huiji-css-hook bg-transparent! max-h-[88vh] overflow-y-auto thin-scrollbar md:max-h-none md:overflow-visible"
+            >
+                <CharacterDetail v-if="characterId" :id="characterId" :onClose="closeCharacter" />
+            </div>
+        </NModal>
+
+        <!-- 装备来源点开的装备详情 -->
+        <EquipmentModal v-if="equipmentShow" v-model:show="equipmentShow" :identification="equipmentId" />
+
+        <!-- 召唤单位点开的敌人详情：必须 v-if，否则会随技能详情一起创建（组件互相嵌套） -->
+        <EnemyModal v-if="enemyShow" v-model:show="enemyShow" :enemy-id="enemyId" />
     </NSpin>
 </template>
 
 <script setup lang="ts">
-import { NEmpty, NSpin, NTag } from 'naive-ui';
-import { computed, ref, watch } from 'vue';
+import { NEmpty, NModal, NSpin, NTag } from 'naive-ui';
+import { computed, defineAsyncComponent, ref, watch } from 'vue';
 import { useDataV2Store } from './dataV2Store';
 import { effectParamText, effectParamUnit } from './types';
 import type {
@@ -205,12 +288,20 @@ import type {
     SkillDamage,
     SkillDetail,
     SkillLevel,
+    SkillRef,
     SkillSubEffect,
     SubEffectBrief,
     SubEffectBriefLeaf,
 } from './types';
 
 defineOptions({ name: '技能详情V2' });
+
+// 召唤单位可以点开敌人详情。这里 → EnemyModal → SkillModal → 本组件 是个环，
+// 用异步组件打断，避免循环 import 在模块初始化时报错。
+const EnemyModal = defineAsyncComponent(() => import('./EnemyModal.vue'));
+// CharacterDetail → SkillModal → 本组件同样成环，装备 modal 亦然，都用异步组件打断
+const CharacterDetail = defineAsyncComponent(() => import('./CharacterDetail.vue'));
+const EquipmentModal = defineAsyncComponent(() => import('./EquipmentModal.vue'));
 
 const props = defineProps<{ identification: number }>();
 const store = useDataV2Store();
@@ -222,36 +313,136 @@ const openSkill = (identification?: number | null) => {
     emit('openSkill', identification);
 };
 
+// ---------- 召唤单位 → 敌人详情 ----------
+const enemyShow = ref(false);
+const enemyId = ref<number | null>(null);
+const openEnemy = (category: number) => {
+    if (!store.enemyById.has(category)) return;
+    enemyId.value = category;
+    enemyShow.value = true;
+};
+
+// ---------- 来源 / 用途 → 角色、装备详情 ----------
+const characterShow = ref(false);
+const characterId = ref<number | null>(null);
+const openCharacter = (id: number) => {
+    characterId.value = id;
+    characterShow.value = true;
+};
+const closeCharacter = () => {
+    characterShow.value = false;
+};
+
+const equipmentShow = ref(false);
+const equipmentId = ref<number | null>(null);
+const openEquipment = (id: number) => {
+    equipmentId.value = id;
+    equipmentShow.value = true;
+};
+
 const data = ref<SkillDetail | null>(null);
 const loading = ref(false);
 
-const SOURCE_LABEL: Record<string, string> = {
-    job: '职业',
-    potential: '潜在',
-    discipline: '克己',
-    equipment: '装备',
-    equip_set: '套装',
-    relic: '遗物',
-    fate: '才能',
-    bond: '羁绊',
-};
+interface CharacterRef {
+    id: number;
+    name: string;
+}
 
-/**
- * 获取标签的口径：
- * - 角色 ``unique_skill_ids`` 里的被动技能 = 固有技能，主动技能 = 角色专用技能；
- * - 同时出现在继承列表里的一律叫继承技能，不再重复显示固有 / 角色专用。
- */
-const sourceTags = computed(() => {
+/** 技能 id -> 关联角色（同名角色只保留一条） */
+const characterOwners = computed(() => {
+    const inherit = new Map<number, CharacterRef[]>();
+    const potential = new Map<number, CharacterRef[]>();
+    const discipline = new Map<number, CharacterRef[]>();
+    const unique = new Map<number, CharacterRef[]>();
+
+    const add = (map: Map<number, CharacterRef[]>, character: CharacterRef, list: SkillRef[]) => {
+        for (const skill of list) {
+            const owners = map.get(skill.identification);
+            if (!owners) map.set(skill.identification, [character]);
+            else if (!owners.some((item) => item.name === character.name)) owners.push(character);
+        }
+    };
+
+    for (const character of store.characterById.values()) {
+        const ref = { id: character.id, name: character.name ?? `#${character.id}` };
+        add(inherit, ref, character.skills.inherit);
+        add(potential, ref, character.skills.potential_inherit);
+        add(discipline, ref, character.skills.discipline);
+        add(unique, ref, character.skills.unique);
+    }
+    return { inherit, potential, discipline, unique };
+});
+
+/** 技能 id -> 提供该技能的装备（装备特性 / 非装备特性 / 套装技能） */
+const equipmentOwners = computed(() => {
+    const map = new Map<number, CharacterRef[]>();
+    for (const equipment of store.equipments) {
+        const ref = { id: equipment.id, name: equipment.name ?? `#${equipment.id}` };
+        const ids = [
+            ...equipment.skills.map((skill) => skill.id),
+            ...equipment.traits.map((skill) => skill.id),
+            ...equipment.set_skills.map((skill) => skill.skill_id),
+        ];
+        for (const id of ids) {
+            const owners = map.get(id);
+            if (!owners) map.set(id, [ref]);
+            else if (!owners.some((item) => item.name === ref.name)) owners.push(ref);
+        }
+    }
+    return map;
+});
+
+interface SourceEntry {
+    label: string;
+    /** 继承 / 潜在继承 / 克己 / 固有对应的角色（可点击打开角色详情） */
+    characters: CharacterRef[];
+    /** 职业等纯展示文字 */
+    values: string[];
+}
+
+const sourceEntries = computed<SourceEntry[]>(() => {
     const d = data.value;
     if (!d) return [];
-    const tags: string[] = [];
-    if (d.sources.includes('inherit')) tags.push('继承技能');
-    else if (d.sources.includes('unique')) tags.push(d.is_passive ? '固有技能' : '角色专用技能');
-    for (const [key, label] of Object.entries(SOURCE_LABEL)) {
-        if (d.sources.includes(key)) tags.push(label);
-    }
-    return tags;
+    const id = d.identification;
+    const owners = characterOwners.value;
+    const entries: SourceEntry[] = [];
+    const push = (label: string, characters: CharacterRef[] = [], values: string[] = []) =>
+        entries.push({ label, characters, values });
+
+    if (d.sources.includes('inherit')) push('继承', owners.inherit.get(id) ?? []);
+    if (d.sources.includes('potential')) push('潜在继承', owners.potential.get(id) ?? []);
+    if (learnRows.value.length) push('职业', [], learnRows.value);
+    return entries;
 });
+
+/** 来源里的「其他」：克己 / 固有可点角色，遗物 / 才能 / 缘只展示 */
+const usageEntries = computed<SourceEntry[]>(() => {
+    const d = data.value;
+    if (!d) return [];
+    const id = d.identification;
+    const owners = characterOwners.value;
+    const entries: SourceEntry[] = [];
+    const push = (label: string, characters: CharacterRef[] = []) =>
+        entries.push({ label, characters, values: [] });
+
+    if (d.sources.includes('discipline')) push('克己', owners.discipline.get(id) ?? []);
+    if (d.sources.includes('unique')) push('固有', owners.unique.get(id) ?? []);
+    if (d.sources.includes('relic')) push('遗物');
+    if (d.sources.includes('fate')) push('才能');
+    if (d.sources.includes('bond')) push('缘');
+    return entries;
+});
+
+/** 展示最多 5 件装备，其余用 +N 表示 */
+const equipmentAll = computed(() => {
+    const d = data.value;
+    if (!d) return [];
+    if (!d.sources.includes('equipment') && !d.sources.includes('equip_set')) return [];
+    return equipmentOwners.value.get(d.identification) ?? [];
+});
+
+const equipmentRows = computed(() => equipmentAll.value.slice(0, 5));
+const equipmentMore = computed(() => Math.max(0, equipmentAll.value.length - 5));
 
 /** ``Skill.cost_kind``: 1 = SP (weapon skills), 2 = MP (magic / prayers). */
 const COST_UNIT: Record<number, string> = { 1: 'SP', 2: 'MP' };
@@ -598,6 +789,11 @@ interface EffectNode {
     fields: SubField[];
     /** 由参数引用产生时，记录参数位置，用于插回参数顺序 */
     slot?: number;
+    /**
+     * 是否参与「顶层已有同种类效果就跳过」的去重。
+     * StepReplace 的每一档都是同类效果的不同数值，必须保留（默认参与）。
+     */
+    dedupe?: boolean;
 }
 
 /** brief 版的效果 -> 参数名 / 值（参数名同样以 effect_kinds.json 为准） */
@@ -656,10 +852,26 @@ const paramRefNodes = (s: SkillSubEffect): EffectNode[] =>
             }));
         });
 
-/** 一个 sub effect 挂在下面的所有效果（追加子效果 + 扩展参数 + 参数指向的效果） */
+/**
+ * kind 2790「敵のバフ数によってStepReplace」：`step_replace` 里每一档（敌人能力提升
+ * 效果数量的档位）实际执行的效果组。每档展开成一组缩进行，标签带上 Step 序号，
+ * 这样各等级的档位数值并排显示时不会混在一起。
+ */
+const stepReplaceNodes = (s: SkillSubEffect): EffectNode[] =>
+    (s.step_replace ?? []).flatMap((row) =>
+        effectNodes(row.effects, 1, [], `Step ${row.step}`).map((node) => ({
+            ...node,
+            path: `Step ${row.step} › ${node.path}`,
+            label: `Step ${row.step} · ${node.label}`,
+            dedupe: false,
+        })),
+    );
+
+/** 一个 sub effect 挂在下面的所有效果（追加子效果 + 扩展参数 + 参数指向的效果 + 档位） */
 const childEffects = (s: SkillSubEffect): EffectNode[] => [
     ...effectNodes([...(s.child_sub_effects ?? []), ...(s.extension_effects ?? [])], 1),
     ...paramRefNodes(s),
+    ...stepReplaceNodes(s),
 ];
 
 /**
@@ -890,7 +1102,7 @@ const rows = computed<Row[]>(() => {
                 for (const child of childEffects(s)) {
                     // 顶层已经有同种类的效果了（同一个效果又被当扩展参数引用一次），
                     // 例如 2810 的扩展参数就是 2820，不再重复展开一遍
-                    if (child.kind != null && topKinds.has(child.kind)) continue;
+                    if (child.dedupe !== false && child.kind != null && topKinds.has(child.kind)) continue;
                     const saved = children.get(child.path);
                     if (!saved) {
                         children.set(child.path, { ...child, fields: [...child.fields] });
@@ -996,11 +1208,20 @@ const constantLink = (row: Row) => {
     return ids.size === 1 ? [...ids][0] : undefined;
 };
 
+/** 召唤单位：敌人分类 id（``EnemyCategory.id``）+ 合并后的数量 */
+interface SummonLink {
+    category: number;
+    count: number;
+    name: string;
+}
+
 interface InfoRow {
     label: string;
     value?: string;
     /** rendered as tags instead of text (the 类型 cell) */
     tags?: string[];
+    /** 召唤：渲染成可点开敌人详情的链接 */
+    summons?: SummonLink[];
 }
 
 const infoRows = computed<InfoRow[]>(() => {
@@ -1056,6 +1277,19 @@ const infoRows = computed<InfoRow[]>(() => {
             label: '武器限制',
             value: d.equipment_limited.map((x) => store.equipmentName(x)).join(' / '),
         });
+    }
+
+    // 召唤：EnemyFriendLayout 里列出的被召唤单位（同名的多个分类合并计数，名字可点开敌人详情）
+    const summons = new Map<string, SummonLink>();
+    for (const unit of d.summons ?? []) {
+        const enemy = store.enemyById.get(unit.category);
+        const name = enemy?.name || enemy?.name_jp || `#${unit.category}`;
+        const merged = summons.get(name);
+        if (merged) merged.count += unit.count;
+        else summons.set(name, { category: unit.category, count: unit.count, name });
+    }
+    if (summons.size) {
+        out.push({ label: '召唤', summons: [...summons.values()] });
     }
 
     return out;

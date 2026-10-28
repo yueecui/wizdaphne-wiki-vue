@@ -124,7 +124,8 @@ data/
 | `JobResponse.json` | `Api/GetV2Job` | 17 | 26 KB |
 | `SkillResponse.json` | `Api/GetV2Skill` | 3,031 | 2.34 MB |
 | `EquipmentResponse.json` | `Api/GetV2Equipment` | 816 | 1.41 MB |
-| `EnumResponse.json` | `Api/GetV2Enum` | 1（对象包） | 46 KB |
+| `EnumResponse.json` | `Api/GetV2Enum` | 1（对象包） | 41 KB |
+| `ExtraResponse.json` | `Api/GetV2Extra` | 6 块（人工表） | 94 KB |
 | `VersionResponse.json` | `Api/GetV2Version` | — | <1 KB |
 
 每个模块一条记录即完整文档（角色含 stats/talent/skills/voice，技能含描述与全部等级数值），不再有 `*Detail` 接口。
@@ -220,8 +221,8 @@ data/
 | `nt` / `rm` | note（客户端日文备注）/ reinforce_max | str / num |
 
 | `li` / `ic` | list_icon（列表小图）/ icon（背包大图）；均为去掉 `.png` 的资源名，空格→`_`、连续 `_` 合并（wiki 标题规则） | str |
-| `so` | soucate 特典分类（9 = 特典，0 = 普通）：取自 `Api/GetV2Equipment` 顶层 `extra`，源头是 wiki 手工维护的 `Data:EquipmentExtra.tabx`；用于列表排序、特典着色、特典过滤器、杂物列表排序与底色 | num |
-| `su` | sou 获取途径：同样来自 `extra`。页面里一行一个字符串、多个来源用 `;` 连接，接口拆成数组；详情里按 wiki 文本渲染（支持 `[[页面|文字]]`） | strArr |
+| `so` | soucate 特典分类（9 = 特典，0 = 普通）：已搬到 `Api/GetV2Extra.equipmentExtra`（源头是 wiki 手工维护的 `Data:EquipmentExtra.tabx`），前端按装备 id 合并；用于列表排序、特典着色、特典过滤器、杂物列表排序与底色。旧数据页里仍带着这一列时按兜底处理 | num |
+| `su` | sou 获取途径：同样来自 `equipmentExtra`。页面里一行一个字符串、多个来源用 `;` 连接，接口拆成数组；详情里按 wiki 文本渲染（支持 `[[页面|文字]]`） | strArr |
 | `d` / `rq` | desc（中文说明）/ req（装备需求）；解包与接口都没提供，恒为空（占位） | str / strArr |
 | `fc` | fa_can 妖精标记：0 不适用（妖精能穿但发挥不出性能）/ 1 可用 / 2 专用。取自解包 `Equipment.conditions_*` 的种族条件（条件 `10` 的种族列表：只有妖精 `6` → 2，含妖精也含别的种族 → 1，没有种族条件 → 0；`CharacterSpecies` 6 = 妖精） | num |
 | `fs` | fa_sk 妖精技能 = 套装技能名（`EquipSetSkillContents` → `EquipSetSkills` → `Skill`），多个用「、」连接；没有套装技能为空 | str |
@@ -237,10 +238,27 @@ data/
 
 装备只排除两类：游戏里不存在的测试行（`残旧苦无` / `残旧之刃`），以及 `name` 没有中文本地化的敌人 / NPC / 剧情专用装备 —— 解包里这类 `name` 不是 `{ja, zhs, …}` 而是纯日文字符串（如 `短剣（陽炎の忍者用）`），判定见 `equipment.py` 的 `has_cn_name()`。
 
-`EquipmentResponse` 顶层还有 `baseStat`（长键、不压缩）：类型 -> 基准值 + 排序序号 `i`
+`Api/GetV2Extra.equipmentBaseStat`（长键、不压缩）是装备类型的基准值：类型 -> 基准值 + 排序序号 `i`
 （`{ "短剑": { "i": 1, "c": 2, "spe": 4, "acc": 15, "eva": 2 } }`，`-1` 表示该属性不参与比较）。
-它来自 `config/EquipmentApi.json`（线上 `Api/GetV2Equipment` 响应的本地备份，与顶层 `bonus`
-同一个文件），列表用它做红绿配色；`i` 同时决定类型按钮的顺序（< 100 武器，>= 100 防具）。
+它来自 `config/EquipmentApi.json`（线上 `Api/GetV2Equipment` 响应的本地备份，与 `bonus`
+同一个文件；`bonus` 仍并进每件装备的 `bn`），列表用它做红绿配色；`i` 同时决定类型按钮的顺序（< 100 武器，>= 100 防具）。
+
+## 4.x 人工维护数据（`Api/GetV2Extra`）
+
+解包数据之外的「人工表」集中在一个模块里，带独立版本号（`Api/GetV2Version` 的 `extra`），
+改动只需要重传这一个模块、前端也只重拉它：
+
+| 字段 | 内容 | 来源 |
+|---|---|---|
+| `effectKinds` | 效果种类名 + 参数名 | wiki `Data:EffectKind.json` |
+| `equipmentBaseStat` | 装备类型基准值 | `config/EquipmentApi.json`（抓包备份） |
+| `equipmentExtra` | 装备特典分类 / 获取途径 `[{id, soucate, sou}]` | wiki `Data:EquipmentExtra.tabx` |
+| `relicExtra` | 遗物掉落怪物 / 推荐类别 `[{id, monster_id, c}]`（`id` = 物品图鉴编号） | `config/Data_遗物酒.xlsx` |
+| `relicCategory` | 遗物推荐类别可选项与顺序 | 同上 |
+| `characterExtra` | 角色卡池组 / 上线日期 / 声优 | `config/Data_CharacterExtra.tabx.xlsx` |
+
+前端在 `src/stores/wikiData.ts` 里把这几块单独存进 IndexedDB 的 `meta`（`extraVersion` +
+六个键），版本变化时只调 `refreshExtra()`；解包表（角色 / 技能 / 装备 / 道具 …）一条都不动。
 
 `sub_effects[].f` 取值 `"d"`（damage 行挂载）/ `"g"`（effect group 挂载）/ `"a"`（attack_start 攻击前挂载），decode 还原为 `damage` / `effect_group` / `attack_start`。
 

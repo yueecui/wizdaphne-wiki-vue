@@ -329,6 +329,13 @@ export interface EffectKind {
     remove_kinds?: number[] | null;
 }
 
+/** 召唤出来的单位：敌人分类 + 等级 + 数量 */
+export interface SkillSummon {
+    category: number;
+    level: number;
+    count: number;
+}
+
 export interface SkillListItem extends LocalizedName {
     identification: number;
     kind: number | null;
@@ -338,6 +345,8 @@ export interface SkillListItem extends LocalizedName {
     player: boolean;
     sources: string[];
     jobs: number[];
+    /** 召唤出来的单位（``EnemyFriendLayout``） */
+    summons: SkillSummon[];
     flags: { test: boolean; level0: boolean; player: boolean };
     /** 技能用到的 sub effect kind（去重升序），供列表按 ID 精确筛选 */
     sub_kinds: number[];
@@ -391,6 +400,13 @@ export interface SubEffectBrief extends SubEffectBriefLeaf {
     children: SubEffectBriefLeaf[];
 }
 
+/** kind 2790 的档位：`step` 是敌人 buff 数量档，`effect_group` 是实际执行的技能效果组 */
+export interface StepReplace {
+    step: number;
+    effect_group: number;
+    effects: SubEffectBriefLeaf[];
+}
+
 export interface SkillSubEffect {
     kind: number | null;
     kind_name: string | null;
@@ -429,6 +445,8 @@ export interface SkillSubEffect {
     child_sub_effects?: SubEffectBrief[] | null;
     /** ``extension_params`` 的展开版 */
     extension_effects?: SubEffectBrief[] | null;
+    /** kind 2790：按敌人 buff 数量档替换的效果组 */
+    step_replace?: StepReplace[] | null;
     /** 效果量（恢复量等）参照的能力值：2 魔力 / 3 神力 / 22 信仰 / 23 体力 / 25 灵巧 / 26 运气 / 27 等级 */
     calc_reference_parameter?: number | null;
     /** 第二个参照能力值（双属性折算时用） */
@@ -460,6 +478,9 @@ export interface SkillLevel {
     passive_effect_groups?: number[];
     description?: string;
     description_lang?: string;
+    /** 该等级自己的名字（多级技能名字不同时才有） */
+    name?: string;
+    name_lang?: string;
     damage?: SkillDamage[];
     sub_effects?: SkillSubEffect[];
 }
@@ -480,6 +501,141 @@ export interface SkillDetail extends SkillListItem {
     /** "Lv 3 盗贼" style unlock conditions */
     learn?: SkillLearn[];
 }
+
+/** 敌人数值块（公式输入）：`(base + growth * lv / 100) * correction / 100` */
+export interface EnemyStat {
+    base: number;
+    growth: number;
+    /** 修正率，100 = 原值 */
+    correction: number;
+    /** HP 浮动下限（百分数） */
+    min: number;
+    /** HP 浮动上限（百分数） */
+    max: number;
+}
+
+export interface EnemyFreeze {
+    half: number;
+    full: number;
+    break: number;
+    recovery: number;
+    wait_min: number;
+    wait_max: number;
+    intelligence: number;
+}
+
+/** AI 技能池里的一行：技能 + 随机权重 + 选目标的条件文案 */
+export interface EnemyAiSkill {
+    skill: SkillRef;
+    /** 随机抽选权重 */
+    weight: number;
+    /** 选目标的条件文案，null = 默认目标 */
+    target: string | null;
+}
+
+/** 一条触发条件：整段文案，或「前缀 + 敌人分类 id / 子效果种类 id + 后缀」 */
+export interface EnemyAiCondition {
+    /** 整段文案（没有链接时使用，未知类型为 ``type N``） */
+    text: string | null;
+    /** 链接前缀，例如「单位」/「敌人分类」/「我方」 */
+    label: string | null;
+    /** ``EnemyCategory.id`` */
+    ref: number | null;
+    /** ``SkillSubEffectKind.id``，名称走 ``effectKinds`` */
+    status: number | null;
+    /** 链接后缀，例如「存在」/「2 人以上」 */
+    suffix: string | null;
+}
+
+/** AI 行动规则的一行 = 一条「条件成立 → 用这个技能池」 */
+export interface EnemyAiRule {
+    /** 判定顺序，小的先检查（第一条条件全部成立的行胜出） */
+    priority: number;
+    /** 触发条件（多条之间是「且」） */
+    conditions: EnemyAiCondition[];
+    skills: EnemyAiSkill[];
+}
+
+/** 插入（割り込み）技能：``EnemyInterruptAction`` 的一种触发方式，按技能合并 */
+export interface EnemyInterrupt {
+    skill: SkillRef;
+    /** 整场战斗只能用一次（参考站写作「插入・一次」） */
+    once: boolean;
+    /** HP 阈值（%），null = 不是 HP 触发的插入 */
+    hp: number | null;
+    /** 触发条件（与 AI 行动规则同一套结构，多条之间是「且」） */
+    conditions: EnemyAiCondition[];
+}
+
+/** 一个出现变体（一个 Enemy 行） */
+export interface EnemyVariant {
+    id: number;
+    kind: number;
+    kind_name: string | null;
+    param: number;
+    exp: number;
+    ai: number;
+    level_min: number;
+    level_max: number;
+    attribute: Ref[];
+    attack_attribute: Ref[];
+    weak: Ref[];
+    characteristics: Ref[];
+    gimmicks: number[];
+    fly: boolean;
+    body_size: number[];
+    /** 全部技能（行动 + 插入 + 被动 + 挣扎） */
+    skills: SkillRef[];
+    /** 行动技能（AI 技能组，不含插入） */
+    action_skills: SkillRef[];
+    /** 插入（割り込み）技能：带「一次」标记与 HP 触发条件 */
+    interrupts: EnemyInterrupt[];
+    /** 被动技能 */
+    passive_skills: SkillRef[];
+    /** 挣扎（反撃 / もがき）技能 */
+    struggle_skill: SkillRef | null;
+    /** AI 行动规则：priority 升序，条件成立就用该技能池 */
+    ai_plan: EnemyAiRule[];
+    stats: Record<string, EnemyStat>;
+    resist: Record<string, number>;
+    freeze: EnemyFreeze;
+}
+
+/** 一条 = 一个 EnemyCategory（图鉴条目 + 只在解包数据里存在的分类） */
+export interface EnemyListItem extends LocalizedName {
+    id: number;
+    /** 图鉴编号；null = 没有图鉴记录 */
+    no: number | null;
+    book: number | null;
+    /** wiki 缩略图（去掉 `_s.png` 后缀） */
+    thumbnail: string | null;
+    boss: boolean;
+    /** 敌人种族（EnemySpecies） */
+    race: Ref;
+    lineage: number;
+    /** 体型档位 1 小 / 2 中 / 3 大 / 4 特大 */
+    size: number;
+    size_name: string | null;
+    attack_type: number;
+    damage_type: number;
+    attribute: Ref[];
+    attack_attribute: Ref[];
+    weak: Ref[];
+    characteristics: Ref[];
+    gimmicks: number[];
+    /** 出现的强度档位 */
+    kinds: number[];
+    kind_names: string[];
+    level: { min: number; max: number } | null;
+    fly: boolean;
+    body_size: Array<{ size: number[]; count: number }>;
+    resist: Record<string, number>;
+    freeze: EnemyFreeze;
+    skills: SkillRef[];
+    variants: EnemyVariant[];
+}
+
+export type EnemyDetail = EnemyListItem;
 
 export interface Manifest {
     /** ``Api/Version`` payload - the only value the cache is keyed on */

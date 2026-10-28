@@ -8,20 +8,33 @@ namespace and serves it through ``Api/GetXxx`` as::
 This script produces the same payloads locally (no upload, no MediaWiki
 required) so the frontend can be developed against DEV mocks:
 
-    CharacterResponse.json    Api/GetV2Character   95 records (roster + stats/talent/skills/voice) + 顶层 jobs/extra/rates
+    CharacterResponse.json    Api/GetV2Character   95 records (roster + stats/talent/skills/voice) + 顶层 jobs/rates
     SkillResponse.json        Api/GetV2Skill       3,031 records (skill fields + description + levels)
-    EquipmentResponse.json    Api/GetV2Equipment   839 records (weapon / armor stats + traits) + 顶层 baseStat
+    EquipmentResponse.json    Api/GetV2Equipment   839 records (weapon / armor stats + traits)
     ItemResponse.json         Api/GetV2Item        2,684 items + 顶层 relics
     ShopResponse.json         Api/GetV2Shop        122 shops（商品内嵌 items）
-    EnumResponse.json         Api/GetV2Enum        `{enum, kinds}`：字典 + 效果种类名
-    VersionResponse.json      Api/GetV2Version     { version }
+    EnemyResponse.json        Api/GetV2Enemy       321 敌人分类（含出现变体与数值公式输入）
+    MapResponse.json          Api/GetV2Map         193 层（items）+ 顶层 maps 分类标签
+    EnemyPoolResponse.json    Api/GetV2EnemyPool   367 个挂不到层的编队池（敌群页）
+    EnumResponse.json         Api/GetV2Enum        {enum}：各分组字典
+    ExtraResponse.json        Api/GetV2Extra       人工维护（非解包）的六块，见下
+    VersionResponse.json      Api/GetV2Version     { version, extra }（extra = 人工表版本）
 
     JobResponse.json / RelicResponse.json 前端不再请求，只作为上传脚本的输入
     （Data:Job / Data:Relic 数据页仍由 GetV2Character.jobs、GetV2Item.relics 读取）
 
+``ExtraResponse.json`` 把「人工维护、跟解包数据分开更新」的东西集中到一个模块：
+
+    effectKinds       效果种类名 + 参数名（wiki 的 ``Data:EffectKind.json``）
+    equipmentBaseStat 装备类型基准值（``Api/GetV2Equipment.baseStat`` 那份抓包备份）
+    equipmentExtra    装备特典分类 / 获取途径（wiki 的 ``Data:EquipmentExtra.tabx``）
+    relicExtra        遗物掉落怪物 / 推荐类别（``config/Data_遗物酒.xlsx``）
+    relicCategory     遗物推荐类别可选项与顺序
+    characterExtra    角色卡池组 / 上线日期 / 声优（``config/Data_CharacterExtra.tabx.xlsx``）
+
 ``EffectKindResponse.json``（效果种类名的手改表）不在这里生成：那份数据只在 wiki 上
 手工维护（``Data:EffectKind.json``），DEV 直接把同名文件放到 ``public/mock``，
-本脚本把它读进 ``EnumResponse.json`` 的 ``kinds``。
+本脚本把它读进 ``ExtraResponse.json`` 的 ``effectKinds``。
 
 Compression rules (mirroring ``docs/data-wiki-api-indexeddb.md``):
 
@@ -41,6 +54,7 @@ Files are overwritten in place; directories are never removed.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -53,6 +67,7 @@ from common import (  # noqa: E402
     character_extra,
     character_rates,
     read_config_json,
+    relic_extra,
 )
 
 DEFAULT_DATA = os.path.join(ROOT, "data")
@@ -163,6 +178,13 @@ JOB = [
     ]),
 ]
 
+#: 召唤：被召唤出来的敌人分类 + 等级 + 数量（来自 ``EnemyFriendLayout``）
+SKILL_SUMMON = [
+    ("category", "c", "num"),
+    ("level", "lv", "num"),
+    ("count", "n", "num"),
+]
+
 SKILL_LIST = [
     ("id", "i", "raw"),
     ("name", "zh", "str"),
@@ -176,6 +198,7 @@ SKILL_LIST = [
     ("level0", "l0", "bool"),
     ("sources", "s", "strArr"),
     ("jobs", "j", "numArr"),
+    ("summons", "sm", "objArr", SKILL_SUMMON),
 ]
 
 DAMAGE = [
@@ -219,6 +242,13 @@ SUB_BRIEF_LEAF = [
 
 SUB_BRIEF = SUB_BRIEF_LEAF + [("children", "cs", "objArr", SUB_BRIEF_LEAF)]
 
+# kind 2790「敵のバフ数によってStepReplace」：step（敌人 buff 数量档）-> 实际效果组
+STEP_REPLACE = [
+    ("step", "s", "num"),
+    ("effect_group", "g", "num"),
+    ("effects", "e", "objArr", SUB_BRIEF_LEAF),
+]
+
 SUB_EFFECT = [
     ("kind", "k", "num"),
     ("params", "p", "numArr"),
@@ -246,6 +276,8 @@ SUB_EFFECT = [
     ("extension_effects", "xe", "objArr", SUB_BRIEF),
     # 参数里指向的效果（参数序号 -> 摘要），前端按缩进行显示
     ("param_refs", "pr", "map", SUB_BRIEF),
+    # kind 2790：按敌人 buff 数量档替换的效果组
+    ("step_replace", "sx", "objArr", STEP_REPLACE),
 ]
 
 LEVEL = [
@@ -259,6 +291,8 @@ LEVEL = [
     ("skill_condition_ids", "cd", "numArr"),
     ("description", "d", "str"),
     ("description_lang", "dl", "str"),
+    ("name", "nm", "str"),
+    ("name_lang", "nl", "str"),
     ("damage", "dm", "objArr", DAMAGE),
     ("sub_effects", "sb", "objArr", SUB_EFFECT),
 ]
@@ -346,7 +380,8 @@ RELIC = [
     # 提升 / 降低属性
     ("inc", "u", "strArr"),
     ("dec", "d", "strArr"),
-    # 掉落怪物 / 推荐类别：手工数据，清洗阶段留空
+    # 掉落怪物 / 推荐类别：`relic.py` 不填，手工数据走顶层 `relics_extra`
+    # （这里的字段留给以后把数据直接并进遗物行的场景）
     ("monsters", "m", "objArr", RELIC_MONSTER),
     ("categories", "c", "strArr"),
 ]
@@ -369,10 +404,9 @@ EQUIPMENT = [
     # 图标资源名（list_icon = 列表小图，icon = 背包大图，均不含 .png）
     ("list_icon", "li", "str"),
     ("icon", "ic", "str"),
-    # V1 手工字段：soucate 9 = 特典 / desc 中文说明 / 获取途径 / 妖精
-    ("soucate", "so", "num"),
+    # 特典分类 / 获取途径已搬到 ``Api/GetV2Extra.equipmentExtra``，这里不再输出；
+    # desc 中文说明 / req 装备需求仍是占位，妖精相关来自解包
     ("desc", "d", "str"),
-    ("sou", "su", "strArr"),
     ("req", "rq", "strArr"),
     ("fa_can", "fc", "num"),
     ("fa_sk", "fs", "str"),
@@ -501,6 +535,210 @@ SHOP = [
     ("name", "zh", "str"),
     ("count", "c", "num"),
     ("items", "it", "objArr", SHOP_ITEM),
+]
+
+# ---------- 敌人（Enemy） ----------
+
+#: 数值块：base / growth / correction（修正率，100 = 原值）+ HP 浮动上下限（百分数）
+ENEMY_STAT = [
+    ("base", "b", "num"),
+    ("growth", "g", "num"),
+    ("correction", "cr", "num"),
+    ("min", "lo", "num"),
+    ("max", "hi", "num"),
+]
+
+#: 冻结 / 破冰：半冻结 / 完全冻结 / 破冰所需层数 + 自然回复 + 待机浮动
+ENEMY_FREEZE = [
+    ("half", "h", "num"),
+    ("full", "f", "num"),
+    ("break", "b", "num"),
+    ("recovery", "r", "num"),
+    ("wait_min", "wm", "num"),
+    ("wait_max", "wx", "num"),
+    ("intelligence", "iq", "num"),
+]
+
+#: 体型统计（同一分类下可能出现多种 body_size）
+ENEMY_BODY = [
+    ("size", "s", "numArr"),
+    ("count", "c", "num"),
+]
+
+#: AI 技能池里的一行：技能 + 随机权重 + 选目标的条件文案（默认值已过滤掉）
+ENEMY_AI_SKILL = [
+    ("skill", "s", "num"),
+    ("weight", "w", "num"),
+    ("target", "t", "str"),
+]
+
+#: 一条条件：要么是整段文案，要么是「前缀 + 敌人分类 id / 子效果种类 id + 后缀」
+#: （敌人分类前端做成链接，子效果种类换成状态名）
+ENEMY_AI_CONDITION = [
+    ("text", "t", "str"),
+    ("label", "l", "str"),
+    ("ref", "r", "num"),
+    ("status", "k", "num"),
+    ("suffix", "x", "str"),
+]
+
+#: AI 行动规则的一行 = 一条「条件成立 → 用这个技能池」（condition 已翻成文案）
+ENEMY_AI_RULE = [
+    ("priority", "p", "num"),
+    ("conditions", "c", "objArr", ENEMY_AI_CONDITION),
+    ("skills", "s", "objArr", ENEMY_AI_SKILL),
+]
+
+#: 一个出现变体：参数 id + 等级区间 + 技能 + 该变体的完整数值
+ENEMY_VARIANT = [
+    ("id", "i", "raw"),
+    ("kind", "k", "num"),
+    ("param", "p", "raw"),
+    ("exp", "e", "num"),
+    ("ai", "ai", "num"),
+    ("level", "lv", "numArr"),
+    ("attribute", "at", "numArr"),
+    ("attack_attribute", "aa", "numArr"),
+    ("weak", "wk", "numArr"),
+    ("characteristics", "ch", "numArr"),
+    ("gimmicks", "gm", "numArr"),
+    ("fly", "f", "bool"),
+    ("body_size", "bs", "numArr"),
+    # 全部技能（行动 + 插入 + 被动 + 挣扎）与分栏明细
+    ("skills", "sk", "numArr"),
+    # 引用到的技能等级（identification -> level），只有多级技能的非 0 等级才记
+    ("skill_levels", "sl", "numMap"),
+    ("action_skills", "ak", "numArr"),
+    # 插入技能：一次标记 + HP 触发阈值 + 触发条件文案（与 AI 行动规则同一套结构）
+    ("interrupts", "ir", "objArr", [
+        ("skill", "s", "num"),
+        ("once", "o", "bool"),
+        ("hp", "hp", "num"),
+        ("conditions", "c", "objArr", ENEMY_AI_CONDITION),
+    ]),
+    ("passive_skills", "pk", "numArr"),
+    ("struggle_skill", "sg", "num"),
+    # AI 行动规则：priority 升序，条件成立就用该技能池
+    ("ai_plan", "ap", "objArr", ENEMY_AI_RULE),
+    # 数值：键是属性名（hp / attack / …），值是 {base, growth, correction, min, max}
+    ("stats", "st", "map", ENEMY_STAT),
+    ("resist", "rs", "numMap"),
+    ("freeze", "fz", "obj", ENEMY_FREEZE),
+]
+
+#: 一条 = 一个 EnemyCategory（图鉴条目 + 只在解包数据里存在的分类）
+ENEMY = [
+    ("id", "i", "raw"),
+    # 图鉴编号 / 图鉴条目 id；没有图鉴记录的分类为空
+    ("no", "n", "num"),
+    ("book", "bk", "raw"),
+    ("name", "zh", "str"),
+    ("name_jp", "jp", "str"),
+    ("name_en", "en", "str"),
+    # wiki 上的缩略图去掉 `_s.png` 后缀，例如 tmb_enemy_090_005_00
+    ("thumbnail", "th", "str"),
+    ("boss", "b", "bool"),
+    ("race", "ra", "num"),
+    ("lineage", "li", "num"),
+    # 体型档位（1 小 / 2 中 / 3 大 / 4 特大），与 body_size 的像素尺寸不同
+    ("size", "sz", "num"),
+    ("attack_type", "at", "num"),
+    ("damage_type", "dt", "num"),
+    ("attribute", "ar", "numArr"),
+    ("attack_attribute", "aa", "numArr"),
+    ("weak", "wk", "numArr"),
+    ("characteristics", "ch", "numArr"),
+    ("gimmicks", "gm", "numArr"),
+    # 出现的强度档位（kind）
+    ("kinds", "ks", "numArr"),
+    ("level", "lv", "obj", [("min", "lo", "num"), ("max", "hi", "num")]),
+    ("fly", "f", "bool"),
+    ("body_size", "bs", "objArr", ENEMY_BODY),
+    ("resist", "rs", "numMap"),
+    ("freeze", "fz", "obj", ENEMY_FREEZE),
+    ("skills", "sk", "numArr"),
+    ("variants", "v", "objArr", ENEMY_VARIANT),
+]
+
+# ---------- 地图（层为单位） / 敌群（挂不到层的编队池） ----------
+
+#: 层里出现过的敌人：只留 id 与等级范围，名称 / 属性由敌人模块提供
+MAP_ENEMY = [
+    ("enemy_id", "i", "num"),
+    ("lv_min", "lo", "num"),
+    ("lv_max", "hi", "num"),
+    ("rows", "r", "num"),
+]
+
+#: 编队成员：同样只引用 enemy_id
+MAP_MEMBER = [
+    ("enemy_id", "i", "num"),
+    ("lv_min", "lo", "num"),
+    ("lv_max", "hi", "num"),
+    ("pos_x", "px", "num"),
+    ("pos_y", "py", "num"),
+    ("notorious", "no", "bool"),
+    ("wanted", "wa", "bool"),
+    ("hate", "ha", "bool"),
+]
+
+MAP_FORMATION = [
+    ("formation_id", "i", "num"),
+    ("row_id", "r", "num"),
+    ("layout_id", "l", "num"),
+    ("weight", "w", "num"),
+    ("lv_min", "lo", "num"),
+    ("lv_max", "hi", "num"),
+    ("escape", "e", "num"),
+    ("surprise", "s", "num"),
+    ("preemption", "p", "num"),
+    ("exp_rate", "x", "num"),
+    ("drop_id", "d", "num"),
+    ("special_drop_id", "sd", "num"),
+    ("drop_probability", "dp", "num"),
+    ("trap_id", "t", "num"),
+    ("rare_trap_id", "rt", "num"),
+    ("condition_id", "c", "num"),
+    ("respawn_kind", "rk", "num"),
+    ("symbol_id", "si", "num"),
+    ("symbol_kind", "sk", "num"),
+    ("grade_id", "g", "num"),
+    ("friend_prob", "fp", "num"),
+    ("covert", "cv", "num"),
+    ("win_condition", "wc", "num"),
+    ("members", "m", "objArr", MAP_MEMBER),
+]
+
+MAP = [
+    ("id", "i", "raw"),
+    ("name", "n", "str"),
+    ("map_id", "mi", "num"),
+    ("map_name", "mn", "str"),
+    ("area_id", "a", "num"),
+    ("scene_name", "sc", "str"),
+    ("ceiling", "c", "bool"),
+    ("floor_attribute", "fa", "num"),
+    ("enemy_placement", "ep", "numArr"),
+    ("bgm", "bg", "str"),
+    ("normal_enemies", "ne", "objArr", MAP_ENEMY),
+    ("notorious_enemies", "sn", "objArr", MAP_ENEMY),
+    ("formations", "f", "objArr", MAP_FORMATION),
+]
+
+POOL_FLOOR = [
+    ("id", "i", "num"),
+    ("name", "n", "str"),
+    ("map_name", "mn", "str"),
+]
+
+ENEMY_POOL = [
+    ("id", "i", "num"),
+    ("row_count", "rc", "num"),
+    ("lv_ranges", "lr", "numArrArr"),
+    ("normal_enemies", "ne", "objArr", MAP_ENEMY),
+    ("notorious_enemies", "sn", "objArr", MAP_ENEMY),
+    ("floors", "fl", "objArr", POOL_FLOOR),
+    ("formations", "f", "objArr", MAP_FORMATION),
 ]
 
 #: list + detail fields merged (``id`` / ``grade`` are already in the list part;
@@ -693,8 +931,20 @@ def main(argv: list[str]) -> int:
         relics = read_json(os.path.join(data, "relics.json"))
     except FileNotFoundError:      # relic.py 没跑过时跳过遗物模块
         relics = []
+    try:
+        enemies = read_json(os.path.join(data, "enemies.json"))
+    except FileNotFoundError:      # enemy.py 没跑过时跳过敌人模块
+        enemies = []
     effect_kinds = read_json(os.path.join(data, "effect_kinds.json"))
     enums = read_json(os.path.join(data, "enums.json"))
+    try:
+        map_data = read_json(os.path.join(data, "map.json"))
+    except FileNotFoundError:      # build_map.py 没跑过时跳过地图模块
+        map_data = {"maps": [], "floors": []}
+    try:
+        pool_data = read_json(os.path.join(data, "enemyPool.json"))
+    except FileNotFoundError:      # build_map.py 没跑过时跳过敌群模块
+        pool_data = {"pools": []}
 
     char_rows = [encode_doc(row, CHAR) for row in characters]
     job_rows = [encode_doc(row, JOB) for row in jobs]
@@ -703,6 +953,9 @@ def main(argv: list[str]) -> int:
     item_rows = [encode_doc(row, ITEM) for row in items]
     shop_rows = [encode_doc(row, SHOP) for row in shops]
     relic_rows = [encode_doc(row, RELIC) for row in relics]
+    enemy_rows = [encode_doc(row, ENEMY) for row in enemies]
+    map_rows = [encode_doc(row, MAP) for row in map_data.get("floors", [])]
+    pool_rows = [encode_doc(row, ENEMY_POOL) for row in pool_data.get("pools", [])]
 
     verify(char_rows, CHAR, "Character")
     verify(job_rows, JOB, "Job")
@@ -711,6 +964,9 @@ def main(argv: list[str]) -> int:
     verify(item_rows, ITEM, "Item")
     verify(shop_rows, SHOP, "Shop")
     verify(relic_rows, RELIC, "Relic")
+    verify(enemy_rows, ENEMY, "Enemy")
+    verify(map_rows, MAP, "Map")
+    verify(pool_rows, ENEMY_POOL, "EnemyPool")
 
     # 手工补充数据（config/Data_CharacterExtra.tabx.xlsx）放在 payload 顶层 `extra`：
     # 长键、不压缩，前端导入时按 id 合并，不进 items
@@ -725,6 +981,10 @@ def main(argv: list[str]) -> int:
         for cid, sup in character_extra().items()
     ]
     char_extra.sort(key=lambda row: row["index"] or 0, reverse=True)
+
+    # 遗物手工数据（config/Data_遗物酒.tabx.xlsx）同样放顶层：
+    # ``relics_extra`` 按遗物的物品图鉴编号给掉落怪物 / 推荐类别，``relics_ccate`` 是类别可选项
+    relic_extra_rows, relic_categories = relic_extra()
 
     # 个体几率同样放在顶层：备份数据以「日文名 - 日文风格」为键，这里换成角色 id
     key_to_id = {}
@@ -751,36 +1011,52 @@ def main(argv: list[str]) -> int:
     else:
         kind_names = effect_kinds
 
+    # 抓包备份（``config/EquipmentApi.json``）：装备基准值 + 特典分类 / 获取途径
+    equip_api = read_config_json(EQUIP_API_JSON) or {}
+    # 人工维护的那六块：整包算个指纹当版本号，内容不变就不会让前端重拉
+    extra_payload = {
+        "effectKinds": kind_names,
+        "equipmentBaseStat": equip_api.get("baseStat") or {},
+        "equipmentExtra": equip_api.get("extra") or [],
+        "relicExtra": relic_extra_rows,
+        "relicCategory": relic_categories,
+        "characterExtra": char_extra,
+    }
+    extra_version = int(
+        hashlib.md5(json.dumps(extra_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()[:8],
+        16,
+    )
+
     payloads = {
         # 数据量小的类并到大一类的顶层（线上 Lua 同样形状）：Character 带 jobs，
         # Item 带 relics，少开 Api/GetV2Job / Api/GetV2Relic 两个模块
         "CharacterResponse.json": {
             **wrap(char_rows),
             "jobs": job_rows,
-            "extra": char_extra,
             "rates": char_rates,
         },
         "SkillResponse.json": wrap(skill_rows),
-        "ItemResponse.json": {**wrap(item_rows), "relics": relic_rows},
+        "ItemResponse.json": {
+            **wrap(item_rows),
+            "relics": relic_rows,
+        },
         "ShopResponse.json": wrap(shop_rows),
+        "EnemyResponse.json": wrap(enemy_rows),
+        # 地图以「层」为条目，顶层 `maps` 只是分类标签
+        "MapResponse.json": {**wrap(map_rows), "maps": map_data.get("maps", [])},
+        "EnemyPoolResponse.json": wrap(pool_rows),
         # 下面两个前端不再请求，仅作为上传脚本的输入（Data:Job / Data:Relic 数据页仍由
         # Api/GetV2Character.jobs 与 Api/GetV2Item.relics 读取）
         "JobResponse.json": wrap(job_rows),
         "RelicResponse.json": wrap(relic_rows),
-        # baseStat 与线上 ``Api/GetV2Equipment`` 顶层同形状（不压缩），列表用它决定红绿配色；
-        # 加护概率已并入每件装备的 ``bn``，这里只补 baseStat
-        "EquipmentResponse.json": {
-            **wrap(equip_rows),
-            "baseStat": (read_config_json(EQUIP_API_JSON) or {}).get("baseStat") or {},
-        },
-        # 字典 + 效果种类名表同一个模块返回：``{enum, kinds}``
-        # （``enum.effect_kind`` 只有结构，名字由 ``kinds`` 覆盖）
-        "EnumResponse.json": {
-            "enum": {**enums, "effect_kind": effect_kinds},
-            "kinds": kind_names,
-        },
-        # the cache is keyed on this single value; nothing else belongs here
-        "VersionResponse.json": {"version": int(time.strftime("%y%m%d%H%M"))},
+        # 加护概率已并入每件装备的 ``bn``，基准值 / 特典分类搬到 Extra
+        "EquipmentResponse.json": wrap(equip_rows),
+        # ``enum.effect_kind`` 只有结构，名字由 Extra 的 ``effectKinds`` 覆盖
+        "EnumResponse.json": {"enum": {**enums, "effect_kind": effect_kinds}},
+        # 人工维护（非解包）的数据全在这一个模块里，有独立版本号
+        "ExtraResponse.json": extra_payload,
+        # ``version`` 解包数据 / ``extra`` 人工表，各比各的
+        "VersionResponse.json": {"version": int(time.strftime("%y%m%d%H%M")), "extra": extra_version},
     }
 
     for name, payload in payloads.items():

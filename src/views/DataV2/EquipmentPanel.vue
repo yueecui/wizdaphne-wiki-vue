@@ -111,8 +111,6 @@
 
         <div>共有 {{ filteredList.length }} 个符合条件的装备</div>
 
-        <div v-if="store.state.equipments === 'loading'" class="text-sm text-gray-400">数据加载中…</div>
-
         <template v-if="filteredList.length > 0">
             <NPagination v-model:page="pageIndex" :page-count="pageCount" />
 

@@ -1,10 +1,22 @@
 /** 遗物（`Api/GetV2Item` 顶层 `relics`）的数据形状；字段与 `src/api/dbCodec.ts` 的 `RELIC_FIELDS` 对应 */
 export interface RelicMonster {
+    /** 怪物图鉴编号（接口 `relics_extra.monster_id`，对应敌人表的 `no`） */
     id?: number;
     name?: string;
 }
 
+/** `Api/GetV2Item` 顶层 `relics_extra` 的一条：遗物图鉴编号 + 掉落怪物编号 + 推荐类别 */
+export interface RelicExtra {
+    /** 遗物的物品图鉴编号（道具数据里的 `collection.no`） */
+    id?: number;
+    /** 掉落怪物的图鉴编号（对应敌人表的 `no`） */
+    monster_id?: number[];
+    /** 推荐类别（`物理` / `法系` / `坦克` / `开箱`） */
+    categories?: string[];
+}
+
 export interface RelicDoc {
+    /** 遗物道具 id（`Reward.identification`，如 500010010），对回道具表的图鉴编号用 */
     id?: number;
     name?: string;
     /** 遗物酒名 */
@@ -22,9 +34,9 @@ export interface RelicDoc {
     inc?: string[];
     /** 降低属性 */
     dec?: string[];
-    /** 掉落怪物（手工数据，暂时为空） */
+    /** 掉落怪物：按图鉴编号对到 `relics_extra`，怪物名再用敌人表的图鉴编号解析 */
     monsters?: RelicMonster[];
-    /** 推荐类别（手工数据，暂时为空） */
+    /** 推荐类别：来自 `relics_extra.c`（可选项见 `relics_ccate`） */
     categories?: string[];
 }
 
@@ -62,6 +74,5 @@ export const sortRelicStats = (stats?: string[]) =>
     [...(stats ?? [])].sort((a, b) => {
         const indexA = RELIC_STAT_ORDER.indexOf(a);
         const indexB = RELIC_STAT_ORDER.indexOf(b);
-        return (indexA < 0 ? RELIC_STAT_ORDER.length : indexA) -
-            (indexB < 0 ? RELIC_STAT_ORDER.length : indexB);
+        return (indexA < 0 ? RELIC_STAT_ORDER.length : indexA) - (indexB < 0 ? RELIC_STAT_ORDER.length : indexB);
     });

@@ -43,11 +43,11 @@ No filtering except:
 Every other identification with a ``EquipmentParam`` row is emitted, and the
 V1 page's own subset can be compared by name.
 
-加护概率 ``bonus``、特典分类 ``soucate``、获取途径 ``sou`` 取自
-``config/EquipmentApi.json``（``Api/GetV2Equipment`` 响应的本地备份，其中 ``extra``
-就是 wiki 上手工维护的 ``Data:EquipmentExtra.tabx``）。V1 手工表（``EquipmentExtra`` /
-``EquipmentSkill`` / ``EquipmentSetSkill`` / ``EquipmentBonus`` / ``EquipmentBaseStat``）
-不再参与清洗（对应的参考文件已从 ``config/`` 删除）：接口与解包都没提供的字段
+加护概率 ``bonus`` 取自 ``config/EquipmentApi.json``（``Api/GetV2Equipment`` 响应的本地备份）。
+特典分类 ``soucate`` / 获取途径 ``sou`` 不再并进装备条目：它们属于人工维护数据，
+随 ``Api/GetV2Extra.equipmentExtra`` 单独下发，前端按装备 id 合并。
+V1 手工表（``EquipmentExtra`` / ``EquipmentSkill`` / ``EquipmentSetSkill`` / ``EquipmentBonus`` /
+``EquipmentBaseStat``）不再参与清洗（对应的参考文件已从 ``config/`` 删除）：接口与解包都没提供的字段
 （中文说明 / 装备需求）留空占位，UI 仍保留位置。
 
 妖精相关的三个字段也来自解包（V1 手工表只用于校验）：
@@ -319,14 +319,10 @@ def main(argv: list[str]) -> int:
     for row in load("EquipmentOverRankReinforce"):
         over_rank_groups[row.get("group_id")].append(row)
 
-    # 加护概率来自 ``Api/GetV2Equipment`` 的顶层 ``bonus``（按装备中文名索引）
+    # 加护概率来自 ``Api/GetV2Equipment`` 的顶层 ``bonus``（按装备中文名索引）；
+    # 特典分类 / 获取途径是人工维护数据，走 ``Api/GetV2Extra.equipmentExtra``，这里不并
     api_payload = read_config_json(EQUIP_API_JSON) or {}
     bonus_map: dict = {name: rows for name, rows in (api_payload.get("bonus") or [])}
-    # 特典分类 / 获取途径来自同一响应的顶层 ``extra``（按 identification 索引），
-    # 源头是 wiki 的 ``Data:EquipmentExtra.tabx``（手工维护，上传脚本只往里追加新装备）
-    extra_map: dict = {
-        int(row["id"]): row for row in (api_payload.get("extra") or []) if row.get("id")
-    }
 
     # ---------- 商店：只用 shop.py 清洗后的店铺（有结束时间的限时商店不算） ----------
     # 商店的 content_id 是具体档位 id（如 100000109），要折回 identification（100000100）
@@ -508,7 +504,6 @@ def main(argv: list[str]) -> int:
         element = pick(rolls, "element") or 0
         note = pick(rolls, "note")
         display_name = names(rolls[0]).get("name")
-        extra_row = extra_map.get(ident) or {}
         equipments.append({
             "id": ident,
             "name": display_name,
@@ -533,10 +528,7 @@ def main(argv: list[str]) -> int:
             # desc = 中文说明 / req = 装备需求
             "desc": None,
             "req": [],
-            # 特典分类（9 = 特典，0 = 普通）与获取途径：来自 ``Api/GetV2Equipment`` 的 extra，
-            # 即 wiki 上手工维护的 ``Data:EquipmentExtra.tabx``
-            "soucate": extra_row.get("soucate") or 0,
-            "sou": extra_row.get("sou") or [],
+            # 特典分类（9 = 特典，0 = 普通）/ 获取途径：人工维护数据，见 ``Api/GetV2Extra``
             # 妖精：0 不适用 / 1 可用 / 2 专用；fa_sk 是套装技能名（多个用「、」连接）
             "fa_can": fa_can,
             "fa_sk": "、".join(fairy_skill_names) or None,

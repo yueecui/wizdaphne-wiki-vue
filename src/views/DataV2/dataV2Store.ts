@@ -3,9 +3,16 @@ import { computed, ref } from 'vue';
 import {
     useWikiDataStore,
     type EnumEntry,
+    type MapCategory,
     type RawCharacter,
+    type RawEnemy,
+    type RawEnemyAiCondition,
+    type RawEnemyPool,
+    type RawEnemyVariant,
     type RawEquipment,
     type RawJob,
+    type RawMapFloor,
+    type RawMapFormation,
     type RawSkill,
     type RawSubEffectBrief,
     type RawSubEffectBriefLeaf,
@@ -14,6 +21,9 @@ import type {
     CharacterDetail,
     CharacterListItem,
     EffectKind,
+    EnemyAiCondition,
+    EnemyListItem,
+    EnemyVariant,
     EquipmentBaseStat,
     EquipmentListItem,
     FateSkill,
@@ -27,6 +37,7 @@ import type {
     SubEffectBrief,
     SubEffectBriefLeaf,
 } from './types';
+import type { RelicDoc } from './relicTypes';
 
 /**
  * View layer of the v2 page.
@@ -71,8 +82,9 @@ export const useDataV2Store = defineStore('data-v2', () => {
         return map;
     });
 
-    const skillRef = (identification: number): SkillRef => ({
+    const skillRef = (identification: number, level?: number): SkillRef => ({
         identification,
+        ...(level ? { level } : {}),
         ...(skillNameMap.value.get(identification) ?? {
             name: `#${identification}`,
             name_jp: null,
@@ -110,76 +122,76 @@ export const useDataV2Store = defineStore('data-v2', () => {
         // 卡池组 / 上线日期 / 声优来自 Api/GetV2Character 顶层的 extra（按 id 合并）
         const extra = wiki.characterExtras[raw.id];
         return {
-        id: raw.id,
-        group: raw.group,
-        guide_no: raw.guide_no || null,
-        name: raw.name,
-        name_jp: raw.name_jp,
-        name_en: raw.name_en,
-        style: raw.style ?? '',
-        is_default_style: Boolean(raw.default),
-        rarity: refOf(wiki.enums.rarity, raw.rarity),
-        race: refOf(wiki.enums.race, raw.race),
-        attribute: refOf(wiki.enums.attribute, raw.attribute),
-        gender: refOf(wiki.enums.gender, raw.gender),
-        personality: refOf(wiki.enums.personality, raw.personality),
-        alignment: alignmentRef(raw.alignment),
-        jobs: (raw.jobs ?? []).map((job) => ({
-            ...refOf(wiki.enums.job, job.id),
-            primary: Boolean(job.primary),
-        })),
-        fate: raw.fate ? fateOf(raw.fate) : null,
-        self_restraint: raw.self_restraint?.id
-            ? { id: raw.self_restraint.id, extra_tags: raw.self_restraint.extra_tags ?? [] }
-            : null,
-        potential_grade: raw.potential_grade || null,
-        pool_group: extra?.group ?? 0,
-        character_voice: extra?.character_voice ?? null,
-        release_date: extra?.release_date?.milliseconds
-            ? {
-                  date: extra.release_date.date ?? null,
-                  time: extra.release_date.time ?? null,
-                  milliseconds: extra.release_date.milliseconds,
-              }
-            : null,
-        stats: {
-            base: fillStats(raw.stats?.base),
-            growth: fillStats(raw.stats?.growth),
-            pools: {
-                hp: { base: raw.stats?.pools?.hp?.base ?? 0, growth: raw.stats?.pools?.hp?.growth ?? 0 },
-                mp: { base: raw.stats?.pools?.mp?.base ?? 0, growth: raw.stats?.pools?.mp?.growth ?? 0 },
-                sp: { base: raw.stats?.pools?.sp?.base ?? 0, growth: raw.stats?.pools?.sp?.growth ?? 0 },
-            },
-            growth_rate: raw.stats?.growth_rate ?? [],
-        },
-        talent: {
-            id: raw.talent?.id ?? 0,
-            name: null,
-            name_jp: null,
-            min: fillStats(raw.talent?.min),
-            max: fillStats(raw.talent?.max),
-        },
-        mental: { id: raw.mental ?? 0, value: raw.mental ?? 0 },
-        grade: refOf(wiki.enums.grade, raw.grade),
-        skills: {
-            unique: (raw.skills?.unique ?? []).map(skillRef),
-            inherit: (raw.skills?.inherit ?? []).map(skillRef),
-            potential_inherit: (raw.skills?.potential ?? []).map(skillRef),
-            discipline: (raw.skills?.discipline ?? []).map((item) => ({
-                ...skillRef(item.id),
-                level: item.level || undefined,
-                need_point: item.need_point || undefined,
+            id: raw.id,
+            group: raw.group,
+            guide_no: raw.guide_no || null,
+            name: raw.name,
+            name_jp: raw.name_jp,
+            name_en: raw.name_en,
+            style: raw.style ?? '',
+            is_default_style: Boolean(raw.default),
+            rarity: refOf(wiki.enums.rarity, raw.rarity),
+            race: refOf(wiki.enums.race, raw.race),
+            attribute: refOf(wiki.enums.attribute, raw.attribute),
+            gender: refOf(wiki.enums.gender, raw.gender),
+            personality: refOf(wiki.enums.personality, raw.personality),
+            alignment: alignmentRef(raw.alignment),
+            jobs: (raw.jobs ?? []).map((job) => ({
+                ...refOf(wiki.enums.job, job.id),
+                primary: Boolean(job.primary),
             })),
-            same_identifications: raw.skills?.same ?? [],
-            exclude_inheritance: raw.skills?.exclude ?? [],
-            get_lv: raw.skills?.get_lv ?? null,
-        },
-        voice: {
-            speech: raw.voice?.speech ?? null,
-            breakup_speech: raw.voice?.breakup ?? null,
-            voice_group_id: raw.voice?.group ?? null,
-        },
-        images: raw.images,
+            fate: raw.fate ? fateOf(raw.fate) : null,
+            self_restraint: raw.self_restraint?.id
+                ? { id: raw.self_restraint.id, extra_tags: raw.self_restraint.extra_tags ?? [] }
+                : null,
+            potential_grade: raw.potential_grade || null,
+            pool_group: extra?.group ?? 0,
+            character_voice: extra?.character_voice ?? null,
+            release_date: extra?.release_date?.milliseconds
+                ? {
+                      date: extra.release_date.date ?? null,
+                      time: extra.release_date.time ?? null,
+                      milliseconds: extra.release_date.milliseconds,
+                  }
+                : null,
+            stats: {
+                base: fillStats(raw.stats?.base),
+                growth: fillStats(raw.stats?.growth),
+                pools: {
+                    hp: { base: raw.stats?.pools?.hp?.base ?? 0, growth: raw.stats?.pools?.hp?.growth ?? 0 },
+                    mp: { base: raw.stats?.pools?.mp?.base ?? 0, growth: raw.stats?.pools?.mp?.growth ?? 0 },
+                    sp: { base: raw.stats?.pools?.sp?.base ?? 0, growth: raw.stats?.pools?.sp?.growth ?? 0 },
+                },
+                growth_rate: raw.stats?.growth_rate ?? [],
+            },
+            talent: {
+                id: raw.talent?.id ?? 0,
+                name: null,
+                name_jp: null,
+                min: fillStats(raw.talent?.min),
+                max: fillStats(raw.talent?.max),
+            },
+            mental: { id: raw.mental ?? 0, value: raw.mental ?? 0 },
+            grade: refOf(wiki.enums.grade, raw.grade),
+            skills: {
+                unique: (raw.skills?.unique ?? []).map(skillRef),
+                inherit: (raw.skills?.inherit ?? []).map(skillRef),
+                potential_inherit: (raw.skills?.potential ?? []).map(skillRef),
+                discipline: (raw.skills?.discipline ?? []).map((item) => ({
+                    ...skillRef(item.id),
+                    level: item.level || undefined,
+                    need_point: item.need_point || undefined,
+                })),
+                same_identifications: raw.skills?.same ?? [],
+                exclude_inheritance: raw.skills?.exclude ?? [],
+                get_lv: raw.skills?.get_lv ?? null,
+            },
+            voice: {
+                speech: raw.voice?.speech ?? null,
+                breakup_speech: raw.voice?.breakup ?? null,
+                voice_group_id: raw.voice?.group ?? null,
+            },
+            images: raw.images,
         };
     };
 
@@ -209,7 +221,7 @@ export const useDataV2Store = defineStore('data-v2', () => {
             multipliers: raw.multipliers ?? {},
             skills: jobRefs(raw.skills),
             skill_variants: Object.fromEntries(
-                Object.entries(raw.skill_variants ?? {}).map(([key, rows]) => [key, jobRefs(rows)]),
+                Object.entries(normalizeNumericKeys(raw.skill_variants)).map(([key, rows]) => [key, jobRefs(rows)]),
             ),
             skill_count: raw.skill_count ?? 0,
             characters: {
@@ -247,6 +259,21 @@ export const useDataV2Store = defineStore('data-v2', () => {
         children: (raw.children ?? []).map(briefLeafOf),
     });
 
+    /**
+     * 线上 Lua 模块把「从 1 开始的连续整数 key」序列化成数组（``{1:a,2:b}`` → ``[a,b]``），
+     * 前端 ``Object.entries`` 读到的是 0 起 key：``param_refs`` 会显示「参数0」，
+     * ``skill_variants`` 会整体错位一位。``decodeDoc`` 已经处理了新下载的数据，
+     * 这里兜住旧缓存里的 0 起数据（规则相同，幂等）。
+     */
+    const normalizeNumericKeys = <T>(value: Record<string, T> | null | undefined): Record<string, T> => {
+        const entries = Object.entries(value ?? {});
+        if (!entries.length) return {};
+        const numeric = entries.every(([key]) => /^\d+$/.test(key));
+        const zeroBased = numeric && entries.every(([key], index) => Number(key) === index);
+        if (!zeroBased) return { ...(value as Record<string, T>) };
+        return Object.fromEntries(entries.map(([, item], index) => [String(index + 1), item]));
+    };
+
     /** 技能用到的 sub effect kind（去重升序），供列表按 ID 精确筛选 */
     const subKindsOf = (raw: RawSkill): number[] => {
         const kinds = new Set<number>();
@@ -268,6 +295,13 @@ export const useDataV2Store = defineStore('data-v2', () => {
         player: Boolean(raw.player),
         sources: raw.sources ?? [],
         jobs: raw.jobs ?? [],
+        summons: (raw.summons ?? [])
+            .filter((unit) => unit.category)
+            .map((unit) => ({
+                category: unit.category,
+                level: unit.level || 0,
+                count: unit.count || 1,
+            })),
         flags: {
             test: Boolean(raw.test),
             level0: Boolean(raw.level0),
@@ -293,6 +327,8 @@ export const useDataV2Store = defineStore('data-v2', () => {
             skill_condition_ids: level.skill_condition_ids ?? null,
             description: level.description,
             description_lang: level.description_lang,
+            name: level.name,
+            name_lang: level.name_lang,
             damage: (level.damage ?? []).map((damage) => ({
                 attack_rate: damage.attack_rate || null,
                 attack_rate_both_hands: damage.attack_rate_both_hands || null,
@@ -344,8 +380,17 @@ export const useDataV2Store = defineStore('data-v2', () => {
                     child_sub_effects: (sub.child_sub_effects ?? []).map(subBriefOf),
                     extension_effects: (sub.extension_effects ?? []).map(subBriefOf),
                     param_refs: Object.fromEntries(
-                        Object.entries(sub.param_refs ?? {}).map(([index, ref]) => [index, subBriefOf(ref)]),
+                        Object.entries(normalizeNumericKeys(sub.param_refs)).map(([index, ref]) => [
+                            index,
+                            subBriefOf(ref),
+                        ]),
                     ),
+                    // kind 2790：按敌人 buff 数量档替换到的效果组
+                    step_replace: (sub.step_replace ?? []).map((item) => ({
+                        step: item.step,
+                        effect_group: item.effect_group,
+                        effects: (item.effects ?? []).map(subBriefOf),
+                    })),
                 };
             }),
         })),
@@ -390,13 +435,131 @@ export const useDataV2Store = defineStore('data-v2', () => {
         shop: raw.shop ?? [],
     });
 
+    /** 体型档位（``EnemyCategory.size_kind``） */
+    const ENEMY_SIZE: Record<number, string> = { 1: '小型', 2: '中型', 3: '大型', 4: '特大' };
+
+    /**
+     * 强度档位（``Enemy.kind``）。解包里没有对应枚举表，按变体名字与图鉴标记推断；
+     * 与游戏内文案核对后在这里改一处即可。
+     */
+    const ENEMY_KIND: Record<number, string> = {
+        0: '普通',
+        1: '强化1',
+        2: '强化2',
+        3: '首领',
+        4: '强敌',
+    };
+
+    const EMPTY_FREEZE = {
+        half: 0,
+        full: 0,
+        break: 0,
+        recovery: 0,
+        wait_min: 0,
+        wait_max: 0,
+        intelligence: 0,
+    };
+
+    const enemySizeName = (id: number | null | undefined) => (id == null ? null : (ENEMY_SIZE[id] ?? null));
+    const enemyKindName = (id: number | null | undefined) => (id == null ? null : (ENEMY_KIND[id] ?? null));
+
+    const attributeRef = (id: number) => refOf(wiki.enums.attribute, id);
+
+    /** AI 条件 / 插入触发条件：文案 + 引用 + 子效果种类 id（短键解码会把缺省的 num 补成 0） */
+    const toAiCondition = (raw: RawEnemyAiCondition): EnemyAiCondition => ({
+        text: raw.text || null,
+        label: raw.label || null,
+        ref: raw.ref || null,
+        status: raw.status || null,
+        suffix: raw.suffix || null,
+    });
+
+    const toEnemyVariant = (raw: RawEnemyVariant): EnemyVariant => {
+        // 同一 identification 可能被不同分栏引用；等级以清洗时记下的为准
+        const ref = (identification: number) => skillRef(identification, raw.skill_levels?.[identification]);
+        return {
+            id: raw.id,
+            kind: raw.kind,
+            kind_name: enemyKindName(raw.kind),
+            param: raw.param,
+            exp: raw.exp,
+            ai: raw.ai,
+            level_min: raw.level?.[0] ?? 0,
+            level_max: raw.level?.[1] ?? 0,
+            attribute: (raw.attribute ?? []).map(attributeRef),
+            attack_attribute: (raw.attack_attribute ?? []).map(attributeRef),
+            weak: (raw.weak ?? []).map(attributeRef),
+            characteristics: (raw.characteristics ?? []).map((id) => refOf(wiki.enums.enemy_characteristic, id)),
+            gimmicks: raw.gimmicks ?? [],
+            fly: Boolean(raw.fly),
+            body_size: raw.body_size ?? [],
+            skills: (raw.skills ?? []).map(ref),
+            action_skills: (raw.action_skills ?? []).map(ref),
+            interrupts: (raw.interrupts ?? [])
+                .filter((item) => item.skill)
+                .map((item) => ({
+                    skill: ref(item.skill),
+                    once: Boolean(item.once),
+                    hp: item.hp || null,
+                    conditions: (item.conditions ?? []).map(toAiCondition),
+                })),
+            passive_skills: (raw.passive_skills ?? []).map(ref),
+            struggle_skill: raw.struggle_skill ? ref(raw.struggle_skill) : null,
+            ai_plan: (raw.ai_plan ?? []).map((rule) => ({
+                priority: rule.priority ?? 0,
+                conditions: (rule.conditions ?? []).map(toAiCondition),
+                skills: (rule.skills ?? [])
+                    .filter((skill) => skill.skill)
+                    .map((skill) => ({
+                        skill: ref(skill.skill),
+                        weight: skill.weight ?? 0,
+                        target: skill.target || null,
+                    })),
+            })),
+            stats: raw.stats ?? {},
+            resist: raw.resist ?? {},
+            freeze: raw.freeze ?? { ...EMPTY_FREEZE },
+        };
+    };
+
+    /** 敌人：清洗时已把种族 / 体型 / 技能落到字段上，这里只补名字 */
+    const toEnemy = (raw: RawEnemy): EnemyListItem => ({
+        id: raw.id,
+        no: raw.no || null,
+        book: raw.book ?? null,
+        name: raw.name,
+        name_jp: raw.name_jp || null,
+        name_en: raw.name_en || null,
+        thumbnail: raw.thumbnail || null,
+        boss: Boolean(raw.boss),
+        race: refOf(wiki.enums.enemy_species, raw.race),
+        lineage: raw.lineage || 0,
+        size: raw.size || 0,
+        size_name: enemySizeName(raw.size),
+        attack_type: raw.attack_type || 0,
+        damage_type: raw.damage_type || 0,
+        attribute: (raw.attribute ?? []).map(attributeRef),
+        attack_attribute: (raw.attack_attribute ?? []).map(attributeRef),
+        weak: (raw.weak ?? []).map(attributeRef),
+        characteristics: (raw.characteristics ?? []).map((id) => refOf(wiki.enums.enemy_characteristic, id)),
+        gimmicks: raw.gimmicks ?? [],
+        kinds: raw.kinds ?? [],
+        kind_names: (raw.kinds ?? []).map((k) => ENEMY_KIND[k]).filter((v): v is string => Boolean(v)),
+        level: raw.level && (raw.level.min || raw.level.max) ? { ...raw.level } : null,
+        fly: Boolean(raw.fly),
+        body_size: raw.body_size ?? [],
+        resist: raw.resist ?? {},
+        freeze: raw.freeze ?? { ...EMPTY_FREEZE },
+        skills: (raw.skills ?? []).map(skillRef),
+        variants: (raw.variants ?? []).map(toEnemyVariant),
+    });
+
     const characterDetails = computed<CharacterDetail[]>(() => wiki.characters.map(toCharacter));
     const skillDetails = computed<SkillDetail[]>(() => wiki.skills.map(toSkill));
     const equipments = computed<EquipmentListItem[]>(() => wiki.equipments.map(toEquipment));
+    const enemies = computed<EnemyListItem[]>(() => wiki.enemies.map(toEnemy));
     /** 装备类型基准值（V1 手工维护）：红绿配色与类型按钮排序都用它 */
-    const equipmentBaseStat = computed<EquipmentBaseStat>(
-        () => wiki.equipmentBaseStat as EquipmentBaseStat,
-    );
+    const equipmentBaseStat = computed<EquipmentBaseStat>(() => wiki.equipmentBaseStat as EquipmentBaseStat);
 
     const characters = computed<CharacterListItem[]>(() => characterDetails.value);
     const skills = computed<SkillListItem[]>(() => skillDetails.value);
@@ -404,6 +567,71 @@ export const useDataV2Store = defineStore('data-v2', () => {
 
     const characterById = computed(() => new Map(characterDetails.value.map((item) => [item.id, item])));
     const jobById = computed(() => new Map(jobs.value.map((item) => [item.id, item])));
+    const enemyById = computed(() => new Map(enemies.value.map((item) => [item.id, item])));
+
+    /**
+     * 地图 / 敌群里的 ``enemy_id`` 是「出现变体」（``EnemyLayout.enemy_id``），
+     * 敌人模块按图鉴分类存（``enemies`` 的 id）。这里建 变体 id -> 分类 的索引，
+     * 地图数据只存变体 id，名称与 modal 都走敌人模块。
+     */
+    const enemyVariantById = computed(() => {
+        const out = new Map<number, { enemy: EnemyListItem; variant: EnemyVariant }>();
+        for (const enemy of enemies.value) {
+            for (const variant of enemy.variants) out.set(variant.id, { enemy, variant });
+        }
+        return out;
+    });
+    /** 变体 id -> 敌人名；查不到时回退成 ``#id`` */
+    const enemyNameOf = (id: number) => {
+        const hit = enemyVariantById.value.get(id);
+        return hit ? hit.enemy.name || `#${id}` : `#${id}`;
+    };
+    /** 变体 id -> 图鉴分类 id（打开 ``EnemyModal`` 用）；查不到返回 null */
+    const enemyCategoryIdOf = (id: number) => enemyVariantById.value.get(id)?.enemy.id ?? null;
+
+    /** 怪物图鉴编号 -> 遗物（``relics_extra.monster_id`` 对应敌人表的 ``no``） */
+    const relicByMonsterNo = computed(() => {
+        const out = new Map<number, RelicDoc>();
+        for (const relic of wiki.relics) {
+            for (const monster of relic.monsters ?? []) {
+                if (monster.id != null && !out.has(monster.id)) out.set(monster.id, relic);
+            }
+        }
+        return out;
+    });
+
+    /** 该敌人变体是否在任一敌群里站第一排（``pos_y = 1``） */
+    const inFrontRow = (formations: RawMapFormation[], enemyId: number) =>
+        formations.some((formation) =>
+            formation.members.some((member) => member.enemy_id === enemyId && member.pos_y === 1),
+        );
+
+    /**
+     * 地图 / 敌群：raw 数据里只有 enemy_id，名字与属性一律通过 `enemyById` 反查，
+     * 不在地图数据里再存一份敌人信息。
+     */
+    const mapFloors = computed<RawMapFloor[]>(() => wiki.mapFloors);
+    const mapCategories = computed<MapCategory[]>(() => wiki.mapCategories);
+    const enemyPools = computed<RawEnemyPool[]>(() => wiki.enemyPools);
+    const mapFloorById = computed(() => new Map(mapFloors.value.map((floor) => [floor.id, floor])));
+    const enemyPoolById = computed(() => new Map(enemyPools.value.map((pool) => [pool.id, pool])));
+    /** 地图分类 id -> 该地图的层（按层 id 升序） */
+    const floorsByMap = computed(() => {
+        const out = new Map<number, RawMapFloor[]>();
+        for (const floor of mapFloors.value) {
+            const list = out.get(floor.map_id) ?? [];
+            list.push(floor);
+            out.set(floor.map_id, list);
+        }
+        for (const list of out.values()) list.sort((a, b) => a.id - b.id);
+        return out;
+    });
+    /** 层里出现过的敌人（去重后按等级下限排序） */
+    const floorEnemyRefs = (floorId: number, notorious = false) => {
+        const floor = mapFloorById.value.get(floorId);
+        if (!floor) return [];
+        return notorious ? floor.notorious_enemies : floor.normal_enemies;
+    };
 
     /** ``Skill.equipment_limited`` -> 单手剑 / 双手斧 / … */
     const equipmentName = (id: number) => wiki.enums.equipment_type?.[String(id)]?.name ?? `#${id}`;
@@ -419,8 +647,7 @@ export const useDataV2Store = defineStore('data-v2', () => {
         99: '依武器',
     };
 
-    const rangeName = (id: number | null | undefined) =>
-        id == null ? '' : (RANGE_TYPE_NAME[id] ?? `#${id}`);
+    const rangeName = (id: number | null | undefined) => (id == null ? '' : (RANGE_TYPE_NAME[id] ?? `#${id}`));
 
     /**
      * 通用枚举取名：``Data:Enum.json`` 里任意分组（equipment_type / attribute / target …），
@@ -486,6 +713,9 @@ export const useDataV2Store = defineStore('data-v2', () => {
             jobs: mapped,
             skills: mapped,
             equipments: mapped,
+            enemies: mapped,
+            maps: mapped,
+            enemyPools: mapped,
             effectKinds: mapped,
         };
     });
@@ -499,9 +729,9 @@ export const useDataV2Store = defineStore('data-v2', () => {
         await wiki.refresh();
     };
 
-    /** 只重拉 `Api/GetV2Enum`（字典 + 效果种类名），调 effect kind 名字时用 */
-    const refreshEnums = async () => {
-        await wiki.refreshEnums();
+    /** 只重拉 `Api/GetV2Extra`（人工表：效果种类名 / 特典 / 遗物类别…），调试时用 */
+    const refreshExtra = async () => {
+        await wiki.refreshExtra();
     };
 
     const ensureManifest = ensureAll;
@@ -509,10 +739,12 @@ export const useDataV2Store = defineStore('data-v2', () => {
     const ensureJobs = ensureAll;
     const ensureSkills = ensureAll;
     const ensureEquipments = ensureAll;
+    const ensureEnemies = ensureAll;
+    const ensureMaps = ensureAll;
+    const ensureEnemyPools = ensureAll;
     const ensureEffectKinds = ensureAll;
 
-    const getCharacter = async (id: number): Promise<CharacterDetail | null> =>
-        characterById.value.get(id) ?? null;
+    const getCharacter = async (id: number): Promise<CharacterDetail | null> => characterById.value.get(id) ?? null;
 
     /** 角色个体出现几率（``Api/GetV2Character`` 顶层 rates） */
     const characterRate = (id: number) => wiki.characterRates[id] ?? null;
@@ -534,6 +766,8 @@ export const useDataV2Store = defineStore('data-v2', () => {
         skills,
         /** 装备列表（一条 = 一件装备） */
         equipments,
+        /** 敌人列表（一条 = 一个敌人分类，含出现变体） */
+        enemies,
         /** 装备类型基准值（baseStat） */
         equipmentBaseStat,
         effectKinds,
@@ -545,10 +779,13 @@ export const useDataV2Store = defineStore('data-v2', () => {
         ensureJobs,
         ensureSkills,
         ensureEquipments,
+        ensureEnemies,
+        ensureMaps,
+        ensureEnemyPools,
         ensureEffectKinds,
         ensureAll,
         refresh,
-        refreshEnums,
+        refreshExtra,
         getCharacter,
         getSkill,
         characterRate,
@@ -556,6 +793,31 @@ export const useDataV2Store = defineStore('data-v2', () => {
         characterById,
         jobById,
         skillById,
+        enemyById,
+        /** 变体 id -> 分类 + 变体（地图 / 敌群用） */
+        enemyVariantById,
+        /** 地图数据里的变体 id -> 敌人名 */
+        enemyNameOf,
+        /** 变体 id -> 图鉴分类 id（打开敌人 modal） */
+        enemyCategoryIdOf,
+        /** 怪物图鉴编号 -> 遗物（敌群 / 地图的遗物列用） */
+        relicByMonsterNo,
+        /** 敌人变体是否在该组敌群里站第一排 */
+        inFrontRow,
+        /** 地图：一条 = 一层（DungeonFloor） */
+        mapFloors,
+        /** 地图分类标签（DungeonSelect） */
+        mapCategories,
+        /** 敌群：一条 = 一个敌群 */
+        enemyPools,
+        mapFloorById,
+        enemyPoolById,
+        floorsByMap,
+        floorEnemyRefs,
+        /** 体型档位名（1 小型 … 4 特大） */
+        enemySizeName,
+        /** 强度档位名（0 普通 / 1 强化1 / 2 强化2 / 3 首领 / 4 强敌） */
+        enemyKindName,
         equipmentName,
         raceName,
         rangeName,
