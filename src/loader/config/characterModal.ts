@@ -3,11 +3,8 @@ import { hasHTMLElement } from '../util';
 
 /** 角色模态框全局组件 */
 const config: LoaderConfig = {
-    isEnabled: () => {
-        return (
-            hasHTMLElement('.character-inline') || hasHTMLElement('.character-item') || hasHTMLElement('#data-searcher')
-        );
-    },
+    // 正文里的角色卡 / 角色链接都已改走 V2 的 `inline-modal.ts`，这里只服务 V1 查询页
+    isEnabled: () => hasHTMLElement('#data-searcher'),
     components: [
         {
             selector: '#character-global-modal',

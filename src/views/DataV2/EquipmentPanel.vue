@@ -135,7 +135,7 @@
                         :key="item.id"
                         class="hover:bg-black/30 cursor-pointer"
                         @click="openDetail(item)"
-                        @contextmenu.prevent="showContextMenu($event, item)"
+                        @contextmenu.prevent="showMenu($event, item)"
                     >
                         <td :class="isWeaponGroup ? '' : 'text-left'">
                             <div class="flex items-center gap-1.5">
@@ -187,15 +187,13 @@
             </div>
         </div>
 
-        <div
-            v-if="contextMenu.show"
-            class="fixed z-50 bg-[#312721] border border-[#463d38] rounded shadow-lg"
-            :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }"
-        >
-            <div class="px-4 py-2 hover:bg-[#463d38] cursor-pointer" @click="copyTemplate(contextMenu.item)">
-                复制 &#123;&#123;装备&#125;&#125;
-            </div>
-        </div>
+        <CopyTemplateMenu
+            :show="menu.show"
+            :x="menu.x"
+            :y="menu.y"
+            template="装备"
+            @copy="copyTemplate"
+        />
 
         <EquipmentModal v-model:show="showModal" :identification="selectedId" />
     </div>
@@ -203,11 +201,13 @@
 
 <script setup lang="ts">
 import { NButton, NCheckbox, NInput, NPagination, NSelect } from 'naive-ui';
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import WikiImg from '../../components/huiji/WikiImg.vue';
 import { useDataV2Store } from './dataV2Store';
 import { usePersistentFilter } from './dataV2Settings';
+import CopyTemplateMenu from './CopyTemplateMenu.vue';
 import EquipmentModal from './EquipmentModal.vue';
+import { templateBody, useCopyMenu } from './useCopyMenu';
 import type { EquipmentListItem, EquipmentRef, EquipmentStatKey } from './types';
 
 defineOptions({ name: '装备面板V2' });
@@ -505,34 +505,8 @@ const openDetail = (item: EquipmentListItem) => {
     showModal.value = true;
 };
 
-// 右键复制 {{装备}} 模板
-const contextMenu = ref<{
-    show: boolean;
-    x: number;
-    y: number;
-    item: EquipmentListItem | null;
-}>({ show: false, x: 0, y: 0, item: null });
-
-const showContextMenu = (event: MouseEvent, item: EquipmentListItem) => {
-    contextMenu.value = { show: true, x: event.clientX, y: event.clientY, item };
-    document.addEventListener('click', closeContextMenu);
-};
-
-const closeContextMenu = () => {
-    contextMenu.value.show = false;
-    document.removeEventListener('click', closeContextMenu);
-};
-
-onBeforeUnmount(() => document.removeEventListener('click', closeContextMenu));
-
-const copyTemplate = (item: EquipmentListItem | null) => {
-    if (item) {
-        const template = `{{装备|${item.name}}}`;
-        navigator.clipboard
-            .writeText(template)
-            .then(() => window.wiz.$message.success(`已复制 ${template} 模板到剪贴板`))
-            .catch(() => window.wiz.$message.error('复制失败，请手动复制'));
-    }
-    closeContextMenu();
-};
+// 右击行 → 复制 {{装备|名字|ID}}
+const { menu, showMenu, copyTemplate } = useCopyMenu<EquipmentListItem>('装备', (row) =>
+    templateBody(row.name, row.id),
+);
 </script>

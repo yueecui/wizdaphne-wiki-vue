@@ -33,6 +33,7 @@
                             :key="floor.id"
                             class="cursor-pointer hover:bg-[#3a312a]! transition-colors select-none"
                             @click="open(floor.id)"
+                            @contextmenu.prevent="showMenu($event, floor)"
                         >
                             <td class="text-left">
                                 <div>{{ floor.name || '（未命名）' }}</div>
@@ -50,15 +51,26 @@
         </div>
 
         <MapFloorModal v-model:show="modal" :floor-id="currentId" />
+
+        <CopyTemplateMenu
+            :show="menu.show"
+            :x="menu.x"
+            :y="menu.y"
+            template="地图"
+            @copy="copyTemplate"
+        />
     </div>
 </template>
 
 <script setup lang="ts">
 import { NButton, NCheckbox, NInput, NPagination, NSelect } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
+import type { RawMapFloor } from '../../stores/wikiData';
+import CopyTemplateMenu from './CopyTemplateMenu.vue';
 import MapFloorModal from './MapFloorModal.vue';
 import { useDataV2Store } from './dataV2Store';
 import { usePersistentRef } from './dataV2Settings';
+import { templateBody, useCopyMenu } from './useCopyMenu';
 
 defineOptions({ name: '地图面板' });
 
@@ -79,6 +91,11 @@ const open = (id: number) => {
     currentId.value = id;
     modal.value = true;
 };
+
+// 右击行 → 复制 {{地图|层名|层ID}}（没有层名时退回地图名）
+const { menu, showMenu, copyTemplate } = useCopyMenu<RawMapFloor>('地图', (row) =>
+    templateBody(row.name || row.map_name, row.id),
+);
 
 const mapOptions = computed(() =>
     store.mapCategories.map((item) => ({

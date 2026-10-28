@@ -1,37 +1,24 @@
 <template>
     <span @click="handleClick" class="cursor-pointer text-blue-200 hover:text-blue-400">
-        {{ item?.name || itemName }}
+        {{ label }}
     </span>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useItemModalStore } from '../stores/itemModalStore';
-import { useItemStore } from '../views/DataSearcher/Item/itemStore';
+import { useInlineLink } from './inlineLink';
 
 const props = defineProps<{
-    itemName: string;
+    /** 模板里写的名字：只用于脚本加载前显示 */
+    itemName?: string;
+    /** 物品 ID：有就优先按它定位 */
+    itemId?: string;
 }>();
 
-const itemStore = useItemStore();
-const itemModalStore = useItemModalStore();
-const item = computed(() => {
-    // 如果itemName是数字，则按id查询，否则按物品名查询
-    if (/^\d+$/.test(props.itemName)) {
-        const itemId = parseInt(props.itemName, 10);
-        return itemStore.itemItems.find((i) => i.id === itemId);
-    } else {
-        return itemStore.itemItems.find((i) => i.name === props.itemName);
-    }
-});
+const link = useInlineLink();
+const item = computed(() => link.findItemLink({ id: props.itemId, name: props.itemName }));
 
-const handleClick = () => {
-    if (item.value) {
-        itemModalStore.openModal(item.value);
-    } else if (!itemStore.isInit) {
-        window.wiz.$message.info('物品数据正在加载，请稍后再试');
-    } else {
-        window.wiz.$message.error('物品不存在');
-    }
-};
+const label = computed(() => item.value?.name || props.itemName || (props.itemId ? `#${props.itemId}` : '物品'));
+
+const handleClick = () => void link.openLink('item', { id: props.itemId, name: props.itemName });
 </script>

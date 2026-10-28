@@ -48,6 +48,7 @@
                 <ItemPanel v-else-if="activeKey === 'item'" />
                 <ShopPanel v-else-if="activeKey === 'shop'" />
                 <RelicPanel v-else-if="activeKey === 'relic'" />
+                <AchievementPanel v-else-if="activeKey === 'achievement'" />
             </NSpin>
         </div>
     </ThemeConfigProvider>
@@ -70,6 +71,7 @@ import ShopPanel from './ShopPanel.vue';
 import RelicPanel from './RelicPanel.vue';
 import JunkPanel from './JunkPanel.vue';
 import SkillPanel from './SkillPanel.vue';
+import AchievementPanel from './AchievementPanel.vue';
 import { useDataV2Store } from './dataV2Store';
 import { DATA_V2_TAB_KEY, DATA_V2_TAB_PARAM } from './dataV2Settings';
 
@@ -87,6 +89,7 @@ const tabs = [
     { key: 'armor', label: '防具' },
     { key: 'fairy', label: '妖精' },
     { key: 'junk', label: '杂物' },
+    { key: 'achievement', label: '成就' },
     { key: 'item', label: '物品' },
     { key: 'shop', label: '商店' },
     { key: 'relic', label: '遗物' },
@@ -126,6 +129,8 @@ const busy = computed(() => {
     }
     // 杂物走自己的库；物品 / 商店 / 遗物和角色等在同一批全量下载里就绪
     if (activeKey.value === 'junk') return false;
+    // 成就有自己的数据源（Api/GetAchievement），由面板自行加载
+    if (activeKey.value === 'achievement') return false;
     if (activeKey.value === 'item' || activeKey.value === 'shop' || activeKey.value === 'relic') {
         return s.characters === 'loading';
     }

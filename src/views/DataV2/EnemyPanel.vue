@@ -58,6 +58,7 @@
                             :key="row.id"
                             class="cursor-pointer hover:bg-[#3a312a]! transition-colors select-none"
                             @click="open(row.id)"
+                            @contextmenu.prevent="showMenu($event, row)"
                         >
                             <td class="whitespace-nowrap">
                                 <template v-if="row.no">No.{{ row.no }}</template>
@@ -91,15 +92,25 @@
         </div>
 
         <EnemyModal v-model:show="modal" :enemy-id="currentId" />
+
+        <CopyTemplateMenu
+            :show="menu.show"
+            :x="menu.x"
+            :y="menu.y"
+            template="敌人"
+            @copy="copyTemplate"
+        />
     </div>
 </template>
 
 <script setup lang="ts">
 import { NButton, NCheckbox, NInput, NPagination, NSelect, NTag } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
+import CopyTemplateMenu from './CopyTemplateMenu.vue';
 import EnemyModal from './EnemyModal.vue';
 import { useDataV2Store } from './dataV2Store';
 import { usePersistentRef } from './dataV2Settings';
+import { templateBody, useCopyMenu } from './useCopyMenu';
 import type { EnemyListItem } from './types';
 
 defineOptions({ name: '敌人面板V2' });
@@ -130,6 +141,11 @@ const open = (id: number) => {
     currentId.value = id;
     modal.value = true;
 };
+
+// 右击行 → 复制 {{敌人|名字|ID}}
+const { menu, showMenu, copyTemplate } = useCopyMenu<EnemyListItem>('敌人', (row) =>
+    templateBody(row.name, row.id),
+);
 
 const categoryOptions = [
     { value: 'all', label: '全部' },

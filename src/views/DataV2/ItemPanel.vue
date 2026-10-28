@@ -55,6 +55,7 @@
                             :key="item.id"
                             class="cursor-pointer hover:bg-[#3a312a]! transition-colors select-none"
                             @click="open(item)"
+                            @contextmenu.prevent="showMenu($event, item)"
                         >
                             <td class="whitespace-nowrap">
                                 <template v-if="item.collection?.no != null">
@@ -87,6 +88,14 @@
         </div>
 
         <ItemModal v-model:show="showModal" :item="selected" />
+
+        <CopyTemplateMenu
+            :show="menu.show"
+            :x="menu.x"
+            :y="menu.y"
+            template="物品"
+            @copy="copyTemplate"
+        />
     </div>
 </template>
 
@@ -94,8 +103,10 @@
 import { NButton, NInput, NPagination, NSelect } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
 import { useWikiDataStore } from '../../stores/wikiData';
+import CopyTemplateMenu from './CopyTemplateMenu.vue';
 import ItemModal from './ItemModal.vue';
 import { usePersistentRef } from './dataV2Settings';
+import { templateBody, useCopyMenu } from './useCopyMenu';
 import {
     cleanDescription,
     COLLECTION_GROUPS,
@@ -153,6 +164,11 @@ const page = ref(1);
 
 const showModal = ref(false);
 const selected = ref<ItemDoc | null>(null);
+
+// 右击行 → 复制 {{物品|名字|ID}}
+const { menu, showMenu, copyTemplate } = useCopyMenu<ItemDoc>('物品', (row) =>
+    templateBody(row.name, row.id),
+);
 
 const groupTabs = computed<Array<{ label: string; value: GroupKey; divider?: boolean }>>(() => {
     const tabs: Array<{ label: string; value: GroupKey; divider?: boolean }> = [

@@ -1,41 +1,24 @@
 <template>
     <span @click="handleClick" class="cursor-pointer text-blue-200 hover:text-blue-400">
-        {{ monster?.name || monsterName }}
+        {{ label }}
     </span>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
-import { useMonsterModalStore } from '../stores/monsterModalStore';
-import { useMonsterStore } from '../views/DataSearcher/Monster/monsterStore';
+import { computed } from 'vue';
+import { useInlineLink } from './inlineLink';
 
 const props = defineProps<{
-    monsterName: string;
+    /** 模板里写的名字：只用于脚本加载前显示 */
+    monsterName?: string;
+    /** 敌人 ID（图鉴分类 id）：有就优先按它定位 */
+    monsterId?: string;
 }>();
 
-const monsterStore = useMonsterStore();
-const monsterModalStore = useMonsterModalStore();
-const monster = computed(() => {
-    // 如果monsterName是数字，则按id查询，否则按名称查询
-    if (/^\d+$/.test(props.monsterName)) {
-        const monsterId = parseInt(props.monsterName, 10);
-        return monsterStore.monsters.find((m) => m.id === monsterId);
-    } else {
-        return monsterStore.monsters.find((m) => m.name === props.monsterName);
-    }
-});
+const link = useInlineLink();
+const monster = computed(() => link.findEnemyLink({ id: props.monsterId, name: props.monsterName }));
 
-onMounted(() => {
-    monsterStore.loadAllData();
-});
+const label = computed(() => monster.value?.name || props.monsterName || (props.monsterId ? `#${props.monsterId}` : '敌人'));
 
-const handleClick = () => {
-    if (monster.value) {
-        monsterModalStore.openMonsterModal(monster.value);
-    } else if (!monsterStore.isInit) {
-        window.wiz.$message.info('敌人数据正在加载，请稍后再试');
-    } else {
-        window.wiz.$message.error('敌人不存在');
-    }
-};
+const handleClick = () => void link.openLink('enemy', { id: props.monsterId, name: props.monsterName });
 </script>

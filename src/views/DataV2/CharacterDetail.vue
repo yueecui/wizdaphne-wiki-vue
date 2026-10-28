@@ -15,7 +15,7 @@
                             </div>
                             <div class="absolute right-1 top-1 flex gap-1">
                                 <div
-                                    v-if="data.style"
+                                    v-if="!data.is_default_style"
                                     class="text-xs text-blue-300 bg-black/70 border! border-solid border-black/40 rounded-sm px-1 py-0.5 shadow"
                                 >
                                     SP
@@ -182,12 +182,6 @@
                                                         imageName="icon_RareSkills.png"
                                                         class="w-5 h-5 inline-block align-middle"
                                                     />
-                                                    <span
-                                                        v-if="group.label === '潜在继承技能' && data.potential_grade"
-                                                        class="text-xs opacity-60"
-                                                    >
-                                                        (Lv{{ data.potential_grade }} 解锁)
-                                                    </span>
                                                 </th>
                                             </tr>
                                             <tr>
@@ -198,9 +192,6 @@
                                                             @click="openSkill(s.identification)"
                                                         >
                                                             {{ s.name }}
-                                                            <span v-if="s.level" class="text-xs opacity-60">
-                                                                Lv{{ s.level }}
-                                                            </span>
                                                         </div>
                                                         <div class="whitespace-pre-line">
                                                             {{ descOf(s.identification) }}
@@ -718,8 +709,12 @@ const skillGroups = computed<SkillGroup[]>(() => {
 const descOf = (identification: number) => store.skillById.get(identification)?.description || '技能描述未找到';
 
 const gotoDetail = () => {
-    if (!data.value?.name) return;
-    window.open(`/wiki/${data.value.name}`, '_blank');
+    const d = data.value;
+    if (!d?.name) return;
+    // 默认风格进角色名页（如「夏莉莉妮雅」）；有风格则进「风格名 + 角色名」页（如「似梦似醒的预言者夏莉莉妮雅」）
+    const styled = !d.is_default_style && !!d.style && d.style !== '基本';
+    const title = styled ? `${d.style}${d.name}` : d.name;
+    window.open(`/wiki/${encodeURIComponent(title)}`, '_blank');
 };
 
 /* ------------------------------------------------------------------ */

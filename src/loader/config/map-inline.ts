@@ -15,7 +15,9 @@ const config: LoaderConfig = {
                 const mapName = element.getAttribute('data-name');
                 // 获取原本内部的文本作为显示名称
                 const showName = element.textContent?.trim() || mapName;
-                return { mapName, showName };
+                // 有 ID 优先按 ID 定位（V2 里是地图层 id），名字只负责脚本加载前显示
+                const mapId = element.getAttribute('data-id');
+                return { mapName, showName, mapId };
             },
             app: () => import('../../components/MapInline.vue'),
         },

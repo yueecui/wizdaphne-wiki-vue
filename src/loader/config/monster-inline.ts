@@ -13,7 +13,9 @@ const config: LoaderConfig = {
             useStore: true,
             getParams: (element) => {
                 const monsterName = element.getAttribute('data-name');
-                return { monsterName };
+                // 有 ID 优先按 ID 定位，名字只负责脚本加载前显示
+                const monsterId = element.getAttribute('data-id');
+                return { monsterName, monsterId };
             },
             app: () => import('../../components/MonsterInline.vue'),
         },

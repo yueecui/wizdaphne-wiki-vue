@@ -36,10 +36,15 @@
  * 装备跑完后还会检查 ``Data:EquipmentExtra.tabx``（手工维护的特典分类 / 获取途径），
  * 把本地有、页面上没有的新装备**追加**进去（已有行不动，页面解析失败则跳过）。
  *
+ * 最后会重建 ``Data:成就.tabx``：先抓线上旧表，交给 ``build_achievement.py``
+ * 合并解包 ``AchievementMasterData``（保留旧 id、补 ``uid``、追加新增条目），
+ * 再整体回写；内容无变化则跳过。``--only achievement`` 可只跑这一步。
+ *
  * 运行（在本仓库根目录）：
  *   yarn update:wiki                              # 增量（默认全部记录级 + enum）
  *   yarn update:wiki -- --force                   # 忽略缓存全部重传
  *   yarn update:wiki -- --only skill              # 只传一类
+ *   yarn update:wiki -- --only achievement        # 只更新成就 tabx
  *   yarn update:wiki -- --only skill --limit 100  # 试传前 100 条
  *   yarn update:wiki -- --dry-run                 # 只本地预览，不登录不写 wiki
  *   yarn update:wiki -- --concurrency 20          # 并发数（默认 10）
@@ -50,6 +55,7 @@
 import dotenv from 'dotenv';
 import { HuijiWiki } from 'huijiwiki-api';
 import { DatabaseSync } from 'node:sqlite';
+import { execFileSync } from 'node:child_process';
 import { promises as fs, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -69,6 +75,10 @@ const DEFAULT_CONCURRENCY = 10;
 
 const ROOT = process.cwd();
 const MOCK_DIR = path.join(ROOT, 'public', 'mock');
+/** 成就 tabx（线上手工页，按解包数据重建后整体回写） */
+const ACHIEVEMENT_TABX_TITLE = 'Data:成就.tabx';
+const ACHIEVEMENT_TABX_WORK = path.join(ROOT, 'local_scripts', 'work', 'achievement.tabx.json');
+const ACHIEVEMENT_BUILD_SCRIPT = path.join(ROOT, 'local_scripts', 'clean', 'build_achievement.py');
 /** 上传缓存（sqlite，放在工作区外，与前端 / 仓库无关） */
 const CACHE_SQLITE_PATH =
     process.env.WIKI_CACHE_SQLITE_PATH || path.join('D:\\WizardyDaphne', 'workspace', 'wikitext.sqlite');
@@ -536,6 +546,69 @@ export async function syncEquipmentExtra(
     return { added: added.length, total };
 }
 
+// ==================== 成就 tabx：Data:成就.tabx ====================
+
+/** 结构化比较：对象按 key 排序，忽略 JSON 空白与 key 顺序 */
+const canonicalJson = (value: unknown): string =>
+    JSON.stringify(value, (_key, val) => {
+        if (val && typeof val === 'object' && !Array.isArray(val)) {
+            const obj = val as Record<string, unknown>;
+            return Object.fromEntries(Object.keys(obj).sort().map((k) => [k, obj[k]]));
+        }
+        return val;
+    });
+
+/**
+ * 用解包数据重建 ``Data:成就.tabx`` 并回写。
+ *
+ * 线上这页是旧表（含短 id / sub / comment）；先抓下来落到 work，交给
+ * ``build_achievement.py`` 按解包 ``AchievementMasterData`` 合并（保留旧 id、
+ * 补 ``uid``、追加新增条目），再整体上传。内容没变则跳过。
+ */
+async function syncAchievementTabx(
+    bot: HuijiWiki,
+    options: { dryRun?: boolean } = {},
+): Promise<{ rows: number; changed: boolean }> {
+    const page = await bot.getPageRawTextByTitle(ACHIEVEMENT_TABX_TITLE);
+    if (!page?.content) throw new Error(`读不到页面 ${ACHIEVEMENT_TABX_TITLE}`);
+    mkdirSync(path.dirname(ACHIEVEMENT_TABX_WORK), { recursive: true });
+    await fs.writeFile(ACHIEVEMENT_TABX_WORK, page.content, 'utf8');
+
+    // 读取上一步落盘的线上 tabx，合并解包数据（dry-run 只预览，不落盘）
+    execFileSync(
+        'python',
+        options.dryRun ? [ACHIEVEMENT_BUILD_SCRIPT] : [ACHIEVEMENT_BUILD_SCRIPT, '--write'],
+        { cwd: ROOT, stdio: 'inherit', env: { ...process.env, PYTHONIOENCODING: 'utf-8' } },
+    );
+
+    if (options.dryRun) {
+        console.log(`  [dry-run] 已构建 ${ACHIEVEMENT_TABX_TITLE}，跳过上传`);
+        return { rows: 0, changed: false };
+    }
+
+    const built = await fs.readFile(ACHIEVEMENT_TABX_WORK, 'utf8');
+    const parse = (text: string): TabxPage | null => {
+        try {
+            return JSON.parse(text) as TabxPage;
+        } catch {
+            return null;
+        }
+    };
+    const before = parse(page.content);
+    const after = parse(built);
+    const rows = after?.data?.length ?? 0;
+
+    if (before && after && canonicalJson(before) === canonicalJson(after)) {
+        console.log(`  ${ACHIEVEMENT_TABX_TITLE}: 无变化（${rows} 行）`);
+        return { rows, changed: false };
+    }
+
+    const res = await bot.editPage(ACHIEVEMENT_TABX_TITLE, built, { summary: '按解包数据更新成就' });
+    if (res.error) throw new Error(res.error.info ?? JSON.stringify(res.error));
+    console.log(`  ${ACHIEVEMENT_TABX_TITLE}: 已更新（${rows} 行）`);
+    return { rows, changed: true };
+}
+
 // ==================== 主逻辑 ====================
 
 const parseArgs = () => {
@@ -546,8 +619,9 @@ const parseArgs = () => {
     };
 
     const only = valueOf('--only');
-    if (only && !(only in KINDS)) {
-        throw new Error(`--only 需要以下之一: ${Object.keys(KINDS).join(', ')}`);
+    const extraOnly = ['achievement'];
+    if (only && !(only in KINDS) && !extraOnly.includes(only)) {
+        throw new Error(`--only 需要以下之一: ${[...Object.keys(KINDS), ...extraOnly].join(', ')}`);
     }
 
     const concurrencyRaw = valueOf('--concurrency');
@@ -561,7 +635,9 @@ const parseArgs = () => {
     if (!Number.isInteger(limit) || limit < 0) throw new Error('--limit 需要一个非负整数');
 
     const kinds: KindName[] = only
-        ? [only as KindName]
+        ? only in KINDS
+            ? [only as KindName]
+            : []
         : KIND_NAMES.filter((name) => KINDS[name].byDefault);
 
     return {
@@ -570,11 +646,12 @@ const parseArgs = () => {
         limit,
         force: argv.includes('--force'),
         dryRun: argv.includes('--dry-run'),
+        achievement: !only || only === 'achievement',
     };
 };
 
 async function main(): Promise<void> {
-    const { kinds, concurrency, limit, force, dryRun } = parseArgs();
+    const { kinds, concurrency, limit, force, dryRun, achievement } = parseArgs();
 
     if (!WIKI_PREFIX || !WIKI_AUTHKEY) {
         throw new Error('缺少环境变量 VITE_WIKI_PREFIX / WIKI_AUTHKEY（见 .env.example）');
@@ -629,6 +706,17 @@ async function main(): Promise<void> {
         } catch (err) {
             failedTotal++;
             console.error(`  × ${EQUIP_EXTRA_TITLE} 同步失败: ${err instanceof Error ? err.message : err}`);
+        }
+    }
+
+    // 成就 tabx（Data:成就.tabx）：按解包重建后整体回写
+    if (achievement) {
+        console.log(`\n===== achievement (${ACHIEVEMENT_TABX_TITLE}) =====`);
+        try {
+            await syncAchievementTabx(bot, { dryRun });
+        } catch (err) {
+            failedTotal++;
+            console.error(`  × ${ACHIEVEMENT_TABX_TITLE} 同步失败: ${err instanceof Error ? err.message : err}`);
         }
     }
 

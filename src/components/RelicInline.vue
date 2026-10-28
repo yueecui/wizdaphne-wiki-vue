@@ -1,36 +1,25 @@
 <template>
     <span @click="handleClick" class="cursor-pointer text-blue-200 hover:text-blue-400">
-        {{ relic?.name || relicName }}
+        {{ label }}
     </span>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
-import { useMonsterModalStore } from '../stores/monsterModalStore';
-import { useMonsterStore } from '../views/DataSearcher/Monster/monsterStore';
-import type { RelicBrew } from '../views/DataSearcher/RelicBrew/RelicBrew';
+import { computed } from 'vue';
+import { useInlineLink } from './inlineLink';
 
 const props = defineProps<{
-    relicName: string;
+    /** 模板里写的名字：只用于脚本加载前显示 */
+    relicName?: string;
+    /** 遗物 ID（即遗物道具 id）：有就优先按它定位 */
+    relicId?: string;
 }>();
 
-const monsterStore = useMonsterStore();
-const monsterModalStore = useMonsterModalStore();
-const relic = computed(() => {
-    return monsterStore.relicBrews.find((r) => r.name === props.relicName) as RelicBrew | undefined;
-});
+const link = useInlineLink();
+const relic = computed(() => link.findRelicLink({ id: props.relicId, name: props.relicName }));
 
-onMounted(() => {
-    monsterStore.loadAllData();
-});
+const label = computed(() => relic.value?.name || props.relicName || (props.relicId ? `#${props.relicId}` : '遗物'));
 
-const handleClick = () => {
-    if (relic.value) {
-        monsterModalStore.openRelicModal(relic.value);
-    } else if (!monsterStore.isInit) {
-        window.wiz.$message.info('遗物数据正在加载，请稍后再试');
-    } else {
-        window.wiz.$message.error('遗物不存在');
-    }
-};
+// 遗物在 V2 是道具的一种（`Item::Relic`），打开的是物品 modal
+const handleClick = () => void link.openLink('relic', { id: props.relicId, name: props.relicName });
 </script>

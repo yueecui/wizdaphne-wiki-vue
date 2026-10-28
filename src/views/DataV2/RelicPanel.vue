@@ -89,7 +89,12 @@
                         没有符合条件的遗物
                     </td>
                 </tr>
-                <tr v-for="relic in paged" :key="relic.id" class="hover:bg-[#3a312a]!">
+                <tr
+                    v-for="relic in paged"
+                    :key="relic.id"
+                    class="hover:bg-[#3a312a]!"
+                    @contextmenu.prevent="showMenu($event, relic)"
+                >
                     <td class="text-left">
                         <span
                             v-if="relic.skill_id != null"
@@ -131,6 +136,14 @@
         <SkillModal v-model:show="skillShow" :identification="skillId" />
         <!-- 点击掉落怪物 → 展开对应敌人详情 -->
         <EnemyModal v-model:show="enemyShow" :enemy-id="enemyId" />
+
+        <CopyTemplateMenu
+            :show="menu.show"
+            :x="menu.x"
+            :y="menu.y"
+            template="遗物"
+            @copy="copyTemplate"
+        />
     </div>
 </template>
 
@@ -138,10 +151,12 @@
 import { NButton, NCheckbox, NInput, NPagination, NSelect } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
 import { useWikiDataStore } from '../../stores/wikiData';
+import CopyTemplateMenu from './CopyTemplateMenu.vue';
 import EnemyModal from './EnemyModal.vue';
 import SkillModal from './SkillModal.vue';
 import { useDataV2Store } from './dataV2Store';
 import { usePersistentRef } from './dataV2Settings';
+import { templateBody, useCopyMenu } from './useCopyMenu';
 import { RELIC_ALIGNMENTS, RELIC_STAT_ORDER, sortRelicStats, type RelicDoc } from './relicTypes';
 
 interface RelicFilter {
@@ -221,6 +236,11 @@ watch(
 const reset = () => {
     filter.value = emptyFilter();
 };
+
+// 右击行 → 复制 {{遗物|名字|ID}}
+const { menu, showMenu, copyTemplate } = useCopyMenu<RelicDoc>('遗物', (row) =>
+    templateBody(row.name, row.id),
+);
 
 const skillShow = ref(false);
 const skillId = ref<number | null>(null);

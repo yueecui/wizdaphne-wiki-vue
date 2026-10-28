@@ -183,57 +183,7 @@
                     class="relative p-2 cursor-pointer select-none group w-1/2 md:w-1/3 lg:w-1/4 xl:w-1/5 3xl:w-1/6"
                     @click="open(c.id)"
                 >
-                    <div
-                        class="hidden group-hover:block! absolute border! border-solid border-light! bg-light/10 rounded inset-0 z-20 pointer-events-none"
-                    ></div>
-
-                    <div class="relative w-full aspect-[484/224] overflow-hidden rounded bg-black/40">
-                        <WikiImg
-                            v-if="thumbOf(c)"
-                            :imageName="thumbOf(c)"
-                            :isLazy="true"
-                            class="block w-full h-full object-cover"
-                        />
-                        <div v-else class="w-full h-full flex items-center justify-center text-xs opacity-40">无图</div>
-
-                        <div class="absolute right-1 top-1 flex gap-1">
-                            <div
-                                v-if="!c.is_default_style"
-                                class="text-xs text-blue-300 bg-black/70 border! border-solid border-black/40 rounded-sm px-1 py-0.5 shadow"
-                            >
-                                SP
-                            </div>
-                            <div
-                                v-if="c.rarity.id === 300"
-                                class="text-xs text-orange-300 bg-black/70 border! border-solid border-black/40 rounded-sm px-1 py-0.5 shadow"
-                            >
-                                传说
-                            </div>
-                        </div>
-                        <div v-if="poolBadge(c.pool_group).text" class="absolute right-1 bottom-1 flex gap-1">
-                            <div
-                                class="text-xs bg-black/70 border! border-solid border-black/40 rounded-sm px-1 py-0.5 shadow"
-                                :class="poolBadge(c.pool_group).color"
-                            >
-                                {{ poolBadge(c.pool_group).text }}
-                            </div>
-                        </div>
-                        <div class="absolute left-1 bottom-1">
-                            <ElementIcon :element="elementOf(c.attribute.name)" class="w-6 h-6 drop-shadow-1px" />
-                        </div>
-                    </div>
-
-                    <div class="bg-black/50 py-1 text-center text-light truncate">
-                        {{ c.name }}
-                    </div>
-                    <div class="bg-black/30 text-sm flex">
-                        <div class="flex-1 text-center whitespace-nowrap overflow-hidden text-ellipsis">
-                            {{ c.race.name }} / {{ c.alignment.name || '—' }}
-                        </div>
-                        <div class="flex-1 text-center whitespace-nowrap overflow-hidden text-ellipsis">
-                            {{ jobText(c) }}
-                        </div>
-                    </div>
+                    <CharacterCard :character="c" />
                 </div>
             </div>
             <NEmpty v-else description="没有符合条件的角色" class="py-10" />
@@ -252,8 +202,8 @@
 import { NButton, NCheckbox, NEmpty, NInput, NModal, NSelect } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
 import ElementIcon from '../../components/ElementIcon.vue';
-import WikiImg from '../../components/huiji/WikiImg.vue';
 import { ELEMENT_TYPE } from '../DataSearcher/data/enum';
+import CharacterCard from './CharacterCard.vue';
 import CharacterDetail from './CharacterDetail.vue';
 import { useDataV2Store } from './dataV2Store';
 import { usePersistentRef } from './dataV2Settings';
@@ -289,27 +239,7 @@ const closeDetail = () => {
     drawer.value = false;
 };
 
-/** 卡片小图：wiki 上为 `thumbnail` + `_s`，首字母大写（例如 Tmb_chara_01001_00_02_s.png） */
-const thumbOf = (c: CharacterListItem) => {
-    const stem = c.images?.thumbnail;
-    if (!stem) return null;
-    return `${stem.charAt(0).toUpperCase()}${stem.slice(1)}_s.png`;
-};
-
 const elementOf = (name?: string | null) => (name ?? '') as ELEMENT_TYPE;
-
-/** 卡池组标记：-1 限定 / -2 联动 / 1 Ⅰ组 / 2 Ⅱ组（0 共用不显示） */
-const POOL_BADGE: Record<string, { text: string; color: string }> = {
-    '-1': { text: '限', color: 'text-orange-300' },
-    '-2': { text: '联动', color: 'text-orange-300' },
-    '1': { text: 'Ⅰ', color: 'text-green-300' },
-    '2': { text: 'Ⅱ', color: 'text-blue-300' },
-};
-
-const poolBadge = (value: number) => POOL_BADGE[String(value)] ?? { text: '', color: '' };
-
-/** 主职业在前，第二职业在后（与 V1 的 class[] 一致） */
-const jobText = (c: CharacterListItem) => c.jobs.map((j) => j.name).join(' / ');
 
 const optionsOf = (values: Array<{ id: number; name: string }>) => values.map((v) => ({ label: v.name, value: v.id }));
 

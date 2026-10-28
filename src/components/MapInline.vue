@@ -1,39 +1,28 @@
 <template>
     <span @click="handleClick" class="cursor-pointer text-blue-200 hover:text-blue-400">
-        {{ showName || mapName }}
+        {{ label }}
     </span>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
-import { useMonsterModalStore } from '../stores/monsterModalStore';
-import { useMonsterStore } from '../views/DataSearcher/Monster/monsterStore';
+import { computed } from 'vue';
+import { useInlineLink } from './inlineLink';
 
 const props = defineProps<{
-    mapName: string;
-    showName: string;
+    /** 模板里写的名字：只用于脚本加载前显示 */
+    mapName?: string;
+    /** 页面上原本的显示文本（可选，优先显示） */
+    showName?: string;
+    /** 地图层 ID：有就优先按它定位 */
+    mapId?: string;
 }>();
 
-const monsterStore = useMonsterStore();
-const monsterModalStore = useMonsterModalStore();
-const map = computed(() => {
-    return (
-        monsterStore.maps.find((m) => m.name === props.mapName) ||
-        monsterStore.maps.find((m) => m.shortName === props.mapName)
-    );
-});
+const link = useInlineLink();
 
-onMounted(() => {
-    monsterStore.loadAllData();
-});
+const label = computed(
+    () => props.showName || props.mapName || (props.mapId ? `#${props.mapId}` : '地图'),
+);
 
-const handleClick = () => {
-    if (map.value) {
-        monsterModalStore.openMapModal(map.value);
-    } else if (!monsterStore.isInit) {
-        window.wiz.$message.info('地图数据正在加载，请稍后再试');
-    } else {
-        window.wiz.$message.error('地图不存在');
-    }
-};
+// V2 没有地图级 modal，按名字 / ID 对到对应的一层（`MapFloorModal`）
+const handleClick = () => void link.openLink('map', { id: props.mapId, name: props.mapName });
 </script>

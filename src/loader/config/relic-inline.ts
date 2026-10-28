@@ -13,7 +13,9 @@ const config: LoaderConfig = {
             useStore: true,
             getParams: (element) => {
                 const relicName = element.getAttribute('data-name');
-                return { relicName };
+                // 有 ID 优先按 ID 定位，名字只负责脚本加载前显示
+                const relicId = element.getAttribute('data-id');
+                return { relicName, relicId };
             },
             app: () => import('../../components/RelicInline.vue'),
         },

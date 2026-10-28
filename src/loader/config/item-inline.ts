@@ -13,7 +13,9 @@ const config: LoaderConfig = {
             useStore: true,
             getParams: (element) => {
                 const itemName = element.getAttribute('data-name');
-                return { itemName };
+                // 有 ID 优先按 ID 定位，名字只负责脚本加载前显示
+                const itemId = element.getAttribute('data-id');
+                return { itemName, itemId };
             },
             app: () => import('../../components/ItemInline.vue'),
         },

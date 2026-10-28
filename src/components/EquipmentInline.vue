@@ -1,32 +1,30 @@
 <template>
     <span @click="handleClick" class="cursor-pointer text-blue-200 hover:text-blue-400">
-        {{ equipment?.data?.n || equipmentName }}
+        {{ label }}
     </span>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useEquipmentModalStore } from '../stores/equipmentModalStore';
-import { useEquipmentStore } from '../views/DataSearcher/Equipment/equipmentStore';
+import { useInlineLink } from './inlineLink';
 
 const props = defineProps<{
-    equipmentName: string;
+    /** 模板里写的名字：只用于脚本加载前显示 */
+    equipmentName?: string;
+    /** 装备 ID：有就优先按它定位 */
+    equipmentId?: string;
 }>();
 
-const equipmentStore = useEquipmentStore();
-const equipmentModalStore = useEquipmentModalStore();
+const link = useInlineLink();
+const equipment = computed(() => link.findEquipmentLink({ id: props.equipmentId, name: props.equipmentName }));
 
-const equipment = computed(() => {
-    return equipmentStore.getEquipmentByName(props.equipmentName);
-});
+const label = computed(
+    () =>
+        equipment.value?.name ||
+        props.equipmentName ||
+        (props.equipmentId ? `#${props.equipmentId}` : '装备'),
+);
 
-const handleClick = () => {
-    if (equipment.value) {
-        equipmentModalStore.openModal(equipment.value);
-    } else if (!equipmentStore.isInit) {
-        window.wiz.$message.info('装备数据正在加载，请稍后再试');
-    } else {
-        window.wiz.$message.error('装备不存在');
-    }
-};
+const handleClick = () =>
+    void link.openLink('equipment', { id: props.equipmentId, name: props.equipmentName });
 </script>

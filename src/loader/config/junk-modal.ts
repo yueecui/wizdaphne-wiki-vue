@@ -3,9 +3,8 @@ import { hasHTMLElement } from '../util';
 
 /** 杂物模态框全局组件 */
 const config: LoaderConfig = {
-    isEnabled: () => {
-        return hasHTMLElement('.junk-inline') || hasHTMLElement('#data-searcher');
-    },
+    // 正文里的 `.junk-inline` 已改走 V2 的 `inline-modal.ts`，这里只服务 V1 查询页
+    isEnabled: () => hasHTMLElement('#data-searcher'),
     components: [
         {
             selector: '#junk-global-modal',

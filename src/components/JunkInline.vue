@@ -1,13 +1,13 @@
 <template>
     <span @click="handleClick" class="cursor-pointer text-blue-200 hover:text-blue-400">
-        {{ junk?.name || junkName }}
+        {{ junk?.name || junkName || '杂物' }}
     </span>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
-import { useJunkModalStore } from '../stores/junkModalStore';
-import { useJunkStore } from '../views/DataSearcher/Junk/junkStore';
+import { computed } from 'vue';
+import { useJunkModalStore } from '../views/DataV2/junk/junkModalStore';
+import { useJunkStore } from '../views/DataV2/junk/junkStore';
 
 const props = defineProps<{
     junkName?: string;
@@ -16,31 +16,36 @@ const props = defineProps<{
 
 const junkStore = useJunkStore();
 const junkModalStore = useJunkModalStore();
+
 const junk = computed(() => {
     if (props.junkHash) {
-        return junkStore.junkItems.find((j) => j.uniqueCode === props.junkHash);
-    } else if (props.junkName) {
-        return junkStore.junkItems.find((j) => j.name === props.junkName);
+        return junkStore.junkItems.find((item) => item.uniqueCode === props.junkHash) ?? null;
+    }
+    if (props.junkName) {
+        return junkStore.junkItems.find((item) => item.name === props.junkName) ?? null;
     }
     return null;
 });
 
-onMounted(async () => {
-    await junkStore.loadJunkData();
-    if (props.junkHash) {
-        await junkStore.initJunkItemDetailByHash(props.junkHash);
-    } else if (props.junkName) {
-        await junkStore.initJunkItemDetailByName(props.junkName);
+// 杂物表是单独的接口（`Api/GetJunkData`），首次点击时才拉（不拖慢正文页加载）
+const handleClick = async () => {
+    if (!junkStore.isLoaded) {
+        if (junkStore.isLoading) {
+            window.wiz.$message.info('杂物数据正在加载，请稍后再试');
+            return;
+        }
+        window.wiz.$message.info('正在加载杂物数据…');
+        await junkStore.loadJunkData();
     }
-});
 
-const handleClick = () => {
-    if (junk.value) {
-        junkModalStore.openModal(junk.value);
-    } else if (!junkStore.isLoaded) {
-        window.wiz.$message.info('杂物数据正在加载，请稍后再试');
-    } else {
+    const target = junk.value;
+    if (!target) {
         window.wiz.$message.error('杂物不存在');
+        return;
     }
+
+    // 掉落明细按需整理，避免页面加载时算整张表
+    if (!target.isInit) target.initJunkItem();
+    junkModalStore.openModal(target);
 };
 </script>

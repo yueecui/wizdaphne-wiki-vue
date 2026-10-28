@@ -48,6 +48,7 @@
                             :key="row.identification"
                             class="cursor-pointer hover:bg-[#3a312a]! transition-colors select-none"
                             @click="open(row.identification)"
+                            @contextmenu.prevent="showMenu($event, row)"
                         >
                             <td class="whitespace-nowrap opacity-60">{{ row.identification }}</td>
                             <td class="text-left">
@@ -66,15 +67,25 @@
         </div>
 
         <SkillModal v-model:show="modal" :identification="currentId" />
+
+        <CopyTemplateMenu
+            :show="menu.show"
+            :x="menu.x"
+            :y="menu.y"
+            template="技能"
+            @copy="copyTemplate"
+        />
     </div>
 </template>
 
 <script setup lang="ts">
 import { NButton, NInput, NPagination, NSelect } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
+import CopyTemplateMenu from './CopyTemplateMenu.vue';
 import SkillModal from './SkillModal.vue';
 import { useDataV2Store } from './dataV2Store';
 import { usePersistentRef } from './dataV2Settings';
+import { templateBody, useCopyMenu } from './useCopyMenu';
 import type { SkillListItem } from './types';
 
 defineOptions({ name: '技能面板V2' });
@@ -103,6 +114,11 @@ const open = (id: number) => {
     currentId.value = id;
     modal.value = true;
 };
+
+// 右击行 → 复制 {{技能|名字|ID}}：技能重名多，定位用 ID，名字只负责模板里的显示
+const { menu, showMenu, copyTemplate } = useCopyMenu<SkillListItem>('技能', (row) =>
+    templateBody(row.name, row.identification),
+);
 
 const SOURCE_LABEL: Record<string, string> = {
     job: '职业',

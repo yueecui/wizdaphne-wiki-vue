@@ -1,50 +1,62 @@
 <template>
     <div class="character-item-wrapper cursor-pointer relative group p-2" @click="handleClick">
+        <CharacterCard v-if="character" :character="character" />
         <div
-            class="hidden group-hover:block! absolute border! border-solid border-light! bg-light/10 rounded top-0 left-0 bottom-0 right-0"
-        ></div>
-        <CharacterItem v-if="character" :character="character" />
+            v-else
+            class="w-full aspect-[484/224] rounded bg-black/40 flex items-center justify-center text-xs opacity-40"
+        >
+            {{ placeholder }}
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { storeToRefs } from 'pinia';
-import { onMounted, ref, watch } from 'vue';
-import { useCharacterModalStore } from '../stores/characterModalStore';
-import { Character } from '../views/DataSearcher/Character/Character';
-import CharacterItem from '../views/DataSearcher/Character/CharacterItem.vue';
-import { useSearcherDataStore } from '../views/DataSearcher/data/searcherDataStore';
+import { computed, onMounted } from 'vue';
+import { useInlineModalStore } from '../stores/inlineModalStore';
+import { useWikiDataStore } from '../stores/wikiData';
+import CharacterCard from '../views/DataV2/CharacterCard.vue';
+import { useDataV2Store } from '../views/DataV2/dataV2Store';
+import { findCharacter, parseId } from './inlineLink';
 
 const props = defineProps<{
-    characterName: string;
+    /** 模板里写的名字：只用于脚本加载前显示 / 没有 ID 时兜底匹配 */
+    characterName?: string;
+    /** 角色 ID：有就优先按它定位 */
+    characterId?: string;
 }>();
 
-const searcherStore = useSearcherDataStore();
-const { isInit, getCharacterList } = storeToRefs(searcherStore);
-const characterModalStore = useCharacterModalStore();
-const character = ref<Character | null>(null);
+const wiki = useWikiDataStore();
+const store = useDataV2Store();
+const modal = useInlineModalStore();
 
-// 初始化时获取角色数据
-onMounted(async () => {
-    // 等待 store 数据加载完成
-    watch(isInit, async (newVal) => {
-        if (newVal) {
-            // 获取角色数据
-            const charData = searcherStore.getCharacterData(props.characterName);
-            if (charData) {
-                // 从角色列表中找到对应角色
-                character.value = getCharacterList.value.find((c) => c.data.key === charData.key) || null;
-            }
-        }
-    });
+const character = computed(() => {
+    const id = parseId(props.characterId);
+    if (id != null) return store.characterById.get(id) ?? null;
+
+    const raw = findCharacter(wiki.characters, props.characterName ?? '');
+    return raw ? (store.characterById.get(raw.id) ?? null) : null;
 });
 
-// 点击事件处理
+const placeholder = computed(() => {
+    if (wiki.status === 'error') return '加载失败';
+    return wiki.ready ? '角色不存在' : '加载中…';
+});
+
+// 角色卡要渲染 V2 数据：进页面就初始化整库（IndexedDB 有缓存时很快，多次调用只拉一次）
+onMounted(() => {
+    void wiki.init();
+});
+
 const handleClick = () => {
     if (character.value) {
-        // 使用 store 打开模态框
-        characterModalStore.openModal(character.value);
+        modal.open({ kind: 'character', id: character.value.id });
+        return;
     }
+    if (!wiki.ready) {
+        window.wiz.$message.info('角色数据正在加载，请稍后再试');
+        return;
+    }
+    window.wiz.$message.error('角色不存在');
 };
 </script>
 
