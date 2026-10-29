@@ -15,6 +15,7 @@
  *   Data:Enemy/<id>.json       dtype: "enemy"
  *   Data:Map/<id>.json         dtype: "map"
  *   Data:EnemyPool/<id>.json   dtype: "enemy_pool"
+ *   Data:Blessing.json        单文件（整包，`public/blessing.json`）
  *   Data:MapMeta.json          整表（地图分类，层在 Data:Map/<id>.json）
  *   Data:Enum.json             整表（id 字典 + effect_kind），单条目
  *
@@ -30,9 +31,15 @@
  *   默认 `D:\WizardyDaphne\workspace\wikitext.sqlite`，可用 `WIKI_CACHE_SQLITE_PATH` 覆盖。
  *
  * 顺序：character → job → skill → equipment → item → shop → relic →
- *       enemy → map → map_meta → enemy_pool → enum
+ *       enemy → map → map_meta → enemy_pool → blessing → enum
  * （各自失败互不影响，最后汇总失败数）。
- * 效果种类名表（Data:EffectKind.json）在 wiki 上手工维护，不由本脚本上传。
+ * 效果种类名表（Data:EffectKind.json）在 wiki 上手工维护，但本脚本会在 skill 阶段后
+ * 把解包里出现、页面上还没有的新效果种类**追加**进去（日文名兜底，已有项不覆盖）。
+ * 角色跑完后还会检查 ``Data:CharacterExtra.tabx``（手工维护的池组 / 上线 / 声优）：
+ * 把本地有、表里没有的角色**插到最前面**（已有行不动、页面解析失败则跳过）；
+ * 新行的 ``index`` 取最大值 + 1、``group`` 默认 -1、``release_date`` 用当天日期，
+ * 风格角色沿用同角色已有行的声优。
+ *
  * 装备跑完后还会检查 ``Data:EquipmentExtra.tabx``（手工维护的特典分类 / 获取途径），
  * 把本地有、页面上没有的新装备**追加**进去（已有行不动，页面解析失败则跳过）。
  *
@@ -79,6 +86,9 @@ const MOCK_DIR = path.join(ROOT, 'public', 'mock');
 const ACHIEVEMENT_TABX_TITLE = 'Data:成就.tabx';
 const ACHIEVEMENT_TABX_WORK = path.join(ROOT, 'local_scripts', 'work', 'achievement.tabx.json');
 const ACHIEVEMENT_BUILD_SCRIPT = path.join(ROOT, 'local_scripts', 'clean', 'build_achievement.py');
+/** 效果种类名表（Data:EffectKind.json）：追补解包里出现、页面上没有的新效果种类 */
+const EFFECT_KIND_TITLE = 'Data:EffectKind.json';
+const EFFECT_KIND_LOCAL = path.join(ROOT, 'local_scripts', 'work', 'clean', 'skill', 'effect_kinds.json');
 /** 上传缓存（sqlite，放在工作区外，与前端 / 仓库无关） */
 const CACHE_SQLITE_PATH =
     process.env.WIKI_CACHE_SQLITE_PATH || path.join('D:\\WizardyDaphne', 'workspace', 'wikitext.sqlite');
@@ -102,6 +112,8 @@ interface KindSpec {
     idKey?: string;
     /** 整表塞在一个页面里（默认取响应 `items[0]`，或用 `field` 指定顶层键） */
     singleton?: boolean;
+    /** 整份文件原样写进单条目页面（不取 `items[0]`），如 Blessing 的单文件 json */
+    whole?: boolean;
     /** 单条目页面的内容取自响应里的哪个顶层键（如 Enum 的 `enum`） */
     field?: string;
     /**
@@ -127,6 +139,7 @@ const KIND_NAMES = [
     'map',
     'map_meta',
     'enemy_pool',
+    'blessing',
     'enum',
 ] as const;
 type KindName = (typeof KIND_NAMES)[number];
@@ -220,6 +233,17 @@ const KINDS: Record<KindName, KindSpec> = {
         idKey: 'i',
         byDefault: true,
         note: '敌群（全部编队分组，含关联层 / 队伍数与成员站位）',
+    },
+    blessing: {
+        sub: null,
+        title: 'Blessing',
+        // 只有 143 条、也没有按 id 单独查询的需求：整份文件一页（不拆记录级页面）。
+        // 文件是 `public/blessing.json`，所以从 MOCK_DIR 往上一级取
+        file: '../blessing.json',
+        whole: true,
+        singleton: true,
+        byDefault: true,
+        note: '哈肯的加护（单文件：效果已展开，名字字典内嵌）',
     },
     enum: {
         sub: null,
@@ -350,7 +374,7 @@ export async function buildEntries(
         const title = `${PAGE_NS}:${spec.title}.json`;
         const file = path.join(MOCK_DIR, spec.file!);
         const payload = await readJson<MockPayload & Record<string, unknown>>(file);
-        const doc = spec.field ? payload[spec.field] : payload.items?.[0];
+        const doc = spec.whole ? payload : spec.field ? payload[spec.field] : payload.items?.[0];
         if (!doc) throw new Error(`${file} 里没有 ${spec.field ?? 'items[0]'}`);
 
         const keys = Object.keys(doc).length;
@@ -546,6 +570,202 @@ export async function syncEquipmentExtra(
     return { added: added.length, total };
 }
 
+// ==================== 手工补充表：Data:CharacterExtra.tabx ====================
+
+/** wiki 上手工维护的角色补充表（池组 / 上线日期 / 声优 / banner） */
+const CHARACTER_EXTRA_TITLE = 'Data:CharacterExtra.tabx';
+
+/** 日期按表里的写法生成：`##YYYY-MM-DD` */
+const formatReleaseDate = (date: Date) => {
+    const pad = (value: number) => String(value).padStart(2, '0');
+    return `##${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
+/**
+ * 把本地角色里**新出现**的角色补到 ``Data:CharacterExtra.tabx`` 的最前面一行。
+ *
+ * 这张表是手工维护的数据源（`Api/GetV2Extra.characterExtra` 从它来），所以只做「追加」：
+ *   * 已有 id 的行原样保留（人工改过的池组 / 日期 / 声优以线上为准）；
+ *   * 觉醒版（`hd`，…0099 / …0100）只在角色 modal 里切换，不进这张表；
+ *   * 新行的 `index` 取现有最大值 + 1，`group` 默认 -1（限定池），
+ *     `release_date` 用当天日期，`banner` 留空待人工补；
+ *   * 风格角色（同一角色的另一套造型）沿用同角色已有行的声优。
+ */
+export async function syncCharacterExtra(
+    bot: HuijiWiki,
+    options: { dryRun?: boolean } = {},
+): Promise<{ added: number; total: number }> {
+    const page = await bot.getPageRawTextByTitle(CHARACTER_EXTRA_TITLE);
+    if (!page?.content) throw new Error(`读不到页面 ${CHARACTER_EXTRA_TITLE}`);
+
+    let tabx: TabxPage;
+    try {
+        tabx = JSON.parse(page.content) as TabxPage;
+    } catch {
+        throw new Error(`${CHARACTER_EXTRA_TITLE} 不是合法 JSON，已跳过（不覆盖手工数据）`);
+    }
+    if (!Array.isArray(tabx.data) || !Array.isArray(tabx.schema?.fields)) {
+        throw new Error(`${CHARACTER_EXTRA_TITLE} 缺少 schema.fields / data，已跳过`);
+    }
+
+    const fields = tabx.schema.fields.map((field) => field.name);
+    const col = (name: string) => fields.indexOf(name);
+    const idIndex = col('id');
+    if (idIndex < 0) throw new Error(`${CHARACTER_EXTRA_TITLE} 的 schema 里没有 id 字段`);
+    const nameIndex = col('name');
+    const voiceIndex = col('character_voice');
+    const indexIndex = col('index');
+
+    const known = new Set(tabx.data.map((row) => Number(row[idIndex])));
+    /** 同角色名的声优：风格角色沿用该角色已有行的 CV */
+    const voiceByName = new Map<string, string>();
+    let maxIndex = 0;
+    for (const row of tabx.data) {
+        const name = nameIndex >= 0 ? row[nameIndex] : null;
+        const voice = voiceIndex >= 0 ? row[voiceIndex] : null;
+        if (typeof name === 'string' && name && typeof voice === 'string' && voice && !voiceByName.has(name)) {
+            voiceByName.set(name, voice);
+        }
+        const index = Number(indexIndex >= 0 ? row[indexIndex] : 0);
+        if (Number.isFinite(index) && index > maxIndex) maxIndex = index;
+    }
+
+    const payload = await readJson<MockPayload>(path.join(MOCK_DIR, 'CharacterResponse.json'));
+    const today = formatReleaseDate(new Date());
+    const added: unknown[][] = [];
+    let nextIndex = maxIndex + 1;
+
+    for (const doc of payload.items ?? []) {
+        const id = Number(doc.i);
+        if (!Number.isFinite(id) || id <= 0 || known.has(id)) continue;
+        // 觉醒版只在角色 modal 的版本切换里出现，不写进补充表
+        if (doc.hd) continue;
+
+        const name = typeof doc.zh === 'string' ? doc.zh : '';
+        if (!name) continue;
+        const style = typeof doc.sty === 'string' ? doc.sty : '';
+        const styled = style !== '' && style !== '基本';
+
+        added.push(
+            fields.map((field) => {
+                switch (field) {
+                    case 'id':
+                        return id;
+                    case 'index':
+                        return nextIndex++;
+                    case 'key':
+                        return styled ? `${style}${name}` : name;
+                    case 'name':
+                        return name;
+                    case 'style':
+                        return styled ? style : null;
+                    case 'group':
+                        return -1;
+                    case 'release_date':
+                        return today;
+                    case 'character_voice':
+                        return voiceByName.get(name) ?? null;
+                    default:
+                        // banner 等其余列留给人工补
+                        return null;
+                }
+            }),
+        );
+        known.add(id);
+    }
+
+    if (added.length === 0) {
+        console.log(`  ${CHARACTER_EXTRA_TITLE}: 没有新角色（现有 ${tabx.data.length} 行）`);
+        return { added: 0, total: tabx.data.length };
+    }
+
+    // 表里新角色在上、编号从大到小，所以倒序插到最前面
+    tabx.data.unshift(...[...added].reverse());
+    const total = tabx.data.length;
+    console.log(
+        `  ${CHARACTER_EXTRA_TITLE}: 追加 ${added.length} 个新角色 -> ${total} 行` +
+            `（${added.map((row) => row[idIndex]).join(', ')}）`,
+    );
+    if (options.dryRun) return { added: added.length, total };
+
+    const res = await bot.editPage(CHARACTER_EXTRA_TITLE, JSON.stringify(tabx, null, 4), {
+        summary: `追加 ${added.length} 个新角色`,
+    });
+    if (res.error) throw new Error(res.error.info ?? JSON.stringify(res.error));
+    return { added: added.length, total };
+}
+
+// ==================== 效果种类名表：Data:EffectKind.json ====================
+
+/** 解包 `effect_kinds.json` 里单个效果种类的形状（只取需要的两个字段） */
+interface LocalEffectKind {
+    id: number;
+    name_jp?: string | null;
+    name?: string | null;
+    params?: string[] | null;
+}
+
+/**
+ * 把解包里出现、但 wiki 手工维护的 ``Data:EffectKind.json`` 还没有的效果种类补进去。
+ *
+ * 前端 ``effectKinds`` 直接读这张表；缺了某项时，技能详情里只能退回技能自带的日文
+ * ``kind_name``（如新技能 194013000 的 kind 3490「抵抗ダウン」）。这里按解包日文名
+ * 给缺的项补一条兜底名，之后人工再改成中文；已有项一律不动，不覆盖手改的中文名 /
+ * 参数名。本地源是 ``skill.py`` 产出的 ``effect_kinds.json``（只含实际出现的种类）。
+ */
+async function syncEffectKind(
+    bot: HuijiWiki,
+    options: { dryRun?: boolean } = {},
+): Promise<{ added: number; total: number }> {
+    if (!existsSync(EFFECT_KIND_LOCAL)) {
+        console.log(`  ${EFFECT_KIND_TITLE}: 本地缺少 ${EFFECT_KIND_LOCAL}（先跑 [UPDATE 1] 清洗），跳过`);
+        return { added: 0, total: 0 };
+    }
+
+    const page = await bot.getPageRawTextByTitle(EFFECT_KIND_TITLE);
+    if (!page?.content) throw new Error(`读不到页面 ${EFFECT_KIND_TITLE}`);
+
+    let wiki: Record<string, { name?: string; params?: string[] | null }>;
+    try {
+        wiki = JSON.parse(page.content);
+    } catch {
+        throw new Error(`${EFFECT_KIND_TITLE} 不是合法 JSON，已跳过（不覆盖手工数据）`);
+    }
+    if (!wiki || typeof wiki !== 'object' || Array.isArray(wiki)) {
+        throw new Error(`${EFFECT_KIND_TITLE} 顶层不是对象，已跳过`);
+    }
+
+    const local = await readJson<Record<string, LocalEffectKind>>(EFFECT_KIND_LOCAL);
+
+    const added: string[] = [];
+    for (const [id, kind] of Object.entries(local)) {
+        if (id in wiki) continue;
+        const name = kind?.name_jp || kind?.name || `效果 #${id}`;
+        const entry: { name: string; params?: string[] | null } = { name };
+        if (kind?.params) entry.params = kind.params;
+        wiki[id] = entry;
+        added.push(id);
+    }
+
+    if (added.length === 0) {
+        console.log(`  ${EFFECT_KIND_TITLE}: 没有新效果种类（现有 ${Object.keys(wiki).length} 种）`);
+        return { added: 0, total: Object.keys(wiki).length };
+    }
+
+    // 页面原本是紧凑单行 JSON，保持紧凑写回以缩小 diff
+    const total = Object.keys(wiki).length;
+    console.log(
+        `  ${EFFECT_KIND_TITLE}: 追加 ${added.length} 个新效果种类 -> ${total} 种（${added.join(', ')}）`,
+    );
+    if (options.dryRun) return { added: added.length, total };
+
+    const res = await bot.editPage(EFFECT_KIND_TITLE, JSON.stringify(wiki), {
+        summary: `追加 ${added.length} 个新效果种类`,
+    });
+    if (res.error) throw new Error(res.error.info ?? JSON.stringify(res.error));
+    return { added: added.length, total };
+}
+
 // ==================== 成就 tabx：Data:成就.tabx ====================
 
 /** 结构化比较：对象按 key 排序，忽略 JSON 空白与 key 顺序 */
@@ -698,6 +918,17 @@ async function main(): Promise<void> {
         console.log(`  本类完成: 上传 ${uploaded} / 跳过 ${skipped} / 失败 ${failed}`);
     }
 
+    // 角色手工补充表（Data:CharacterExtra.tabx）：新角色补到最前面一行
+    if (kinds.includes('character')) {
+        console.log(`\n===== character-extra (${CHARACTER_EXTRA_TITLE}) =====`);
+        try {
+            await syncCharacterExtra(bot, { dryRun });
+        } catch (err) {
+            failedTotal++;
+            console.error(`  × ${CHARACTER_EXTRA_TITLE} 同步失败: ${err instanceof Error ? err.message : err}`);
+        }
+    }
+
     // 装备手工补充表（Data:EquipmentExtra.tabx）：追加本地有、页面上没有的新装备
     if (kinds.includes('equipment')) {
         console.log(`\n===== equipment-extra (${EQUIP_EXTRA_TITLE}) =====`);
@@ -706,6 +937,17 @@ async function main(): Promise<void> {
         } catch (err) {
             failedTotal++;
             console.error(`  × ${EQUIP_EXTRA_TITLE} 同步失败: ${err instanceof Error ? err.message : err}`);
+        }
+    }
+
+    // 效果种类名表（Data:EffectKind.json）：把解包里出现、页面上没有的新效果种类补进去
+    if (kinds.includes('skill')) {
+        console.log(`\n===== effect-kind (${EFFECT_KIND_TITLE}) =====`);
+        try {
+            await syncEffectKind(bot, { dryRun });
+        } catch (err) {
+            failedTotal++;
+            console.error(`  × ${EFFECT_KIND_TITLE} 同步失败: ${err instanceof Error ? err.message : err}`);
         }
     }
 

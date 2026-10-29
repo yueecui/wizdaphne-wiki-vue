@@ -58,6 +58,20 @@ out/masterdata（解包主数据，288 表）
 | `EnumResponse.json` | `Api/GetEnum` | 1（字典包） | 62 KB |
 | `VersionResponse.json` | `Api/Version` | — | <1 KB |
 
+加护是例外：只有 143 条、也没有按 id 单独查询的需求，所以**不打进 mock 管线**，
+直接由 `blessing.py` 生成一个单文件 `public/blessing.json`（`{generatedAt, count,
+stats, species, attributes, groups, items}`，约 85 KB，入库）。前端 `blessingData.ts`
+一次 `fetch` 拿完，不进 IndexedDB、不吃 `Api/Version`；线上对应 `Data:Blessing.json`
+一页（上传脚本按 `whole` 整包写），**不做 Lua 接口**，页面直接取 `?action=raw`：
+
+```
+/index.php?title=Data:Blessing.json&action=raw&ctype=text/json&t=<时间戳>
+```
+
+`groups` 是「加护组 → 楼层名」：加护组本身没有名字，靠 `DungeonWedge.blessing_group_id`
+→ `dungeon_floor_move_id` → `DungeonFloorMove.name` 反查（例：`20001` = 「B2F -圣堂-」，
+古城遗迹的 `6000001` 对应 4 层）。页面用它做池下的副选择器。
+
 第一轮的长键数据在仓库根目录 `data/`（不入库），结构见 05 §2。
 
 ---
@@ -73,6 +87,7 @@ python local_scripts\clean\job.py
 python local_scripts\clean\skill.py
 python local_scripts\clean\equipment.py
 python local_scripts\clean\dialogue.py   :: 营地/酒馆对话（读 out\topic_digest）
+python local_scripts\clean\blessing.py   :: 哈肯的加护 -> public\blessing.json（单文件，不参加下面两轮）
 
 :: 2) 第一轮：长键精简 -> <repo>\data
 python local_scripts\clean\build_data.py
@@ -207,6 +222,19 @@ src/views/DataV2/
   CharacterPanel.vue    角色：筛选 + 卡片网格 + 详情抽屉
   CharacterDetail.vue   角色详情：基础值/成长/才能/技能/克己/台词
   SkillPanel.vue        技能：筛选 + 表格（分页 25 条），点行打开详情弹窗
+  BlessingPanel.vue     加护（哈肯的加护）：关键词 / 稀有度（全部·白·绿·蓝·紫）/ 加护池（名字硬编码在
+                        `blessingEffects.ts`：2000 初始的奈落、2001 贸易水路、2002 不落的要塞、
+                        2003 豪雪地带、7015 北穿幽灵城、600000 古城遗迹）筛选；池下多组时再给「组」
+                        选择器（只显示楼层名，默认落最后一条，选靠后的组会把前面的组一起算）+ 表格
+                        （选「全部」时每页 25 条，选了具体池则一页列完不分页）。稀有度只体现在加护名颜色上（0 白 / 1 绿 / 2 蓝 / 3 紫，用
+                        `span` 而非 `a`，避免站点的 `a { color }` 盖掉），第二列在池选「全部」时显示
+                        **权重**，选了具体池才换算成**出现几率**（按当前列表的权重占比）
+  BlessingModal.vue     加护详情：与技能 modal 同款（No. + 稀有度着色标题 + 基本信息表 + 描述 +
+                        效果表，效果行用 kind 小标签 + 「效果名 · 参数名」）。基本信息两行：
+                        「稀有度（白/绿/蓝/紫）· 权重」「加护池 · 加护组（只显示楼层名，不显示组 id）」，不显示几率
+  blessingData.ts       单文件读 `public/blessing.json`（模块级缓存，不走 store / IndexedDB）
+  blessingTypes.ts      `blessing.json` 的结构（items + stats / species / attributes 字典）
+  blessingEffects.ts    加护效果的文案规则（kind 7000 / 150 / 2340 / 2363 的参数含义 + 通用回退）
   SkillModal.vue        技能详情弹窗外壳（NModal + 标题 + 关闭）
   SkillDetail.vue       技能详情：基础信息 / 说明 / 逐级数值（转置表）/ 通用数值 / 学习来源
   EquipmentPanel.vue    装备：武器 / 防具两张列表，完全对齐 V1（类型按钮、搜索、特性/特典/妖精筛选、
@@ -267,6 +295,7 @@ Api/Version ──► 与 IndexedDB 里的 dataVersion 比较
 | 觉醒形态 | 不收录，原始行保留 | 需要时在 `export_v2.py` 去掉过滤即可 |
 | 装备 | 816 条（武器 341 / 盾 51 / 头部 97 / 身体 109 / 手部 73 / 脚部 61 / 饰品 82 / 工具 2），含 0 级与强化曲线、图标名、探索三项、材质补强、图鉴编号（`CollectionEquip.list_number`；`display_type` 2 的特殊装备显示 EX，5 件无图鉴记录的为 null），以及加护概率 bonus；类型基准值 baseStat 与特典分类 / 获取途径已搬到 `Api/GetV2Extra`（人工维护数据，独立版本号）。材质补强取自解包 `EquipmentOverRankReinforce`（`over_rank_reinforce_group_id` 关联）：`over_rank[]` 每项是「目标阶级 + 阶级内次数 + 金币 + 五项累计加成」，只有低于最高阶级的 540 件有数据。特性只存技能 identification + 引用等级，名字与说明由前端查技能数据（IndexedDB）。敌人 / NPC / 剧情专用装备（`name` 无中文本地化）已排除；特典分类 `soucate` 与获取途径 `sou` 由 `Api/GetV2Equipment` 顶层 `extra`（源头是 wiki 手工维护的 `Data:EquipmentExtra.tabx`，上传脚本只追加新装备）提供，列表排序 / 特典着色 / 特典过滤器 / 杂物列表底色都靠它；中文说明 / 装备需求仍保留占位；妖精标记 `fa_can`（种族条件 10）与妖精技能 `fa_sk`（= 套装技能名）已由解包数据还原 | 图标图片托管、装备编辑与杂物来源待补 |
 | 杂物 | `DataV2/junk/` 独立实现（V1 代码不改动）：官网抓包 `public/junkdata.json`（743 分类）整理出约 23 万条几率组合，装备中文名 / 阶级 / 特典取 V2 装备数据；列表、筛选、分页、右键复制模板与 V1 一致，详情弹窗改为与技能/装备同款（固定头 + 内容滚动）。整理结果写入主库 `wizdaphne-wiki-v2` 的 `junk` 表（记录写入时的 `DB_SCHEMA_VERSION`），本地有缓存时进入页面直接读取、不再请求 `Api/GetJunkData`；整库重建（schema 版本 bump）或手动刷新时缓存一并失效；详情里查看装备打开 V2 装备弹窗 | 杂物数据更新需把 `junkdata.json` 换掉并清理缓存（bump `DB_SCHEMA_VERSION` 或走一次刷新） |
+| 加护 | 143 条（`HakenBlessing`），一条 = 一种加护；效果来自 `SkillSubEffect`，已确认 4 个 kind 的参数含义（7000 加護 / 150 种族特效 / 2340 种族抵抗 / 2363 属性攻击伤害提升，见 `blessing.py`）。整份数据就是 `public/blessing.json` 一个文件（效果已展开，用到的种族 / 属性 / 能力值名内嵌为字典，`group_id` 拆成「主题池 + 档位」，另外带 `groups`：组 → 它挂的楼层名），前端一次 `fetch` 读完，不进 mock / IndexedDB。列表里稀有度只体现在加护名颜色（0 白 / 1 绿 / 2 蓝 / 3 紫），「出现几率」= 当前列表内 `weight` 占比；池名与组的累进关系在前端：池名硬编码，组选择器选靠后的档会把前面的档一起算 | 池名对照表是手工维护的（新增池要补 `POOL_NAMES`）、出现几率与游戏内是否一致待核 |
 | 怪物 / 地图 | 未导出 | 复用 `common.py` 与同一套导出结构 |
 | 图标 / 立绘 | 未接入 | `Character.image_name` / `thumbnail_name` 已在数据里，需另跑资源管线 |
 | 多语言切换 | 只展示中文 + 日英名 | 数据层已保留 `name_jp/name_en`，扩展即可 |
@@ -279,7 +308,7 @@ Api/Version ──► 与 IndexedDB 里的 dataVersion 比较
 
 ## 6. 验收清单（人工）
 
-1. 打开带 `#data-searcher-v2` 的页面，页签「角色 / 技能 / 武器 / 防具 / 妖精 / 杂物 / 物品 / 商店 / 遗物」可切换，`?tab=` 可深链（旧的 `?v2tab=` 也兼容）。
+1. 打开带 `#data-searcher-v2` 的页面，页签「角色 / 技能 / 武器 / 防具 / 妖精 / 杂物 / 物品 / 商店 / 遗物 / 加护」可切换，`?tab=` 可深链（旧的 `?v2tab=` 也兼容）。
 2. 角色：95 条；筛选稀有度/种族/属性/职业、搜索中日英名、勾选「只显示基本形态」应生效；点卡片出抽屉，基础值 7 项与成长率有值；**抽屉里的固有/继承/潜在继承/克己技能标签可点击**，弹出同一个技能详情 modal。
 3. 技能：默认只看可获得技能（929 条），勾选「显示敌方/测试」后 3,031 条；搜索、类型/职业/来源筛选生效；点行出**弹窗**，`精密攻击` 应与攻略站一致：消耗 5→40 SP、威力 120%→160%、双手威力 144%→192%、阈值 100→800、双手阈值 300→2400、会心率加成 +30%→+48%、防御贯穿 +50%→+80%，通用区显示 命中 90 / 攻击次数 依武器 / 准备状态特效：触发数值 1000，学习条件 `盗贼 Lv3`；防御贯穿行显示 `防御贯穿率 +50%`→`+80%`。
 4. 缓存：首次打开 Network 里能看到 `mock/*Response.json`；刷新后不再请求模块文件（只请求 `VersionResponse.json`），页面直接从 IndexedDB 呈现；DevTools → Application → IndexedDB 可见 `wizdaphne-wiki-v2`。

@@ -126,7 +126,7 @@ data/
 | `EquipmentResponse.json` | `Api/GetV2Equipment` | 816 | 1.41 MB |
 | `EnumResponse.json` | `Api/GetV2Enum` | 1（对象包） | 41 KB |
 | `ExtraResponse.json` | `Api/GetV2Extra` | 6 块（人工表） | 94 KB |
-| `VersionResponse.json` | `Api/GetV2Version` | — | <1 KB |
+| `VersionResponse.json` | `Api/Version` | — | <1 KB |
 
 每个模块一条记录即完整文档（角色含 stats/talent/skills/voice，技能含描述与全部等级数值），不再有 `*Detail` 接口。
 
@@ -243,9 +243,38 @@ data/
 它来自 `config/EquipmentApi.json`（线上 `Api/GetV2Equipment` 响应的本地备份，与 `bonus`
 同一个文件；`bonus` 仍并进每件装备的 `bn`），列表用它做红绿配色；`i` 同时决定类型按钮的顺序（< 100 武器，>= 100 防具）。
 
+### 3.5 加护：单文件（不走这两轮）
+
+哈肯的加护只有 143 条，也没有按 id 单独查询的需求，所以 `blessing.py` **直接**写
+`public/blessing.json`（约 85 KB，长键，入库）：不进 mock 打包、不拆记录页、
+不进 IndexedDB，也不做 Lua 接口 —— 前端一次 `fetch` 读完，线上取 `Data:Blessing.json`
+的原文（`?action=raw`）。
+
+| 键 | 内容 |
+|---|---|
+| `generatedAt` / `count` | 生成时间 / 条数 |
+| `stats` | `{能力值 id: 名称}`：kind 7000 的 `params[0]`。解包里没有这张枚举表，id 由加护 / 技能描述反推（4 攻击力、5 防御力、6 魔力、7 法术防御力、8 神力、9 命中、10 回避、11 抵抗、12 会心、14 行动速度、16 陷阱解除、17 陷阱回避） |
+| `species` / `attributes` | `{EnemySpecies id: 名称}` / `{Attribute id: 名称}`，只收这份数据用得到的几个 |
+| `groups` | `{group_id: {"layers": [楼层名]}}`：加护组没有名字，靠 `DungeonWedge.blessing_group_id` → `dungeon_floor_move_id` → `DungeonFloorMove.name` 反查（`20001` = 「B2F -圣堂-」；古城遗迹的 `6000001` 对应 4 个「小哈肯」层） |
+| `items[].id` / `name` / `name_jp` / `name_en` / `description` | `HakenBlessing` 基本字段（`description_lang` 只在说明回退到日 / 英时出现） |
+| `items[].group` / `pool` / `tier` | `group_id` 与拆出来的「主题池 + 档位」（`group = pool * 10 + tier`） |
+| `items[].rarity` / `weight` | 稀有度（0-3）/ 抽取权重 |
+| `items[].effects[]` | `{kind, kind_name, params, turn, strength}`：`kind_name` 是日文种类名（兜底显示），`params` 是 `param_1..N`（末尾 0 已去掉，位置不能错） |
+
+效果参数按 `kind` 解释：`7000` 加護（`params[0]` → `stats`，`params[1]` = 加成 %）、
+`150` 种族特效 / `2340` 种族抵抗（`params[0]` → `species`，`params[1]` = 伤害 %）、
+`2363` 属性攻击伤害提升（`params[0]` = 伤害 %，`params[1]` → `attributes`）；
+其余（各种耐性变动等）只有数值，直接用 `kind_name` 显示。
+
+同一份数据还会生成 wiki 词条「哈肯」的四张表（白 / 绿 / 蓝 / 紫加护）：
+`yarn update:haken -- --dry-run` 只写预览 `local_scripts/work/haken.wiki`，
+不带参数则登录后替换词条里两个标记之间的内容（只动 `===白加护===` 起的四节）。
+效果名/参数名取 `ExtraResponse.json` 的 `effectKinds`（= `Data:EffectKind.json`），
+wiki 上仍为日文的条目在脚本的 `KIND_NAMES` 里兜底成中文。
+
 ## 4.x 人工维护数据（`Api/GetV2Extra`）
 
-解包数据之外的「人工表」集中在一个模块里，带独立版本号（`Api/GetV2Version` 的 `extra`），
+解包数据之外的「人工表」集中在一个模块里，带独立版本号（`Api/Version` 的 `extra`），
 改动只需要重传这一个模块、前端也只重拉它：
 
 | 字段 | 内容 | 来源 |
@@ -269,7 +298,7 @@ data/
 
 完整 spec 以 `local_scripts/clean/build_mock.py` 顶部常量为准（`CHAR` = `CHAR_LIST` + `CHAR_DETAIL`，`SKILL` = `SKILL_LIST` + `SKILL_DETAIL`，以及 `JOB` / `DAMAGE` / `SUB_EFFECT` / `LEVEL`）。
 
-### 3.4 体积对照
+### 3.4 体积对照（不含加护的单文件，见 3.5）
 
 | 口径 | 长键（旧 `public/data-v2`） | 第一轮 `data/` | 第二轮 mock |
 |---|---|---|---|
@@ -289,6 +318,9 @@ python local_scripts\clean\character.py
 python local_scripts\clean\job.py
 python local_scripts\clean\skill.py
 python local_scripts\clean\dialogue.py   :: 营地/酒馆对话（读 out\topic_digest）
+
+:: 0.5) 单文件（不用跑下面两轮）：哈肯的加护 -> <repo>\public\blessing.json
+python local_scripts\clean\blessing.py
 
 :: 1) 第一轮：长键精简 → <repo>\data
 python local_scripts\clean\build_data.py

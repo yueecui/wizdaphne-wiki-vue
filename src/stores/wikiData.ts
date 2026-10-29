@@ -106,6 +106,8 @@ export interface RawCharacter {
     name_en: string;
     style: string;
     default: boolean;
+    /** 觉醒版（``…0099`` / ``…0100``）：不进角色列表，只在角色 modal 里切换 */
+    hidden?: boolean;
     rarity: number;
     race: number;
     attribute: number;
@@ -1152,7 +1154,8 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         // 装备特典 / 遗物类别要跟人工表合并，放在最后统一算
         applyExtraSections(payload.extraSections ?? emptyExtraSections());
 
-        counts.characters = payload.characters.length;
+        // 觉醒版也在 items 里（供角色 modal 切换），计数时不算
+        counts.characters = payload.characters.filter((row) => !row.hidden).length;
         counts.jobs = payload.jobs.length;
         counts.skills = payload.skills.length;
         counts.playerSkills = payload.skills.filter((s) => s.player).length;
@@ -1489,7 +1492,7 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
      * 解包表（角色 / 技能 / 装备 / 道具 …）一条都不动。
      *
      * 改完效果种类名、装备特典、遗物类别后点一下调试按钮走这里；
-     * ``extraVersion`` 传空时顺手把 ``Api/GetV2Version`` 的 ``extra`` 记下来。
+     * ``extraVersion`` 传空时顺手把 ``Api/Version`` 的 ``extra`` 记下来。
      */
     async function refreshExtra(extraVersion?: number): Promise<void> {
         const database = getDb();

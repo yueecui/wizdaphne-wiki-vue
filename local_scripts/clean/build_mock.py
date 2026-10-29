@@ -18,7 +18,7 @@ required) so the frontend can be developed against DEV mocks:
     EnemyPoolResponse.json    Api/GetV2EnemyPool   367 个挂不到层的编队池（敌群页）
     EnumResponse.json         Api/GetV2Enum        {enum}：各分组字典
     ExtraResponse.json        Api/GetV2Extra       人工维护（非解包）的六块，见下
-    VersionResponse.json      Api/GetV2Version     { version, extra }（extra = 人工表版本）
+    VersionResponse.json      Api/Version          { version, extra }（extra = 人工表版本）
 
     JobResponse.json / RelicResponse.json 前端不再请求，只作为上传脚本的输入
     （Data:Job / Data:Relic 数据页仍由 GetV2Character.jobs、GetV2Item.relics 读取）
@@ -64,9 +64,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import (  # noqa: E402
     EQUIP_API_JSON,
     ROOT,
+    WIKI_TABX_DIR,
+    as_list,
     character_extra,
     character_rates,
     read_config_json,
+    read_wiki_tabx,
     relic_extra,
 )
 
@@ -94,6 +97,8 @@ CHAR_LIST = [
     ("name_en", "en", "str"),
     ("style", "sty", "str"),
     ("default", "d", "bool"),
+    # 觉醒版：不进列表，只供角色 modal 的版本切换
+    ("hidden", "hd", "bool"),
     ("rarity", "r", "num"),
     ("race", "ra", "num"),
     ("attribute", "at", "num"),
@@ -1027,11 +1032,28 @@ def main(argv: list[str]) -> int:
 
     # 抓包备份（``config/EquipmentApi.json``）：装备基准值 + 特典分类 / 获取途径
     equip_api = read_config_json(EQUIP_API_JSON) or {}
+    # ``equipmentExtra`` 优先用线上快照（fetchWikiExtras.ts 拉下的
+    # ``Data:EquipmentExtra.tabx``），与 wiki 一致；没拉过时回退抓包备份。
+    wiki_equip_extra = os.path.join(WIKI_TABX_DIR, "Data_EquipmentExtra.tabx.json")
+    if os.path.isfile(wiki_equip_extra):
+        equipment_extra_rows = []
+        for row in read_wiki_tabx(wiki_equip_extra):
+            eid = row.get("id")
+            if eid is None:
+                continue
+            sou = as_list(row.get("sou"))
+            equipment_extra_rows.append(
+                {"id": int(eid), "soucate": row.get("soucate") or 0,
+                 "sou": [str(s) for s in sou if s]}
+            )
+        equipmentExtra = equipment_extra_rows
+    else:
+        equipmentExtra = equip_api.get("extra") or []
     # 人工维护的那六块：整包算个指纹当版本号，内容不变就不会让前端重拉
     extra_payload = {
         "effectKinds": kind_names,
         "equipmentBaseStat": equip_api.get("baseStat") or {},
-        "equipmentExtra": equip_api.get("extra") or [],
+        "equipmentExtra": equipmentExtra,
         "relicExtra": relic_extra_rows,
         "relicCategory": relic_categories,
         "characterExtra": char_extra,

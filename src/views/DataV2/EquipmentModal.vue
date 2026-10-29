@@ -24,8 +24,8 @@
                                     <span>{{ item?.name ?? '装备详情' }}</span>
                                     <span v-if="item?.soucate === 9" class="text-sm text-blue-300">特典</span>
                                 </div>
-                                <div v-if="item?.name_jp" class="text-sm text-gray-400 break-words">
-                                    {{ item.name_jp }}
+                                <div v-if="foreignName" class="text-sm text-gray-400 break-words">
+                                    {{ foreignName }}
                                 </div>
                             </div>
                             <div class="flex items-center gap-3 shrink-0">
@@ -538,6 +538,11 @@ const canEdit = MwConfig.getInstance().canEdit;
 
 const item = computed<EquipmentListItem | null>(
     () => store.equipments.find((row) => row.id === props.identification) ?? null,
+);
+
+/** 标题下方的外文名：日文名后接英文名 */
+const foreignName = computed(() =>
+    [item.value?.name_jp, item.value?.name_en].filter(Boolean).join(' · '),
 );
 
 const showRaw = ref(false);

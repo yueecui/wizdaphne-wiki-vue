@@ -42,6 +42,7 @@
                 <MapPanel v-else-if="activeKey === 'map'" />
                 <EnemyPoolPanel v-else-if="activeKey === 'enemyPool'" />
                 <SkillPanel v-else-if="activeKey === 'skill'" />
+                <BlessingPanel v-else-if="activeKey === 'blessing'" />
                 <EquipmentPanel v-else-if="activeKey === 'weapon' || activeKey === 'armor'" :group="activeKey" />
                 <FairyPanel v-else-if="activeKey === 'fairy'" />
                 <JunkPanel v-else-if="activeKey === 'junk'" />
@@ -60,6 +61,7 @@ import { storeToRefs } from 'pinia';
 import { computed, onMounted, ref } from 'vue';
 import ThemeConfigProvider from '../../layout/ThemeConfigProvider.vue';
 import { MwConfig } from '../../huiji/MwConfig';
+import BlessingPanel from './BlessingPanel.vue';
 import CharacterPanel from './CharacterPanel.vue';
 import EnemyPanel from './EnemyPanel.vue';
 import EnemyPoolPanel from './EnemyPoolPanel.vue';
@@ -96,6 +98,7 @@ const tabs = [
     { key: 'enemy', label: '敌人' },
     { key: 'map', label: '地图' },
     { key: 'enemyPool', label: '敌群' },
+    { key: 'blessing', label: '加护' },
 ] as const;
 
 type TabKey = (typeof tabs)[number]['key'];

@@ -22,8 +22,8 @@
                                     <span>{{ item?.name ?? '物品详情' }}</span>
                                     <span v-if="starText" class="text-base text-yellow-300">{{ starText }}</span>
                                 </div>
-                                <div v-if="item?.name_jp" class="text-sm text-gray-400 break-words">
-                                    {{ item.name_jp }}
+                                <div v-if="foreignName" class="text-sm text-gray-400 break-words">
+                                    {{ foreignName }}
                                 </div>
                             </div>
                             <div class="flex flex-col items-end gap-1 shrink-0">
@@ -243,6 +243,11 @@ const starText = computed(() => {
     const rank = props.item?.relic?.rank;
     return rank && rank > 0 ? '★'.repeat(rank) : '';
 });
+
+/** 标题下方的外文名：日文名后接英文名 */
+const foreignName = computed(() =>
+    [props.item?.name_jp, props.item?.name_en].filter(Boolean).join(' · '),
+);
 
 const ALIGNMENT_LABELS: Record<number, string> = { 1: '善', 2: '中立', 3: '恶' };
 

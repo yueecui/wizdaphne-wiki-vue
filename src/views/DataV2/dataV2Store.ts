@@ -148,6 +148,7 @@ export const useDataV2Store = defineStore('data-v2', () => {
             name_en: raw.name_en,
             style: raw.style ?? '',
             is_default_style: Boolean(raw.default),
+            hidden: Boolean(raw.hidden),
             rarity: refOf(wiki.enums.rarity, raw.rarity),
             race: refOf(wiki.enums.race, raw.race),
             attribute: refOf(wiki.enums.attribute, raw.attribute),
@@ -581,7 +582,7 @@ export const useDataV2Store = defineStore('data-v2', () => {
     /** 装备类型基准值（V1 手工维护）：红绿配色与类型按钮排序都用它 */
     const equipmentBaseStat = computed<EquipmentBaseStat>(() => wiki.equipmentBaseStat as EquipmentBaseStat);
 
-    const characters = computed<CharacterListItem[]>(() => characterDetails.value);
+    const characters = computed<CharacterListItem[]>(() => characterDetails.value.filter((item) => !item.hidden));
     const skills = computed<SkillListItem[]>(() => skillDetails.value);
     const jobs = computed<JobDetail[]>(() => wiki.jobs.map(toJob));
 
@@ -706,7 +707,7 @@ export const useDataV2Store = defineStore('data-v2', () => {
             counts: {
                 characters: wiki.counts.characters,
                 character_groups: new Set(wiki.characters.map((row) => row.group)).size,
-                excluded_awakening: 0,
+                excluded_awakening: wiki.characters.filter((row) => row.hidden).length,
                 jobs: wiki.counts.jobs,
                 skills: wiki.counts.skills,
                 player_skills: wiki.counts.playerSkills,

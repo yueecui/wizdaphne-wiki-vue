@@ -34,6 +34,8 @@ export interface CharacterListItem extends LocalizedName {
     guide_no: number | null;
     style: string;
     is_default_style: boolean;
+    /** 觉醒版（``…0099`` / ``…0100``）：不参与列表，只在角色 modal 里切换 */
+    hidden?: boolean;
     rarity: Ref;
     race: Ref;
     attribute: Ref;

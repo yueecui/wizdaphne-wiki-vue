@@ -206,9 +206,14 @@ def main(argv: list[str]) -> int:
     except FileNotFoundError:      # dialogue.py 没跑过时不影响其它模块
         dialogues = {}
 
-    roster, excluded = [], []
+    # 觉醒版（…0099 / …0100）不进列表，但角色 modal 要能切换到它们，
+    # 所以照常导出、只打 ``hidden`` 标记；占位单位（901100720000）仍然完全排除
+    roster, excluded, awakenings = [], [], []
     for row in characters:
-        if str(row["id"])[-4:] in AWAKENING_SUFFIX or row["id"] in PLACEHOLDER_IDS:
+        if str(row["id"])[-4:] in AWAKENING_SUFFIX:
+            excluded.append(row)
+            awakenings.append(row)
+        elif row["id"] in PLACEHOLDER_IDS:
             excluded.append(row)
         else:
             roster.append(row)
@@ -242,7 +247,7 @@ def main(argv: list[str]) -> int:
 
     # ---------- characters (one row = list fields + detail fields) ----------
     char_rows = []
-    for row in roster:
+    for row in roster + awakenings:
         for key in ("rarity", "race", "attribute", "gender", "personality", "grade"):
             collect_enum(enums[key], row.get(key))
 
@@ -272,6 +277,8 @@ def main(argv: list[str]) -> int:
             # 个体几率数据用「日文名 - 日文风格」做键，这里保留日文风格名
             "style_jp": caption.get("name_jp"),
             "default": bool(style.get("is_default")),
+            # 觉醒版：不进角色列表，只供 modal 的版本切换
+            "hidden": str(row["id"])[-4:] in AWAKENING_SUFFIX or None,
             "rarity": (row.get("rarity") or {}).get("id"),
             "race": (row.get("race") or {}).get("id"),
             "attribute": (row.get("attribute") or {}).get("id"),
@@ -687,7 +694,8 @@ def main(argv: list[str]) -> int:
         ],
     }, indent=1)
 
-    print(f"{len(char_rows)} characters (+{len(excluded)} excluded), {len(job_list)} jobs, "
+    print(f"{len(char_rows)} characters ({len(roster)} roster + {len(awakenings)} awakening, "
+          f"{len(excluded)} in excluded.json), {len(job_list)} jobs, "
           f"{len(skill_rows)} skills, {len(equipment_rows)} equipments, "
           f"{len(item_rows)} items, {len(shop_rows)} shops, {len(kinds)} effect kinds, "
           f"{len(enemy_rows)} enemies -> {out}")

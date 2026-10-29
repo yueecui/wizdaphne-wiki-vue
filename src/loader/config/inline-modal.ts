@@ -13,6 +13,10 @@ const INLINE_SELECTORS = [
     '.character-inline',
     // 正文里的角色卡（角色列表用的就是它）
     '.character-item',
+    // wiki 角色页的 Vue 区块：技能概览要点击打开技能 modal
+    '#character-profile-v2',
+    '#character-skills-v2',
+    '#character-dialogue-v2',
 ];
 
 /**

@@ -45,6 +45,16 @@
                         <div class="bg-black/50 py-1 text-center text-light truncate">{{ data.name }}</div>
                     </div>
 
+                    <!-- 版本切换：普通风格 / 其他风格 / 觉醒版 -->
+                    <NSelect
+                        v-if="versions.length > 1"
+                        size="small"
+                        :value="activeId"
+                        :options="versions"
+                        class="w-36 md:w-full shrink-0"
+                        @update:value="selectVersion"
+                    />
+
                     <!-- 翻页 -->
                     <div class="flex md:flex-col gap-2">
                         <div
@@ -73,8 +83,34 @@
                 <div class="flex flex-col gap-3 min-w-0">
                     <!-- 第一页：基本信息 -->
                     <div v-if="tab === 'basic'" class="grid gap-4 md:grid-cols-[minmax(0,16rem)_minmax(0,1fr)]">
-                        <!-- 信息 -->
-                        <div>
+                        <!-- 情报 + 信息 -->
+                        <div class="flex flex-col gap-3">
+                            <!-- 情报：外文名 / 上线 / 声优，来自人工补充表 -->
+                            <table class="wikitable my-0! w-full text-center">
+                                <tbody>
+                                    <tr>
+                                        <th colspan="3">情报</th>
+                                    </tr>
+                                    <tr>
+                                        <th class="w-20 md:w-1/3">日文名</th>
+                                        <td colspan="2" class="md:w-2/3">{{ data.name_jp || '—' }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>英文名</th>
+                                        <td colspan="2">{{ data.name_en || '—' }}</td>
+                                    </tr>
+                                    <tr v-if="releaseDate">
+                                        <th>上线</th>
+                                        <td colspan="2">{{ releaseDate }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th>声优</th>
+                                        <td colspan="2">{{ data.character_voice || '—' }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <!-- 信息 -->
                             <table class="wikitable my-0! w-full text-center">
                                 <tbody>
                                     <tr>
@@ -625,14 +661,26 @@ import ElementIcon from '../../components/ElementIcon.vue';
 import WikiImg from '../../components/huiji/WikiImg.vue';
 import type { RawCharacterRate } from '../../stores/wikiData';
 import { ELEMENT_TYPE } from '../DataSearcher/data/enum';
+import { buildSkillGroups } from './characterSkills';
 import SkillModal from './SkillModal.vue';
+import { buildTavernRows } from './tavernTopics';
 import { useDataV2Store } from './dataV2Store';
-import type { CharacterDetail, JobRef, SkillRef, StatKey } from './types';
+import type { CharacterDetail, JobRef, StatKey } from './types';
 
 defineOptions({ name: '角色详情V2' });
 
 const props = defineProps<{ id: number; onClose?: () => void }>();
+const emit = defineEmits<{ select: [id: number] }>();
 const store = useDataV2Store();
+
+/** 当前在看的版本：默认风格 / 其他风格 / 觉醒版，切换时换 id 重新加载 */
+const activeId = ref(props.id);
+watch(
+    () => props.id,
+    (id) => {
+        activeId.value = id;
+    },
+);
 
 const data = ref<CharacterDetail | null>(null);
 const loading = ref(false);
@@ -718,27 +766,11 @@ const openPreview = (item: GalleryItem) => {
     previewOpen.value = true;
 };
 
-/**
- * 酒馆议题的固定答复表（数据里只存议题 + 序号 1..3，文案由这里生成）。
- * 顺序与 ``dialogue.py`` 的 ``TAVERN_TOPIC_ORDER`` 一致。
- */
-const TAVERN_REPLIES: Record<string, [string, string, string]> = {
-    全员生存: ['碰巧罢了', '花了不少功夫', '下次试试新的作战计划吧'],
-    战斗不能: ['狩猎地点不合适', '过度信任伙伴的实力', '应该回到安全的猎场'],
-    大异形讨伐: ['令人恐惧的敌人', '没什么大不了的', '感觉很恶心'],
-    奇袭对策: ['避开强敌', '这次运气不好', '提高警惕'],
-    陷阱对策: ['谨慎前进', '感受到危险时立刻返回', '不顾一切勇往直前'],
-};
-
 /** 营地：角色提问 + 游戏记录的答案 */
 const campList = computed(() => data.value?.dialogue?.camp ?? []);
 
 /** 酒馆：议题 + 该角色的答复序号，答复文案从固定表里取 */
-const tavernRows = computed(() =>
-    (data.value?.dialogue?.tavern ?? [])
-        .filter((row) => TAVERN_REPLIES[row.topic])
-        .map((row) => ({ topic: row.topic, order: row.order, replies: TAVERN_REPLIES[row.topic] })),
-);
+const tavernRows = computed(() => buildTavernRows(data.value?.dialogue?.tavern));
 
 /** 无名冒险者（占位单位）没有对话数据，这种角色直接不显示「对话」页签 */
 const visibleTabs = computed(() =>
@@ -748,7 +780,28 @@ const visibleTabs = computed(() =>
     ),
 );
 
-const rate = computed(() => store.characterRate(props.id));
+const rate = computed(() => store.characterRate(activeId.value));
+
+/**
+ * 同一角色的所有版本：默认风格 / 其他风格 / 觉醒版。
+ * 觉醒版不在角色列表里（``hidden``），只有传说冒险者的默认风格才带；
+ * 爱丽丝这种有两套觉醒，会在这里出现两条。
+ */
+const versions = computed(() =>
+    [...store.characterById.values()]
+        .filter((item) => item.group === data.value?.group)
+        .sort((a, b) => a.id - b.id)
+        .map((item) => ({
+            value: item.id,
+            label: `${item.hidden ? '觉醒 · ' : ''}${item.style || '基本'}`,
+        })),
+);
+
+const selectVersion = (id: number | null) => {
+    if (id == null || id === activeId.value) return;
+    activeId.value = id;
+    emit('select', id);
+};
 
 const rateRows = computed(() => {
     const r = rate.value;
@@ -783,6 +836,9 @@ const fateText = computed(() => {
     if (!fate) return '—';
     return fate.type ?? fate.name ?? '—';
 });
+
+/** 上线日期（人工补充表 `Data_CharacterExtra`，形如 `2024-11-20`） */
+const releaseDate = computed(() => data.value?.release_date?.date ?? '');
 
 const elementOf = (name?: string | null) => (name ?? '') as ELEMENT_TYPE;
 
@@ -856,48 +912,10 @@ const mainBg = (key: StatKey) => {
     return '';
 };
 
-interface SkillGroup {
-    label: string;
-    skills: CharacterDetail['skills']['unique'];
-}
-
-/**
- * 同名的继承技能有两个版本：角色自己用的（同时出现在 ``unique_skill_ids`` 里，通常更强）
- * 和给其他角色继承用的版本。只保留自己用的那个。
- */
-const dedupeInherit = (list: SkillRef[], same: number[], unique: SkillRef[]): SkillRef[] => {
-    const uniqueIds = new Set(unique.map((s) => s.identification));
-    const rank = (s: SkillRef) => (same.includes(s.identification) ? 2 : uniqueIds.has(s.identification) ? 1 : 0);
-    const picked = new Map<string, SkillRef>();
-    for (const s of list) {
-        const key = s.name ?? `#${s.identification}`;
-        const prev = picked.get(key);
-        if (!prev || rank(s) > rank(prev)) picked.set(key, s);
-    }
-    return [...picked.values()];
-};
-
 /** 固有技能 / 角色专用技能 / 继承技能 / 潜在继承技能 / 克己技能（V1 的五个分组） */
-const skillGroups = computed<SkillGroup[]>(() => {
-    const skills = data.value?.skills;
-    if (!skills) return [];
-    const passive = (identification: number) => store.skillById.get(identification)?.is_passive ?? false;
-    // 能继承给别人的技能统一归到「继承技能」，不再在固有 / 角色专用里重复显示一遍
-    const inheritIds = new Set(skills.inherit.map((s) => s.identification));
-    const own = skills.unique.filter((s) => !inheritIds.has(s.identification));
-    const groups: SkillGroup[] = [
-        { label: '固有技能', skills: own.filter((s) => passive(s.identification)) },
-        { label: '角色专用技能', skills: own.filter((s) => !passive(s.identification)) },
-        {
-            label: '继承技能',
-            skills: dedupeInherit(skills.inherit, skills.same_identifications, skills.unique),
-        },
-        { label: '潜在继承技能', skills: skills.potential_inherit },
-        // 克己各等级的描述相同，只展示一条（与 V1 一致，不显示等级）
-        { label: '克己技能', skills: skills.discipline.slice(0, 1).map((s) => ({ ...s, level: undefined })) },
-    ];
-    return groups.filter((group) => group.skills.length);
-});
+const skillGroups = computed(() =>
+    buildSkillGroups(data.value?.skills, (identification) => store.skillById.get(identification)?.is_passive ?? false),
+);
 
 const descOf = (identification: number) => store.skillById.get(identification)?.description || '技能描述未找到';
 
@@ -1432,7 +1450,7 @@ const load = async (id: number) => {
 };
 
 watch(
-    () => props.id,
+    activeId,
     (id) => {
         calcJobId.value = null;
         calcGrade.value = 'auto';

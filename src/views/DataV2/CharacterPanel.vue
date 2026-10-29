@@ -192,7 +192,12 @@
             <div
                 class="w-[90%] md:w-[min(960px,94vw)] m-auto huiji-css-hook bg-transparent! max-h-[88vh] overflow-y-auto thin-scrollbar md:max-h-none md:overflow-visible"
             >
-                <CharacterDetail v-if="currentId" :id="currentId" :onClose="closeDetail" />
+                <CharacterDetail
+                    v-if="currentId"
+                    :id="currentId"
+                    :onClose="closeDetail"
+                    @select="selectVersion"
+                />
             </div>
         </NModal>
     </div>
@@ -237,6 +242,11 @@ const open = (id: number) => {
 
 const closeDetail = () => {
     drawer.value = false;
+};
+
+/** modal 里切换风格 / 觉醒版本：把父级的 id 一起换掉，便于关闭后再打开仍是同一版本 */
+const selectVersion = (id: number) => {
+    currentId.value = id;
 };
 
 const elementOf = (name?: string | null) => (name ?? '') as ELEMENT_TYPE;

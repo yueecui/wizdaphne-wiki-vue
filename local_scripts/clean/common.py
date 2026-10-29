@@ -27,6 +27,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 UNPACK = os.environ.get("WIZDAPHNE_UNPACK", r"D:\WizardyDaphne\WizardyDaphneUnpack")
 MD = os.environ.get("WIZDAPHNE_MASTERDATA", os.path.join(UNPACK, "out", "masterdata"))
 
+#: 线上手工补充表（从 wiki 拉下来的快照，由 fetchWikiExtras.ts 写入）：
+#: ``Data:CharacterExtra.tabx`` / ``Data:EquipmentExtra.tabx`` / ``Data:遗物酒.tabx``。
+#: 这些快照优先于 ``config/*.xlsx``、``config/EquipmentApi.json`` 被清洗脚本读取，
+#: 这样本地 mock 与线上 wiki 完全一致；拉取脚本没跑过时自动回退到旧本地文件。
+WIKI_TABX_DIR = os.path.join(ROOT, "local_scripts", "work", "wiki")
+
 #: 营地 / 酒馆话题摘要（解包工程 ``out/topic_digest``，按角色英文名一个文件）
 TOPIC_DIGEST = os.environ.get(
     "WIZDAPHNE_TOPIC_DIGEST", os.path.join(UNPACK, "out", "topic_digest"))
@@ -249,6 +255,12 @@ def read_config_json(path: str):
         return json.load(fh)
 
 
+def read_json(path: str):
+    """Read a JSON file (missing file -> ``FileNotFoundError``，由调用方决定兜底）。"""
+    with open(path, encoding="utf8") as fh:
+        return json.load(fh)
+
+
 def write_json(path: str, data) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf8") as fh:
@@ -322,6 +334,37 @@ def read_tabx(path: str, sheet: int = 1) -> list[dict]:
     return rows
 
 
+def as_list(value) -> list:
+    """单个值 / 分号串 / 数组 统一成列表（wiki tabx 里这些列可能是字符串也可能是数组）。"""
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    return _split_list(value)
+
+
+def read_wiki_tabx(path: str) -> list[dict]:
+    """读 wiki 导出的 ``.tabx`` JSON（``{schema:{fields:[{name}]}, data:[[…]]}``）
+    成 ``[{字段名: 值}]``，形状与 ``read_tabx`` 的 xlsx 输出一致。
+
+    ``fetchWikiExtras.ts`` 把线上手工表拉成这种 JSON 落盘到 ``WIKI_TABX_DIR``，
+    清洗脚本优先读它（见 ``character_extra`` / ``relic_extra``），没拉过时回退 xlsx。
+    """
+    if not os.path.isfile(path):
+        return []
+    obj = read_json(path)
+    fields = [f.get("name") for f in (obj.get("schema") or {}).get("fields") or []]
+    if not fields:
+        return []
+    out: list[dict] = []
+    for row in obj.get("data") or []:
+        if not isinstance(row, list):
+            continue
+        item = {fields[i]: row[i] for i in range(min(len(fields), len(row)))}
+        out.append(item)
+    return out
+
+
 def parse_release(value) -> dict | None:
     """``##2026-10-15`` (game time, UTC+8) -> ``{date, time, milliseconds}``."""
     if not value:
@@ -350,7 +393,27 @@ def character_rates() -> list:
 
 
 def character_extra() -> dict[int, dict]:
-    """``config/Data_CharacterExtra.tabx.xlsx`` -> ``{character_id: supplement}``."""
+    """``config/Data_CharacterExtra.tabx.xlsx`` / 线上快照 -> ``{character_id: supplement}``。
+
+    优先读 ``WIKI_TABX_DIR/Data_CharacterExtra.tabx.json``（fetchWikiExtras.ts 从 wiki
+    拉下来的），与线上一致；没拉过时回退到本地 ``config/*.xlsx``。
+    """
+    wiki = os.path.join(WIKI_TABX_DIR, "Data_CharacterExtra.tabx.json")
+    if os.path.isfile(wiki):
+        out: dict[int, dict] = {}
+        for row in read_wiki_tabx(wiki):
+            cid = row.get("id")
+            if not cid:
+                continue
+            banner_val = row.get("banner[]") or row.get("banner")
+            out[int(cid)] = {
+                "index": row.get("index"),
+                "pool_group": row.get("group"),
+                "release_date": parse_release(row.get("release_date")),
+                "character_voice": row.get("character_voice") or None,
+                "banner": [int(v) for v in as_list(banner_val) if str(v).strip().isdigit()],
+            }
+        return out
     if not os.path.isfile(EXTRA_XLSX):
         return {}
     out = {}
@@ -393,6 +456,26 @@ def relic_extra() -> tuple[list[dict], list[str]]:
     类别可选项即线上 ``relics_ccate``，按 ``RELIC_CATEGORY_ORDER`` 排，
     手工表里新出现的类别排在后面。
     """
+    wiki = os.path.join(WIKI_TABX_DIR, "Data_遗物酒.tabx.json")
+    if os.path.isfile(wiki):
+        rows = []
+        categories = []
+        for row in read_wiki_tabx(wiki):
+            rid = row.get("id")
+            if not rid:
+                continue
+            cats = as_list(row.get("c[]") or row.get("c"))
+            monster_ids = [int(v) for v in as_list(row.get("monster_id[]") or row.get("monster_id"))
+                           if str(v).strip().isdigit()]
+            for cat in cats:
+                if cat not in categories:
+                    categories.append(cat)
+            rows.append({"id": int(rid), "monster_id": monster_ids, "c": cats})
+        order = {name: index for index, name in enumerate(RELIC_CATEGORY_ORDER)}
+        seen = {name: index for index, name in enumerate(categories)}
+        categories.sort(key=lambda name: (order.get(name, len(order)), seen[name]))
+        return rows, categories
+
     if not os.path.isfile(RELIC_XLSX):
         return [], []
 

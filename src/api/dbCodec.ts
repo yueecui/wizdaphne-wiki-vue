@@ -180,6 +180,8 @@ export const CHAR_FIELDS: FieldSpec[] = [
     { long: 'name_en', short: 'en', kind: 'str' },
     { long: 'style', short: 'sty', kind: 'str' },
     { long: 'default', short: 'd', kind: 'bool' },
+    // 觉醒版：不进列表，只供角色 modal 的版本切换
+    { long: 'hidden', short: 'hd', kind: 'bool' },
     { long: 'rarity', short: 'r', kind: 'num' },
     { long: 'race', short: 'ra', kind: 'num' },
     { long: 'attribute', short: 'at', kind: 'num' },
