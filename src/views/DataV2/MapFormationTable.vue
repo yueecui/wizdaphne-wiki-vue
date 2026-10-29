@@ -47,7 +47,7 @@
             </tbody>
         </table>
         <div v-else class="text-xs opacity-60">—</div>
-        <EnemyModal v-model:show="enemyModal" :enemy-id="enemyId" />
+        <EnemyModal v-model:show="enemyModal" :enemy-id="enemyId" :enemy-variant-id="enemyVariantId" />
     </div>
 </template>
 
@@ -66,12 +66,15 @@ const store = useDataV2Store();
 
 const enemyModal = ref(false);
 const enemyId = ref<number | null>(null);
+/** 从敌群点开时带上实例（变体）id，让敌人 modal 自动定位到该变体 */
+const enemyVariantId = ref<number | null>(null);
 
 /** enemy_id 是出现变体 id，敌人 modal 需要图鉴分类 id */
 const openEnemy = (id: number) => {
     const categoryId = store.enemyCategoryIdOf(id);
     if (categoryId == null) return;
     enemyId.value = categoryId;
+    enemyVariantId.value = id;
     enemyModal.value = true;
 };
 

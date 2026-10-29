@@ -329,6 +329,9 @@ def main(argv: list[str]) -> int:
                 "thumbnail": images.get("thumbnail"),
                 "thumbnail_file": images.get("thumbnail_file"),
                 "thumbnail_dir": images.get("thumbnail_dir"),
+                # 画廊肖像（今天新增的画廊功能）：肖像大图 / 肖像画（细节版）
+                "portrait": images.get("portrait"),
+                "portrait_detail": images.get("portrait_detail"),
             },
             "voice": {
                 "speech": speech,

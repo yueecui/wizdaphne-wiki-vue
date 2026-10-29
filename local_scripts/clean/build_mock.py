@@ -149,6 +149,9 @@ CHAR_DETAIL = [
         ("thumbnail", "t", "str"),
         ("thumbnail_file", "tf", "str"),
         ("thumbnail_dir", "td", "str"),
+        # 画廊肖像（今天新增的画廊功能）：肖像大图 / 肖像画（细节版）
+        ("portrait", "pr", "str"),
+        ("portrait_detail", "pd", "str"),
     ]),
     ("voice", "vo", "obj", [
         ("speech", "s", "str"),

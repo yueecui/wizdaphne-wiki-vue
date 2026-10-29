@@ -128,6 +128,24 @@ def gacha_art_map() -> dict:
     return out
 
 
+def picture_map() -> dict:
+    """``character_id`` -> ``picture_resource``（画廊肖像，e.g. ``portrait_0001``）。
+
+    今天新增的游戏内画廊功能（42 条），由 ``Picture.json`` 把「角色 id + 风格」映射到
+    一组肖像图；和既有的 ``image_name`` 没有任何关系，单独建表关联。
+    """
+    path = os.path.join(MD, "Picture.json")
+    if not os.path.isfile(path):
+        return {}
+    out: dict = {}
+    for row in json.load(open(path, encoding="utf8")):
+        cid = row.get("character_id")
+        res = row.get("picture_resource")
+        if cid and res:
+            out[cid] = res
+    return out
+
+
 def load(name: str):
     path = os.path.join(MD, name + ".json")
     if not os.path.isfile(path):
@@ -201,6 +219,8 @@ def main(argv: list[str]) -> int:
     collection = load("CollectionCharacter")
     # 卡池图：概率UP列表小图 + 结缘详情大图（只有 54 个角色有）
     gacha_art = gacha_art_map()
+    # 画廊肖像：今天新增的画廊功能（角色 id -> portrait_NNNN）
+    pics = picture_map()
     # 手工维护的补充数据（卡池组 / 上线日期 / 声优），见 config/Data_CharacterExtra.tabx.xlsx
     extra = character_extra()
 
@@ -314,6 +334,7 @@ def main(argv: list[str]) -> int:
         group = c.get("character_group_id") or c.get("id")
         sup = extra.get(c.get("id")) or {}
         item_banner, sale_detail = gacha_art.get(c.get("id"), (None, None))
+        pic = pics.get(c.get("id"))
         # 主职业放最前面，其余（第二职业 / 可转职）按 id 排序，和 V1 的 class[] 顺序一致
         main_job = c.get("job_id")
         job_ids = ([main_job] if main_job else []) + sorted(
@@ -378,6 +399,9 @@ def main(argv: list[str]) -> int:
                 "legend_character_sale": sale_detail,
                 "thumbnail": image_stem(c.get("thumbnail_name")) or None,
                 **image_asset(c.get("thumbnail_name")),
+                # 画廊肖像（今天新增的画廊功能）：角色 id 直接映射到 Picture.json 的 picture_resource
+                "portrait": f"{pic}.png" if pic else None,
+                "portrait_detail": f"{pic}_detail.png" if pic else None,
             },
             "voice": {"speech": c.get("speech"), "breakup_speech": c.get("breakup_speech"),
                       "voice_group_id": c.get("voice_group_id")},

@@ -505,14 +505,15 @@ def main(argv: list[str]) -> int:
         # 99 / 100 是「无上限」占位，会把区间拉成 1-100
         if high >= 99:
             continue
+        # ``level`` 与 ``max_level`` 含义不同：深层敌人是「level 固定 80 + max_level 35~75」，
+        # 可能 low>high，先归一成升序再合并 —— 既避免 Lv80-75 倒挂，也别漏掉 80 级出场
+        if low > high:
+            low, high = high, low
         span = levels.setdefault(enemy_id, [low, high])
         if low:
             span[0] = min(span[0] or low, low)
         if high:
             span[1] = max(span[1], high)
-        # ``level`` 与 ``max_level`` 含义不同：深层敌人是「level 固定 80 + max_level 35~75」，
-        # 直接拼区间会倒挂（Lv80-75），统一取大的一端
-        span[1] = max(span[1], span[0])
 
     by_category: dict[int, list] = collections.defaultdict(list)
     for row in load("Enemy"):

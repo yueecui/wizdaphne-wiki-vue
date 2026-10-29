@@ -80,6 +80,10 @@ export interface CharacterListItem extends LocalizedName {
         thumbnail_file?: string | null;
         /** source folder of the sprite: ``chara`` / ``gasha`` */
         thumbnail_dir?: string | null;
+        /** 画廊肖像大图，e.g. ``portrait_0001.png`` */
+        portrait?: string | null;
+        /** 画廊肖像画（细节版），e.g. ``portrait_0001_detail.png`` */
+        portrait_detail?: string | null;
     };
 }
 

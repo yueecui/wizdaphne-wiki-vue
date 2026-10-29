@@ -102,10 +102,14 @@
                         </NCheckbox>
                     </div>
                 </div>
-            </div>
-
-            <div>
-                <NButton size="small" type="error" @click="resetFilter">重置</NButton>
+                <div class="flex flex-col">
+                    <div class="flex justify-between items-center h-6">
+                        <label class="text-sm">&nbsp;</label>
+                    </div>
+                    <div class="flex flex-row gap-3 items-center h-12">
+                        <NButton size="small" type="error" @click="resetFilter">重置</NButton>
+                    </div>
+                </div>
             </div>
         </div>
 

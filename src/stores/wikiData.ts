@@ -154,6 +154,10 @@ export interface RawCharacter {
         thumbnail_file?: string;
         /** source folder of the sprite: ``chara`` / ``gasha`` */
         thumbnail_dir?: string;
+        /** 画廊肖像大图，e.g. ``portrait_0001.png`` */
+        portrait?: string;
+        /** 画廊肖像画（细节版），e.g. ``portrait_0001_detail.png`` */
+        portrait_detail?: string;
     };
     voice: { speech?: string; speech_lang?: string; breakup?: string; breakup_lang?: string; group?: number };
     /** 克己技能与额外提升的属性标签 */

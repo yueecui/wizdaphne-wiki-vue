@@ -60,6 +60,19 @@ TEST_NAME = re.compile(r"テスト|テスト|test|Test|空データ")
 NORMAL_ATTACK = re.compile(r"^通常攻撃(_|$)")
 NORMAL_ATTACK_NAME = "普通攻击"
 
+#: ``SkillEffectGroup.display_name`` 里不少是占位符（"-" / "—" / 空），这类不能当作技能名。
+_DISPLAY_NAME_PLACEHOLDER = {"", "-", "—", "‐", "~"}
+
+
+def display_name_zh(dn) -> str | None:
+    """从效果组的 ``display_name``（{ja,zhs,zht,en}）取中文名；占位符返回 None。"""
+    if not isinstance(dn, dict):
+        return None
+    zh = dn.get("zhs") or dn.get("zht")
+    if not zh or str(zh).strip() in _DISPLAY_NAME_PLACEHOLDER:
+        return None
+    return str(zh).strip()
+
 
 def ident_of(value: int, known: dict) -> int | None:
     """Skill references are stored in two shapes: row id (ident*100+lv) or ident."""
@@ -208,6 +221,7 @@ def main(argv: list[str]) -> int:
         idents = idents[: args.limit]
 
     entries, levels_out = [], {}
+    display_name_filled = 0
     kind_count = collections.Counter()
     #: kind -> 用到的最后一个 param 序号（用于生成「参数N」占位名）
     kind_param_span = collections.defaultdict(int)
@@ -219,6 +233,30 @@ def main(argv: list[str]) -> int:
 
         entry = {"identification": ident}
         entry.update(names(base))
+        # 解包 ``Skill.name`` 只有日文（无 zhs）时，改用语效果组 ``SkillEffectGroup.display_name``
+        # （它带完整本地化 ja/zhs/zht/en）。很多新技能的中文名只在效果组里，Skill.name 是日文。
+        raw_name = base.get("name")
+        if not (isinstance(raw_name, dict) and (raw_name.get("zhs") or raw_name.get("zht"))):
+            # 解包 Skill.name 缺中文时，回退到效果组 ``SkillEffectGroup.display_name``
+            # （带 ja/zhs/zht/en）。占位符（"-" 等）会跳过，保留原本的日文名。
+            for gid in (base.get("skill_effect_group_ids") or []):
+                grp = groups.get(gid)
+                if not grp:
+                    continue
+                zh = display_name_zh(grp.get("display_name"))
+                if zh:
+                    entry["name"] = zh
+                    display_name_filled += 1
+                    break
+                # 兜底一层子效果组（child_effect_group_id）
+                child = grp.get("child_effect_group_id")
+                if child:
+                    cgrp = groups.get(child)
+                    zh = display_name_zh(cgrp.get("display_name")) if cgrp else None
+                    if zh:
+                        entry["name"] = zh
+                        display_name_filled += 1
+                        break
         if not entry["name"]:
             entry["name"] = f"# {ident}"          # 5 enemy skills have empty names
         # 普攻占位名统一成「普通攻击」（见 NORMAL_ATTACK 的注释）；name_jp 保留原始占位名
@@ -557,6 +595,8 @@ def main(argv: list[str]) -> int:
     print(f"  effect kinds: {len(kind_dict)} used; top20 covers {top20_all / allc:.1%} of all "
           f"sub-effects, {p_hit / (p_sub or 1):.1%} of player sub-effects")
     print(f"  named kinds: {sum(1 for v in kind_dict.values() if v['name'])} / {len(kind_dict)}")
+    if display_name_filled:
+        print(f"  技能名兜底（来自 SkillEffectGroup.display_name）：{display_name_filled} 个技能")
     return 0
 
 

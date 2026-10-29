@@ -436,6 +436,53 @@
                                             </tbody>
                                         </table>
                                     </NTabPane>
+
+                                    <!-- 第五页：所属敌群 -->
+                                    <NTabPane name="pools" :tab="`所属敌群（${poolRows.length}）`">
+                                        <NEmpty
+                                            v-if="!poolRows.length"
+                                            description="未出现在任何敌群"
+                                            class="mt-2"
+                                        />
+                                        <div v-else class="flex flex-col gap-2 mt-2">
+                                            <div
+                                                v-for="pool in poolRows"
+                                                :key="pool.id"
+                                                class="flex items-center justify-between gap-3 rounded border! border-[#463d38]! px-3 py-2 cursor-pointer hover:bg-[#3a312a]!"
+                                                @click="openPool(pool.id)"
+                                            >
+                                                <div class="min-w-0">
+                                                    <div class="text-light">
+                                                        敌群 {{ pool.id }}
+                                                        <span
+                                                            v-if="pool.notorious"
+                                                            class="ml-1 text-xs text-red-400"
+                                                        >
+                                                            强敌
+                                                        </span>
+                                                    </div>
+                                                    <div class="text-xs opacity-60 truncate">
+                                                        <template v-if="pool.floors.length">
+                                                            <template
+                                                                v-for="(floor, index) in pool.floors"
+                                                                :key="floor.id"
+                                                            >
+                                                                <span
+                                                                    v-if="index"
+                                                                    class="mx-1 opacity-60"
+                                                                >
+                                                                    /
+                                                                </span>
+                                                                {{ floor.map_name }} · {{ floor.name }}
+                                                            </template>
+                                                        </template>
+                                                        <template v-else>无关联地图</template>
+                                                    </div>
+                                                </div>
+                                                <span class="shrink-0 text-xs opacity-50">查看 ›</span>
+                                            </div>
+                                        </div>
+                                    </NTabPane>
                                 </NTabs>
 
                                 <pre
@@ -462,6 +509,12 @@
             不加条件就会无限递归（Maximum call stack size exceeded）。
         -->
         <EnemyModal v-if="refShow" v-model:show="refShow" :enemy-id="refEnemyId" />
+
+        <!--
+            所属敌群点开后叠一个敌群详情；同理必须 v-if：敌群 modal 里又会渲染
+            EnemyModal（互相引用），不加条件会无限递归。
+        -->
+        <EnemyPoolModal v-if="poolShow" v-model:show="poolShow" :pool-id="poolId" />
     </ThemeConfigProvider>
 </template>
 
@@ -476,12 +529,13 @@ import { useWikiDataStore } from '../../stores/wikiData';
 import { ELEMENT_TYPE } from '../DataSearcher/data/enum';
 import SkillModal from './SkillModal.vue';
 import MapFloorModal from './MapFloorModal.vue';
+import EnemyPoolModal from './EnemyPoolModal.vue';
 import { useDataV2Store } from './dataV2Store';
 import type { EnemyAiCondition, EnemyInterrupt, EnemyStat, Ref, SkillRef } from './types';
 
 defineOptions({ name: '敌人详情ModalV2' });
 
-const props = defineProps<{ show: boolean; enemyId: number | null }>();
+const props = defineProps<{ show: boolean; enemyId: number | null; enemyVariantId?: number | null }>();
 const emit = defineEmits<{ 'update:show': [value: boolean] }>();
 
 const store = useDataV2Store();
@@ -528,11 +582,27 @@ const openMapFloor = (id: number) => {
     mapFloorShow.value = true;
 };
 
+// 所属敌群里点敌群，叠一个敌群详情
+const poolShow = ref(false);
+const poolId = ref<number | null>(null);
+const openPool = (id: number) => {
+    poolId.value = id;
+    poolShow.value = true;
+};
+
 // ---------- 变体 / 等级 / 翻页 ----------
 const variantIndex = ref(0);
 const level = ref(1);
-/** 翻页：基础情报 / 技能列表 / AI 规则 / 出没地 */
-const activeTab = ref<'info' | 'skills' | 'ai' | 'spawn'>('info');
+
+/** 根据传入的实例 id（变体 id）定位要选中的变体下标；找不到或没传则默认第 0 个 */
+const variantIndexOf = (id: number | null | undefined): number => {
+    if (id == null) return 0;
+    const variants = row.value?.variants ?? [];
+    const idx = variants.findIndex((variant) => variant.id === id);
+    return idx >= 0 ? idx : 0;
+};
+/** 翻页：基础情报 / 技能列表 / AI 规则 / 出没地 / 所属敌群 */
+const activeTab = ref<'info' | 'skills' | 'ai' | 'spawn' | 'pools'>('info');
 
 /** 百分比：保留一位小数，整数不带 ``.0`` */
 const percentText = (value: number) => String(Math.round(value * 10) / 10);
@@ -609,8 +679,16 @@ const openEnemyRef = (ref: number) => {
 watch(
     () => props.enemyId,
     () => {
-        variantIndex.value = 0;
+        variantIndex.value = variantIndexOf(props.enemyVariantId);
         activeTab.value = 'info';
+    },
+);
+
+// 同一分类下点了不同实例（变体）时 enemyId 不变，单独按实例 id 重新定位
+watch(
+    () => props.enemyVariantId,
+    () => {
+        if (props.enemyId != null) variantIndex.value = variantIndexOf(props.enemyVariantId);
     },
 );
 
@@ -806,6 +884,27 @@ const spawnRows = computed(() => {
             map_name: floor.map_name,
             name: floor.name,
             relic: !!relic && store.inFrontRow(floor.formations, item.id),
+        }));
+});
+
+/**
+ * 所属敌群：反查包含当前变体的敌群（敌群里的 ``enemy_id`` 是出现变体 id，
+ * 与出没地同口径，按 ``variant.id`` 比对）。强敌 / 普通敌分别记在
+ * ``notorious_enemies`` / ``normal_enemies`` 里。
+ */
+const poolRows = computed(() => {
+    const item = variant.value;
+    if (item == null || !store.enemyPools?.length) return [];
+    const id = item.id;
+    return store.enemyPools
+        .filter((pool) =>
+            (pool.normal_enemies ?? []).some((e) => e.enemy_id === id) ||
+            (pool.notorious_enemies ?? []).some((e) => e.enemy_id === id),
+        )
+        .map((pool) => ({
+            id: pool.id,
+            notorious: (pool.notorious_enemies ?? []).some((e) => e.enemy_id === id),
+            floors: pool.floors ?? [],
         }));
 });
 

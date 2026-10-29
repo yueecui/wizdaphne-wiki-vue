@@ -30,22 +30,33 @@ def write_json(path: str, data) -> None:
         json.dump(data, fh, ensure_ascii=False, separators=(",", ":"))
 
 
+def norm_levels(lo: int, hi: int) -> tuple[int, int]:
+    """等级区间可能出现 low>high（深层敌人 level 固定 80 + maxLevel 35~75），统一成升序。"""
+    if lo > hi:
+        lo, hi = hi, lo
+    return lo, hi
+
+
 def enemy_ref(row: dict) -> dict:
     level = row.get("level") or [0, 0]
+    lo = level[0] if len(level) > 0 else 0
+    hi = level[1] if len(level) > 1 else 0
+    lo, hi = norm_levels(lo, hi)
     return {
         "enemy_id": row["enemyId"],
-        "lv_min": level[0] if len(level) > 0 else 0,
-        "lv_max": level[1] if len(level) > 1 else 0,
+        "lv_min": lo,
+        "lv_max": hi,
         "rows": row.get("formationRows", 0),
     }
 
 
 def member(row: dict) -> dict:
     pos = row.get("position") or [0, 0]
+    lo, hi = norm_levels(row.get("level", 0), row.get("maxLevel", 0))
     return {
         "enemy_id": row["enemyId"],
-        "lv_min": row.get("level", 0),
-        "lv_max": row.get("maxLevel", 0),
+        "lv_min": lo,
+        "lv_max": hi,
         "pos_x": pos[0] if len(pos) > 0 else 0,
         "pos_y": pos[1] if len(pos) > 1 else 0,
         "notorious": bool(row.get("isNotorious")),
@@ -56,13 +67,16 @@ def member(row: dict) -> dict:
 
 def formation(row: dict) -> dict:
     lv = row.get("levelRange") or [0, 0]
+    lo = lv[0] if len(lv) > 0 else 0
+    hi = lv[1] if len(lv) > 1 else 0
+    lo, hi = norm_levels(lo, hi)
     return {
         "formation_id": row["formationId"],
         "row_id": row["rowId"],
         "layout_id": row["layoutId"],
         "weight": row.get("weight", 0),
-        "lv_min": lv[0] if len(lv) > 0 else 0,
-        "lv_max": lv[1] if len(lv) > 1 else 0,
+        "lv_min": lo,
+        "lv_max": hi,
         "escape": row.get("escapeDifficulty", 0),
         "surprise": row.get("surpriseRate", 0),
         "preemption": row.get("preemptionRate", 0),
@@ -108,7 +122,10 @@ def pool_doc(formation_id: int, group: dict) -> dict:
     ranges: list[list[int]] = []
     for row in rows:
         level = row.get("levelRange") or [0, 0]
-        pair = [level[0] if len(level) > 0 else 0, level[1] if len(level) > 1 else 0]
+        lo = level[0] if len(level) > 0 else 0
+        hi = level[1] if len(level) > 1 else 0
+        lo, hi = norm_levels(lo, hi)
+        pair = [lo, hi]
         if pair not in ranges:
             ranges.append(pair)
     ranges.sort()
@@ -148,8 +165,7 @@ def build_pools(floors_src: dict, pools_src: dict) -> list[dict]:
                 continue
             seen.add(enemy_id)
             bucket = group["notorious"] if item.get("isNotorious") else group["normal"]
-            lv_min = item.get("level", 0)
-            lv_max = item.get("maxLevel", 0)
+            lv_min, lv_max = norm_levels(item.get("level", 0), item.get("maxLevel", 0))
             current = bucket.get(enemy_id)
             if current is None:
                 bucket[enemy_id] = {"enemy_id": enemy_id, "lv_min": lv_min, "lv_max": lv_max, "rows": 1}

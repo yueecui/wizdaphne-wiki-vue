@@ -259,6 +259,8 @@ export const CHAR_FIELDS: FieldSpec[] = [
             { long: 'thumbnail', short: 't', kind: 'str' },
             { long: 'thumbnail_file', short: 'tf', kind: 'str' },
             { long: 'thumbnail_dir', short: 'td', kind: 'str' },
+            { long: 'portrait', short: 'pr', kind: 'str' },
+            { long: 'portrait_detail', short: 'pd', kind: 'str' },
         ],
     },
     {

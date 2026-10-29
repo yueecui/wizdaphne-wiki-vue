@@ -166,6 +166,18 @@
                     </div>
                 </div>
             </div>
+            <div class="flex flex-col shrink-0 basis-[112px]">
+                <div class="flex justify-between items-center h-6">
+                    <label class="text-sm">肖像</label>
+                </div>
+                <div class="flex flex-row gap-2 items-center h-12">
+                    <NSelect
+                        v-model:value="portraitFilter"
+                        :options="portraitOptions"
+                        class="w-full!"
+                    />
+                </div>
+            </div>
             <div class="flex flex-col justify-end">
                 <div class="flex items-center h-12">
                     <NButton size="small" type="error" @click="resetFilter">重置</NButton>
@@ -231,6 +243,8 @@ const attribute = usePersistentRef<number | null>('character.attribute', null);
 const fateType = usePersistentRef<string | null>('character.fateType', null);
 /** 克己额外提升的属性标签，如「回避」 */
 const disciplineTags = usePersistentRef<string[]>('character.disciplineTags', []);
+/** 肖像过滤：全部 / 仅拥有肖像画（来自今天新增的画廊功能） */
+const portraitFilter = usePersistentRef<'all' | 'has'>('character.portraitFilter', 'all');
 
 const drawer = ref(false);
 const currentId = ref<number | null>(null);
@@ -343,6 +357,11 @@ const spFilterOptions = [
     { label: '非SP', value: 'hide' },
 ];
 
+const portraitOptions = [
+    { label: '全部', value: 'all' },
+    { label: '有', value: 'has' },
+];
+
 // 仅初始职业时最多保留一个已选职业
 watch(onlyPrimary, (value) => {
     if (value && jobFilter.value.length > 1) jobFilter.value = jobFilter.value.slice(0, 1);
@@ -393,6 +412,7 @@ const filtered = computed(() => {
                     : c.jobs.map((j) => j.id);
                 if (!jobFilter.value.every((id) => pool.includes(id))) return false;
             }
+            if (portraitFilter.value === 'has' && !(c.images?.portrait)) return false;
             if (!kw) return true;
             return haystack(c).includes(kw);
         })
@@ -418,5 +438,6 @@ const resetFilter = () => {
     attribute.value = null;
     fateType.value = null;
     disciplineTags.value = [];
+    portraitFilter.value = 'all';
 };
 </script>

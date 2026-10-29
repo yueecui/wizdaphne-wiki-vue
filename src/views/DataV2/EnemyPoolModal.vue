@@ -57,7 +57,7 @@
                                                         <td class="text-left">
                                                             <a
                                                                 class="cursor-pointer text-blue-400 hover:underline"
-                                                                @click="openEnemy(row.categoryId)"
+                                                                @click="openEnemy(row.categoryId, row.id)"
                                                             >
                                                                 {{ row.name }}
                                                             </a>
@@ -128,7 +128,7 @@
             </div>
         </NModal>
 
-        <EnemyModal v-model:show="enemyModal" :enemy-id="enemyId" />
+        <EnemyModal v-model:show="enemyModal" :enemy-id="enemyId" :enemy-variant-id="enemyVariantId" />
         <MapFloorModal v-model:show="floorModal" :floor-id="floorId" />
         <SkillModal v-model:show="skillModal" :identification="skillIdentification" />
     </ThemeConfigProvider>
@@ -186,15 +186,18 @@ const enemyName = (id: number) => store.enemyNameOf(id);
 
 const enemyModal = ref(false);
 const enemyId = ref<number | null>(null);
+/** 从敌群点开时带上实例（变体）id，让敌人 modal 自动定位到该变体 */
+const enemyVariantId = ref<number | null>(null);
 
-const openEnemy = (categoryId: number | null) => {
+const openEnemy = (categoryId: number | null, variantId: number | null = null) => {
     if (categoryId == null) return;
     enemyId.value = categoryId;
+    enemyVariantId.value = variantId;
     enemyModal.value = true;
 };
 
-/** 列表里的 enemy_id 是变体 id，modal 要传图鉴分类 id */
-const openEnemyByVariant = (id: number) => openEnemy(store.enemyCategoryIdOf(id));
+/** 列表里的 enemy_id 是变体 id，modal 要传图鉴分类 id + 实例 id */
+const openEnemyByVariant = (id: number) => openEnemy(store.enemyCategoryIdOf(id), id);
 
 const floorModal = ref(false);
 const floorId = ref<number | null>(null);

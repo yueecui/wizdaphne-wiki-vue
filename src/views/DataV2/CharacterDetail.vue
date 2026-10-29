@@ -2,7 +2,7 @@
     <NSpin :show="loading">
         <div
             v-if="data"
-            class="p-4 bg-[#312721]! border! border-[#463d38]! rounded md:h-[min(86vh,550px)] md:overflow-y-auto thin-scrollbar"
+            class="p-4 bg-[#312721]! border! border-[#463d38]! rounded md:h-[min(90vh,640px)] md:overflow-y-auto thin-scrollbar"
         >
             <div class="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-4">
                 <!-- 角色卡 + 翻页 -->
@@ -629,7 +629,7 @@
                     class="flex items-center justify-center max-w-[92vw] max-h-[82vh] p-1 bg-black rounded border! border-solid border-[#463d38]!"
                 >
                     <WikiImg
-                        :imageName="previewItem.small"
+                        :imageName="previewItem.file"
                         class="h-auto w-auto max-w-full max-h-[80vh] object-contain"
                     />
                 </div>
@@ -748,6 +748,9 @@ const galleryItems = computed<GalleryItem[]>(() => {
     push('fate_image', '结缘立绘', im.fate_image);
     push('fate_face', '结缘头像', im.fate_face);
     push('fate_chara', '结缘全身立绘', im.fate_chara);
+    // 画廊新增的肖像：肖像大图 + 肖像画（细节版），列表用 `_s` 版，点开预览跳全尺寸版
+    push('portrait', '肖像大图', im.portrait, true);
+    push('portrait_detail', '肖像画', im.portrait_detail, true);
     push('gacha_item_banner', '卡池列表横幅', im.gacha_item_banner);
     push('legend_character_sale', '卡池详情图', im.legend_character_sale, true);
 

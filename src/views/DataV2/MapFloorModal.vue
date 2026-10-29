@@ -51,7 +51,7 @@
                                                         <td class="text-left">
                                                             <a
                                                                 class="cursor-pointer text-blue-400 hover:underline"
-                                                                @click="openEnemy(row.categoryId)"
+                                                                @click="openEnemy(row.categoryId, row.id)"
                                                             >
                                                                 {{ row.name }}
                                                             </a>
@@ -130,7 +130,7 @@
             </div>
         </NModal>
 
-        <EnemyModal v-if="enemyModal" v-model:show="enemyModal" :enemy-id="enemyId" />
+        <EnemyModal v-if="enemyModal" v-model:show="enemyModal" :enemy-id="enemyId" :enemy-variant-id="enemyVariantId" />
         <SkillModal v-model:show="skillModal" :identification="skillIdentification" />
     </ThemeConfigProvider>
 </template>
@@ -198,14 +198,17 @@ const formationGroups = computed(() => {
 
 const enemyModal = ref(false);
 const enemyId = ref<number | null>(null);
+/** 从楼层点开时带上实例（变体）id，让敌人 modal 自动定位到该变体 */
+const enemyVariantId = ref<number | null>(null);
 /** enemy_id 是变体 id，modal 要传图鉴分类 id */
-const openEnemy = (categoryId: number | null) => {
+const openEnemy = (categoryId: number | null, variantId: number | null = null) => {
     if (categoryId == null) return;
     enemyId.value = categoryId;
+    enemyVariantId.value = variantId;
     enemyModal.value = true;
 };
 
-const openEnemyByVariant = (id: number) => openEnemy(store.enemyCategoryIdOf(id));
+const openEnemyByVariant = (id: number) => openEnemy(store.enemyCategoryIdOf(id), id);
 
 const skillModal = ref(false);
 const skillIdentification = ref<number | null>(null);
