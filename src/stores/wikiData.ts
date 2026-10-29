@@ -134,7 +134,18 @@ export interface RawCharacter {
         get_lv: number;
     };
     images: {
+        /** 立绘编号（三位数），三张 ``Fate*`` 图共用这个索引 */
         image?: string;
+        /** 结缘界面半身立绘，e.g. ``FateImage037.png`` */
+        fate_image?: string;
+        /** 结缘全身立绘，e.g. ``FateChara037.png`` */
+        fate_chara?: string;
+        /** 结缘列表头像，e.g. ``FateCharaFace037.png`` */
+        fate_face?: string;
+        /** 卡池列表小图，e.g. ``GachaItemListSaleBanner_003.png`` */
+        gacha_item_banner?: string;
+        /** 卡池详情大图，e.g. ``LegendCharacterSale_BannerL003.png``（展示用 ``_s`` 版） */
+        legend_character_sale?: string;
         /** thumbnail sprite stem, e.g. ``tmb_chara_01001_00_02`` */
         thumbnail?: string;
         /** callable file name, e.g. ``tmb_chara_01001_00_02.png`` */
@@ -145,6 +156,11 @@ export interface RawCharacter {
     voice: { speech?: string; speech_lang?: string; breakup?: string; breakup_lang?: string; group?: number };
     /** 克己技能与额外提升的属性标签 */
     self_restraint?: { id?: number; extra_tags?: string[] };
+    /** 营地 / 酒馆对话（同一角色的各风格版本共用一份） */
+    dialogue?: {
+        camp?: Array<{ question: string; answer: string }> | null;
+        tavern?: Array<{ topic: string; order: number }> | null;
+    } | null;
     /** 潜在继承技能的解锁等级（``sub_inheritance_grade_id``） */
     potential_grade?: number;
 }
@@ -162,6 +178,12 @@ export interface RawCharacterExtra {
     character_voice?: string;
     /** 上线日期，``milliseconds`` 为 UTC 时间戳 */
     release_date?: { date?: string; time?: string; milliseconds?: number };
+    /**
+     * 概率UP立绘编号（手工表 ``banner`` 列），数字补 5 位即 ``gacha_banner_00002.png``。
+     * 线上 ``Api/GetV2Extra`` 给的是 ``"2;18;28;40"`` 这样用分号拼的字符串，
+     * mock 给的是数组，前端用 ``parseBanner`` 统一。
+     */
+    banner?: string | number[] | null;
 }
 
 export interface RawJob {

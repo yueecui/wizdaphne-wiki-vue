@@ -52,8 +52,26 @@ export interface CharacterListItem extends LocalizedName {
     character_voice: string | null;
     /** 上线日期（手工补充） */
     release_date: { date: string | null; time: string | null; milliseconds: number } | null;
+    /** 概率UP立绘编号（手工表 banner 列），补 5 位后即 ``gacha_banner_00002.png`` */
+    banner: number[];
+    /** 营地 / 酒馆对话（同一角色的各风格版本共用一份） */
+    dialogue?: {
+        camp?: Array<{ question: string; answer: string }> | null;
+        tavern?: Array<{ topic: string; order: number }> | null;
+    } | null;
     images?: {
+        /** 立绘编号（三位数），三张 ``Fate*`` 图共用这个索引 */
         image?: string | null;
+        /** 结缘界面半身立绘，e.g. ``FateImage037.png`` */
+        fate_image?: string | null;
+        /** 结缘全身立绘，e.g. ``FateChara037.png`` */
+        fate_chara?: string | null;
+        /** 结缘列表头像，e.g. ``FateCharaFace037.png`` */
+        fate_face?: string | null;
+        /** 卡池列表小图，e.g. ``GachaItemListSaleBanner_003.png`` */
+        gacha_item_banner?: string | null;
+        /** 卡池详情大图，e.g. ``LegendCharacterSale_BannerL003.png``（展示用 ``_s`` 版） */
+        legend_character_sale?: string | null;
         /** thumbnail sprite stem, e.g. ``tmb_chara_01001_00_02`` */
         thumbnail?: string | null;
         /** callable file name, e.g. ``tmb_chara_01001_00_02.png`` */

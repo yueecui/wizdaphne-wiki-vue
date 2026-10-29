@@ -87,6 +87,47 @@ def image_asset(thumbnail) -> dict:
     }
 
 
+#: 每个角色三张「结缘」立绘，索引就是 ``Character.image_name``（三位数编号）：
+#: ``assets.lib/sprite/fate_image`` / ``fatechara`` / ``fatechara_face``。
+#: 校验过：Character(105) + FateCharacter(65) 的 image_name 互不重复且全部有图。
+FATE_ART_TEMPLATES = (
+    ("fate_image", "FateImage{0}.png"),        # 结缘界面半身立绘
+    ("fate_chara", "FateChara{0}.png"),        # 全身立绘
+    ("fate_face", "FateCharaFace{0}.png"),     # 列表头像
+)
+
+
+def fate_art(image_name) -> dict:
+    """The three fate (结缘) artworks indexed by ``Character.image_name``."""
+    text = str(image_name or "").strip()
+    if not text.isdigit():
+        return {key: None for key, _ in FATE_ART_TEMPLATES}
+    index = f"{int(text):03d}"
+    return {key: tpl.format(index) for key, tpl in FATE_ART_TEMPLATES}
+
+
+def gacha_art_map() -> dict:
+    """``character id -> (概率UP列表小图, 结缘详情大图)`` from ``GachaCharacterAppeals``.
+
+    263 rows over 54 characters; both image names repeat identically for every row of a
+    character, so the first row wins. ``gacha_item_banner`` / ``legend_character_sale``
+    are the two sprite folders those names point at.
+    """
+    path = os.path.join(MD, "GachaCharacterAppeals.json")
+    if not os.path.isfile(path):
+        return {}
+    out: dict = {}
+    for row in json.load(open(path, encoding="utf8")):
+        cid = row.get("character_character_id")
+        if not cid or cid in out:
+            continue
+        banner = row.get("banner_image_name")
+        detail = row.get("detail_image_name")
+        out[cid] = (f"{banner}.png" if banner else None,
+                    f"{detail}.png" if detail else None)
+    return out
+
+
 def load(name: str):
     path = os.path.join(MD, name + ".json")
     if not os.path.isfile(path):
@@ -158,6 +199,8 @@ def main(argv: list[str]) -> int:
         if r.get("character_type") == "Character::Character":
             fate_skills[r["character_id"]] = r["default_skill_id"]
     collection = load("CollectionCharacter")
+    # 卡池图：概率UP列表小图 + 结缘详情大图（只有 54 个角色有）
+    gacha_art = gacha_art_map()
     # 手工维护的补充数据（卡池组 / 上线日期 / 声优），见 config/Data_CharacterExtra.tabx.xlsx
     extra = character_extra()
 
@@ -270,6 +313,7 @@ def main(argv: list[str]) -> int:
         tal = talents.get(c.get("talent_id")) or {}
         group = c.get("character_group_id") or c.get("id")
         sup = extra.get(c.get("id")) or {}
+        item_banner, sale_detail = gacha_art.get(c.get("id"), (None, None))
         # 主职业放最前面，其余（第二职业 / 可转职）按 id 排序，和 V1 的 class[] 顺序一致
         main_job = c.get("job_id")
         job_ids = ([main_job] if main_job else []) + sorted(
@@ -326,13 +370,20 @@ def main(argv: list[str]) -> int:
                                 for r in rates.get(c.get("talent_id"), [])],
             },
             "images": {
+                # 结缘立绘的索引（三位数），三张 Fate* 图都用它
                 "image": c.get("image_name"),
+                **fate_art(c.get("image_name")),
+                # 卡池图（没有卡池记录的角色为 None）
+                "gacha_item_banner": item_banner,
+                "legend_character_sale": sale_detail,
                 "thumbnail": image_stem(c.get("thumbnail_name")) or None,
                 **image_asset(c.get("thumbnail_name")),
             },
             "voice": {"speech": c.get("speech"), "breakup_speech": c.get("breakup_speech"),
                       "voice_group_id": c.get("voice_group_id")},
             "pool_group": sup.get("pool_group"),
+            # 概率UP立绘编号（手工表 banner 列，数字补 5 位后即 gacha_banner_00002.png）
+            "banner": sup.get("banner") or [],
             "release_date": sup.get("release_date"),
             "character_voice": sup.get("character_voice"),
             "raw": c,

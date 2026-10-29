@@ -73,6 +73,24 @@ export const useDataV2Store = defineStore('data-v2', () => {
         point: 0,
     });
 
+    /**
+     * 概率UP立绘编号（手工表 ``banner`` 列）。
+     * 线上 ``Api/GetV2Extra`` 给 ``"2;18;28;40"`` 字符串，mock 给数组，这里统一成数字数组。
+     */
+    const parseBanner = (value: unknown): number[] => {
+        const list =
+            typeof value === 'string'
+                ? value.split(/[;,\s]+/)
+                : Array.isArray(value)
+                  ? value
+                  : typeof value === 'number'
+                    ? [value]
+                    : [];
+        return list
+            .map((item) => Number(item))
+            .filter((item) => Number.isFinite(item) && item > 0);
+    };
+
     /** identification -> name triple, built once per data load */
     const skillNameMap = computed(() => {
         const map = new Map<number, { name: string; name_jp: string | null; name_en: string | null }>();
@@ -147,6 +165,8 @@ export const useDataV2Store = defineStore('data-v2', () => {
             potential_grade: raw.potential_grade || null,
             pool_group: extra?.group ?? 0,
             character_voice: extra?.character_voice ?? null,
+            banner: parseBanner(extra?.banner),
+            dialogue: raw.dialogue ?? null,
             release_date: extra?.release_date?.milliseconds
                 ? {
                       date: extra.release_date.date ?? null,

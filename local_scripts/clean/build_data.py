@@ -199,6 +199,12 @@ def main(argv: list[str]) -> int:
         enemies = read_clean("enemy", "enemies.json")
     except FileNotFoundError:      # enemy.py 没跑过时不影响其它模块
         enemies = []
+    try:
+        # 营地 / 酒馆对话，按英文名索引：同一角色的各风格版本共用同一份
+        dialogues = {row["character"]: row
+                     for row in read_clean("dialogue", "dialogues.json")}
+    except FileNotFoundError:      # dialogue.py 没跑过时不影响其它模块
+        dialogues = {}
 
     roster, excluded = [], []
     for row in characters:
@@ -308,6 +314,11 @@ def main(argv: list[str]) -> int:
             "potential_grade": row.get("potential_grade"),
             "images": {
                 "image": images.get("image"),
+                "fate_image": images.get("fate_image"),
+                "fate_chara": images.get("fate_chara"),
+                "fate_face": images.get("fate_face"),
+                "gacha_item_banner": images.get("gacha_item_banner"),
+                "legend_character_sale": images.get("legend_character_sale"),
                 "thumbnail": images.get("thumbnail"),
                 "thumbnail_file": images.get("thumbnail_file"),
                 "thumbnail_dir": images.get("thumbnail_dir"),
@@ -322,8 +333,11 @@ def main(argv: list[str]) -> int:
             "self_restraint": row.get("self_restraint"),
             # 手工补充（Data_CharacterExtra.tabx.xlsx）
             "pool_group": row.get("pool_group"),
+            "banner": row.get("banner"),
             "release_date": row.get("release_date"),
             "character_voice": row.get("character_voice"),
+            # 营地 / 酒馆对话（dialogue.py，按英文名挂；空的分组会被 compact 去掉）
+            "dialogue": dialogues.get(row.get("name_en")) or {},
         }))
 
     # ---------- jobs ----------

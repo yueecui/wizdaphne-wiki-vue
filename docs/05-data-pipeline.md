@@ -288,6 +288,7 @@ cd /d D:\WizardyDaphne\wizdaphne-wiki-vue
 python local_scripts\clean\character.py
 python local_scripts\clean\job.py
 python local_scripts\clean\skill.py
+python local_scripts\clean\dialogue.py   :: 营地/酒馆对话（读 out\topic_digest）
 
 :: 1) 第一轮：长键精简 → <repo>\data
 python local_scripts\clean\build_data.py

@@ -48,7 +48,7 @@
                     <!-- 翻页 -->
                     <div class="flex md:flex-col gap-2">
                         <div
-                            v-for="item in TABS"
+                            v-for="item in visibleTabs"
                             :key="item.value"
                             class="flex-1 md:flex-none text-center cursor-pointer select-none px-3 py-1 text-sm rounded border! border-solid"
                             :class="
@@ -210,7 +210,7 @@
                     </div>
 
                     <!-- 第二页：特性/能力值 -->
-                    <div v-else class="flex flex-col gap-3">
+                    <div v-else-if="tab === 'stats'" class="flex flex-col gap-3">
                         <!-- 参数 -->
                         <div class="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-sm">
                             <div class="flex items-center gap-1.5 h-8">
@@ -447,6 +447,97 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- 第三页：对话（营地问答 + 酒馆议题） -->
+                    <div v-else-if="tab === 'dialogue'" class="flex flex-col gap-4">
+                        <div v-if="!campList.length && !tavernRows.length" class="py-10 text-center text-sm opacity-50">
+                            暂无对话数据
+                        </div>
+                        <template v-else>
+                            <section v-if="campList.length" class="flex flex-col gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm text-warning">营地</span>
+                                </div>
+                                <div
+                                    v-for="(item, index) in campList"
+                                    :key="index"
+                                    class="flex flex-col gap-1 p-2 rounded bg-black/20 border! border-solid border-[#463d38]!"
+                                >
+                                    <div class="text-sm text-light leading-relaxed">{{ item.question }}</div>
+                                    <div class="text-sm text-warning">
+                                        <span class="opacity-60">回答：</span>{{ item.answer }}
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section v-if="tavernRows.length" class="flex flex-col gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm text-warning">酒馆</span>
+                                </div>
+                                <div
+                                    v-for="row in tavernRows"
+                                    :key="row.topic"
+                                    class="flex flex-col gap-1 p-2 rounded bg-black/20 border! border-solid border-[#463d38]!"
+                                >
+                                    <div class="text-sm text-light">{{ row.topic }}</div>
+                                    <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                                        <span
+                                            v-for="(reply, index) in row.replies"
+                                            :key="index"
+                                            :class="index + 1 === row.order ? 'text-warning' : 'opacity-30'"
+                                        >
+                                            {{ reply }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </section>
+                        </template>
+                    </div>
+
+                    <!-- 第四页：画廊（结缘三张 + 卡池两张） -->
+                    <div v-else class="flex flex-col gap-3">
+                        <div v-if="!galleryItems.length" class="py-10 text-center text-sm opacity-50">
+                            暂无可展示的图片
+                        </div>
+                        <template v-else>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                <div
+                                    v-for="item in galleryItems"
+                                    :key="item.key"
+                                    class="flex flex-col gap-1 min-w-0"
+                                >
+                                    <div
+                                        class="group relative flex items-center justify-center h-40 md:h-48 overflow-hidden rounded bg-black/40 border! border-solid border-[#463d38]! cursor-zoom-in"
+                                        :title="item.label"
+                                        @click="openPreview(item)"
+                                    >
+                                        <WikiImg
+                                            :imageName="item.small"
+                                            :isLazy="true"
+                                            class="max-w-full max-h-full object-contain transition-transform duration-200 group-hover:scale-[1.03]"
+                                        />
+                                        <div
+                                            class="absolute inset-0 hidden group-hover:flex items-center justify-center bg-black/30 text-xs text-light select-none"
+                                        >
+                                            查看大图
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-2 text-xs">
+                                        <span class="truncate opacity-80">{{ item.label }}</span>
+                                        <a
+                                            :href="`/wiki/File:${item.file}`"
+                                            target="_blank"
+                                            rel="noopener"
+                                            class="shrink-0 opacity-50 hover:opacity-100"
+                                            @click.stop
+                                        >
+                                            原图
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
                 </div>
             </div>
         </div>
@@ -489,6 +580,35 @@
                     <div class="flex justify-center">
                         <NButton size="tiny" type="warning" class="mt-0" @click="rateModal = false">关闭</NButton>
                     </div>
+                </div>
+            </div>
+        </NModal>
+
+        <!-- 画廊大图 -->
+        <NModal v-model:show="previewOpen">
+            <div class="m-auto flex flex-col items-center gap-2">
+                <!-- 结缘立绘是半透明的，放大时垫黑底，避免和页面背景糊在一起 -->
+                <div
+                    v-if="previewItem"
+                    class="flex items-center justify-center max-w-[92vw] max-h-[82vh] p-1 bg-black rounded border! border-solid border-[#463d38]!"
+                >
+                    <WikiImg
+                        :imageName="previewItem.small"
+                        class="h-auto w-auto max-w-full max-h-[80vh] object-contain"
+                    />
+                </div>
+                <div class="flex items-center gap-3 text-xs">
+                    <span class="opacity-80">{{ previewItem?.label }}</span>
+                    <a
+                        v-if="previewItem"
+                        :href="`/wiki/File:${previewItem.file}`"
+                        target="_blank"
+                        rel="noopener"
+                        class="underline opacity-60 hover:opacity-100"
+                    >
+                        在 Wiki 打开
+                    </a>
+                    <NButton size="tiny" type="warning" @click="previewOpen = false">关闭</NButton>
                 </div>
             </div>
         </NModal>
@@ -554,6 +674,79 @@ const thumb = computed(() => {
     if (!stem) return null;
     return `${stem.charAt(0).toUpperCase()}${stem.slice(1)}_s.png`;
 });
+
+interface GalleryItem {
+    key: string;
+    label: string;
+    /** 展示用小图（wiki 上带 `_s` 后缀的那张） */
+    small: string;
+    /** 原图（不带 `_s`） */
+    file: string;
+}
+
+/** `Foo.png` -> `Foo_s.png`；wiki 上的缩略图都是这个命名 */
+const smallFile = (file: string) => file.replace(/\.png$/i, '_s.png');
+
+/** 画廊：结缘三张 + 概率UP立绘（可多张）+ 卡池两张（没有对应图的自动跳过） */
+const galleryItems = computed<GalleryItem[]>(() => {
+    const im = data.value?.images;
+    if (!im) return [];
+    const items: GalleryItem[] = [];
+    const push = (key: string, label: string, file?: string | null, useSmall = false) => {
+        if (!file) return;
+        items.push({ key, label, file, small: useSmall ? smallFile(file) : file });
+    };
+
+    push('fate_image', '结缘立绘', im.fate_image);
+    push('fate_face', '结缘头像', im.fate_face);
+    push('fate_chara', '结缘全身立绘', im.fate_chara);
+    push('gacha_item_banner', '卡池列表横幅', im.gacha_item_banner);
+    push('legend_character_sale', '卡池详情图', im.legend_character_sale, true);
+
+    // 手工表 banner 列：编号补 5 位就是 gacha_banner_00002.png
+    for (const id of data.value?.banner ?? []) {
+        const stem = `gacha_banner_${String(id).padStart(5, '0')}`;
+        push(`banner_${id}`, `卡池横幅 ${String(id).padStart(5, '0')}`, `${stem}.png`, true);
+    }
+    return items;
+});
+
+const previewOpen = ref(false);
+const previewItem = ref<GalleryItem | null>(null);
+const openPreview = (item: GalleryItem) => {
+    previewItem.value = item;
+    previewOpen.value = true;
+};
+
+/**
+ * 酒馆议题的固定答复表（数据里只存议题 + 序号 1..3，文案由这里生成）。
+ * 顺序与 ``dialogue.py`` 的 ``TAVERN_TOPIC_ORDER`` 一致。
+ */
+const TAVERN_REPLIES: Record<string, [string, string, string]> = {
+    全员生存: ['碰巧罢了', '花了不少功夫', '下次试试新的作战计划吧'],
+    战斗不能: ['狩猎地点不合适', '过度信任伙伴的实力', '应该回到安全的猎场'],
+    大异形讨伐: ['令人恐惧的敌人', '没什么大不了的', '感觉很恶心'],
+    奇袭对策: ['避开强敌', '这次运气不好', '提高警惕'],
+    陷阱对策: ['谨慎前进', '感受到危险时立刻返回', '不顾一切勇往直前'],
+};
+
+/** 营地：角色提问 + 游戏记录的答案 */
+const campList = computed(() => data.value?.dialogue?.camp ?? []);
+
+/** 酒馆：议题 + 该角色的答复序号，答复文案从固定表里取 */
+const tavernRows = computed(() =>
+    (data.value?.dialogue?.tavern ?? [])
+        .filter((row) => TAVERN_REPLIES[row.topic])
+        .map((row) => ({ topic: row.topic, order: row.order, replies: TAVERN_REPLIES[row.topic] })),
+);
+
+/** 无名冒险者（占位单位）没有对话数据，这种角色直接不显示「对话」页签 */
+const visibleTabs = computed(() =>
+    TABS.filter(
+        (item) =>
+            item.value !== 'dialogue' || campList.value.length > 0 || tavernRows.value.length > 0,
+    ),
+);
 
 const rate = computed(() => store.characterRate(props.id));
 
@@ -721,10 +914,12 @@ const gotoDetail = () => {
 /* 特性值计算                                                          */
 /* ------------------------------------------------------------------ */
 
-type TabKey = 'basic' | 'stats';
+type TabKey = 'basic' | 'stats' | 'gallery' | 'dialogue';
 const TABS: Array<{ label: string; value: TabKey }> = [
     { label: '基本信息', value: 'basic' },
     { label: '特性/能力值', value: 'stats' },
+    { label: '对话', value: 'dialogue' },
+    { label: '画廊', value: 'gallery' },
 ];
 const tab = ref<TabKey>('basic');
 

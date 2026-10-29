@@ -27,6 +27,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 UNPACK = os.environ.get("WIZDAPHNE_UNPACK", r"D:\WizardyDaphne\WizardyDaphneUnpack")
 MD = os.environ.get("WIZDAPHNE_MASTERDATA", os.path.join(UNPACK, "out", "masterdata"))
 
+#: 营地 / 酒馆话题摘要（解包工程 ``out/topic_digest``，按角色英文名一个文件）
+TOPIC_DIGEST = os.environ.get(
+    "WIZDAPHNE_TOPIC_DIGEST", os.path.join(UNPACK, "out", "topic_digest"))
+
 #: intermediates of the cleaning pass (regenerated every run, not committed)
 WORK = os.path.join(ROOT, "local_scripts", "work")
 CLEAN = os.path.join(WORK, "clean")
@@ -359,6 +363,10 @@ def character_extra() -> dict[int, dict]:
             "pool_group": row.get("group"),
             "release_date": parse_release(row.get("release_date")),
             "character_voice": row.get("character_voice") or None,
+            # 概率UP立绘编号：``"2;18;28;40"`` / ``"56"`` / 空 -> [2, 18, 28, 40]
+            # tabx 导出时列名带 ``[]``，手工另存可能没有，两种都认
+            "banner": [int(v) for v in _split_list(row.get("banner[]") or row.get("banner"))
+                       if str(v).strip().isdigit()],
         }
     return out
 

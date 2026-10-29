@@ -21,6 +21,7 @@
         "scrape:data": "tsx ./local_scripts/src/scrapeApiData.ts",
         "update:junk": "tsx ./local_scripts/src/scrapeJunkRates.ts",
         "update:equipment-bonus": "tsx ./local_scripts/src/updateEquipmentBonusRates.ts",
+        "update:character-extra": "tsx ./local_scripts/src/fetchCharacterExtra.ts",
         "update:character-status": "tsx ./local_scripts/src/character_status_scraper.ts"
     },
     "dependencies": {

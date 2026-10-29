@@ -133,7 +133,14 @@ CHAR_DETAIL = [
     # 潜在继承技能的解锁等级
     ("potential_grade", "pg", "num"),
     ("images", "im", "obj", [
+        # 结缘立绘索引（三位数）+ 三张 Fate* 图
         ("image", "i", "str"),
+        ("fate_image", "fi", "str"),
+        ("fate_chara", "fc", "str"),
+        ("fate_face", "ff", "str"),
+        # 卡池图：概率UP小图 / 结缘详情大图
+        ("gacha_item_banner", "gb", "str"),
+        ("legend_character_sale", "gd", "str"),
         ("thumbnail", "t", "str"),
         ("thumbnail_file", "tf", "str"),
         ("thumbnail_dir", "td", "str"),
@@ -149,6 +156,11 @@ CHAR_DETAIL = [
     ("self_restraint", "sr", "obj", [
         ("id", "i", "num"),
         ("extra_tags", "t", "strArr"),
+    ]),
+    # 营地 / 酒馆对话：同一角色的各风格版本共用一份（酒馆只留议题 + 答案顺序 1..3）
+    ("dialogue", "dg", "obj", [
+        ("camp", "c", "objArr", [("question", "q", "str"), ("answer", "a", "str")]),
+        ("tavern", "t", "objArr", [("topic", "k", "str"), ("order", "o", "num")]),
     ]),
 ]
 
@@ -976,6 +988,8 @@ def main(argv: list[str]) -> int:
             "group": sup.get("pool_group"),
             "character_voice": sup.get("character_voice"),
             "release_date": sup.get("release_date"),
+            # 概率UP立绘编号（线上是 "2;18;28;40" 字符串，这里统一成数组）
+            "banner": sup.get("banner") or [],
             "id": cid,
         }
         for cid, sup in character_extra().items()

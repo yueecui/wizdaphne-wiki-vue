@@ -249,6 +249,11 @@ export const CHAR_FIELDS: FieldSpec[] = [
         kind: 'obj',
         fields: [
             { long: 'image', short: 'i', kind: 'str' },
+            { long: 'fate_image', short: 'fi', kind: 'str' },
+            { long: 'fate_chara', short: 'fc', kind: 'str' },
+            { long: 'fate_face', short: 'ff', kind: 'str' },
+            { long: 'gacha_item_banner', short: 'gb', kind: 'str' },
+            { long: 'legend_character_sale', short: 'gd', kind: 'str' },
             { long: 'thumbnail', short: 't', kind: 'str' },
             { long: 'thumbnail_file', short: 'tf', kind: 'str' },
             { long: 'thumbnail_dir', short: 'td', kind: 'str' },
@@ -273,6 +278,32 @@ export const CHAR_FIELDS: FieldSpec[] = [
         fields: [
             { long: 'id', short: 'i', kind: 'num' },
             { long: 'extra_tags', short: 't', kind: 'strArr' },
+        ],
+    },
+    // 营地 / 酒馆对话：同一角色的各风格版本共用一份（酒馆只留议题 + 答案顺序 1..3）
+    {
+        long: 'dialogue',
+        short: 'dg',
+        kind: 'obj',
+        fields: [
+            {
+                long: 'camp',
+                short: 'c',
+                kind: 'objArr',
+                fields: [
+                    { long: 'question', short: 'q', kind: 'str' },
+                    { long: 'answer', short: 'a', kind: 'str' },
+                ],
+            },
+            {
+                long: 'tavern',
+                short: 't',
+                kind: 'objArr',
+                fields: [
+                    { long: 'topic', short: 'k', kind: 'str' },
+                    { long: 'order', short: 'o', kind: 'num' },
+                ],
+            },
         ],
     },
 ];
