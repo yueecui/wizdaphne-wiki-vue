@@ -27,7 +27,7 @@
             <NPagination v-model:page="page" :page-count="pageCount" />
 
             <div class="overflow-x-auto">
-                <table class="wikitable w-full table-fixed! text-center m-0!">
+                <table class="wikitable w-full table-fixed! text-center m-0! min-w-[760px]">
                     <thead class="sticky top-0 z-10">
                         <tr>
                             <th class="w-[7em]">ID</th>

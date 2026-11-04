@@ -198,9 +198,10 @@ JOB = [
     ]),
 ]
 
-#: 召唤：被召唤出来的敌人分类 + 等级 + 数量（来自 ``EnemyFriendLayout``）
+#: 召唤：被召唤出来的敌人分类 + 等级 + 数量 + 具体变体 id（来自 ``EnemyFriendLayout``）
 SKILL_SUMMON = [
     ("category", "c", "num"),
+    ("variant", "v", "num"),
     ("level", "lv", "num"),
     ("count", "n", "num"),
 ]

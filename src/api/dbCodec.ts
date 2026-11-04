@@ -361,13 +361,14 @@ export const SKILL_FIELDS: FieldSpec[] = [
     { long: 'level0', short: 'l0', kind: 'bool' },
     { long: 'sources', short: 's', kind: 'strArr' },
     { long: 'jobs', short: 'j', kind: 'numArr' },
-    // 召唤：被召唤敌人的分类 + 等级 + 数量（EnemyFriendLayout）
+    // 召唤：被召唤敌人的分类 + 具体变体 id + 等级 + 数量（EnemyFriendLayout）
     {
         long: 'summons',
         short: 'sm',
         kind: 'objArr',
         fields: [
             { long: 'category', short: 'c', kind: 'num' },
+            { long: 'variant', short: 'v', kind: 'num' },
             { long: 'level', short: 'lv', kind: 'num' },
             { long: 'count', short: 'n', kind: 'num' },
         ],

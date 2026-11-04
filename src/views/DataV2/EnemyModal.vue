@@ -4,11 +4,11 @@
             <div class="w-[95vw] md:w-[1180px] h-[88vh] m-auto flex flex-col huiji-css-hook bg-transparent!">
                 <div class="flex-1 min-h-0 flex flex-col bg-[#312721]! border! border-[#463d38]! rounded">
                     <div class="shrink-0 bg-[#312721] px-4 pt-3 pb-2 border-b! border-[#463d38]!">
-                        <div class="flex items-start gap-3">
+                        <div class="flex flex-wrap items-start gap-3">
                             <WikiImg
                                 v-if="thumb"
                                 :imageName="thumb"
-                                class="w-[121px] h-[56px] md:w-[164px] md:h-[76px] object-contain shrink-0"
+                                class="w-[96px] h-[44px] md:w-[164px] md:h-[76px] object-contain shrink-0"
                                 isLazy
                             />
                             <div class="flex-1 min-w-0">
@@ -22,7 +22,7 @@
                                     {{ subtitle }}
                                 </div>
                             </div>
-                            <div class="flex items-center gap-3 shrink-0">
+                            <div class="flex w-full md:w-auto items-center gap-3 justify-end md:justify-start shrink-0">
                                 <span v-if="row" class="text-xs text-gray-600">ID {{ row.id }}</span>
                                 <NButton
                                     v-if="canEdit"
@@ -75,6 +75,15 @@
                                         （{{ levelRange[0] }}-{{ levelRange[1] }}）
                                     </span>
                                 </span>
+                                <NButton
+                                    v-if="canEdit"
+                                    size="small"
+                                    type="primary"
+                                    class="ml-auto"
+                                    @click="copyVariantTemplate"
+                                >
+                                    复制 {{ copyTemplateLabel }}
+                                </NButton>
                             </div>
 
                             <div class="flex-1 min-h-0 overflow-y-auto thin-scrollbar p-4">
@@ -531,6 +540,7 @@ import SkillModal from './SkillModal.vue';
 import MapFloorModal from './MapFloorModal.vue';
 import EnemyPoolModal from './EnemyPoolModal.vue';
 import { useDataV2Store } from './dataV2Store';
+import { templateBody } from './useCopyMenu';
 import type { EnemyAiCondition, EnemyInterrupt, EnemyStat, Ref, SkillRef } from './types';
 
 defineOptions({ name: '敌人详情ModalV2' });
@@ -544,6 +554,25 @@ const canEdit = MwConfig.getInstance().canEdit;
 
 const close = () => emit('update:show', false);
 const onShowUpdate = (value: boolean) => emit('update:show', value);
+
+/** 按钮文案里的 `{{敌人}}` 不能用模板插值，放脚本里拼好再绑定（前缀「复制」由模板负责，别重复） */
+const copyTemplateLabel = computed(() => '{{敌人}} 模板');
+
+/** canEdit 时：复制 `{{敌人|名字|当前变体ID}}` 模板，ID 用当前选中的变体号码 */
+const copyVariantTemplate = () => {
+    const current = row.value?.variants[variantIndex.value];
+    const id = current?.id;
+    if (id == null) {
+        window.wiz.$message.error('当前变体没有可用 ID');
+        return;
+    }
+    const body = templateBody(row.value?.name, id);
+    const text = `{{敌人|${body}}}`;
+    navigator.clipboard
+        .writeText(text)
+        .then(() => window.wiz.$message.success(`已复制 ${text} 模板到剪贴板`))
+        .catch(() => window.wiz.$message.error('复制失败，请手动复制'));
+};
 
 const showRaw = ref(false);
 
@@ -676,12 +705,15 @@ const openEnemyRef = (ref: number) => {
     refShow.value = true;
 };
 
+// immediate：modal 由 v-else-if 首次挂载时 props 已就位但普通 watcher 不会触发，
+// 必须挂载即按 enemyVariantId 定位一次，否则总是停在第一个变体
 watch(
     () => props.enemyId,
     () => {
         variantIndex.value = variantIndexOf(props.enemyVariantId);
         activeTab.value = 'info';
     },
+    { immediate: true },
 );
 
 // 同一分类下点了不同实例（变体）时 enemyId 不变，单独按实例 id 重新定位
@@ -690,7 +722,16 @@ watch(
     () => {
         if (props.enemyId != null) variantIndex.value = variantIndexOf(props.enemyVariantId);
     },
+    { immediate: true },
 );
+
+// 敌人数据是异步加载的：上面的 immediate watch 可能在 store.enemyById 还没就绪时
+// 就跑了（此时 row 为 null、variants 为空，匹配失败 → 停在变体 0）；等数据就绪后
+// row 更新，但前两个 watch 的依赖（enemyId / enemyVariantId）没变，不会再触发，
+// 于是永远停在第一个变体。这里补一个对 row 的 watch，数据就绪后按 enemyVariantId 重定位
+watch(row, () => {
+    if (props.enemyId != null) variantIndex.value = variantIndexOf(props.enemyVariantId);
+});
 
 /** 等级区间文案：只有上下限不同才写成区间，否则就是一个等级 */
 function levelLabel(item: { level_min: number; level_max: number }): string {

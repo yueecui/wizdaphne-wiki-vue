@@ -24,10 +24,19 @@ export const useInlineModalStore = defineStore('inline-modal-v2', () => {
     /** 装备 / 角色 / 敌人分类 / 技能 identification / 地图层：给 id */
     const id = ref<number | null>(null);
 
-    const open = (payload: { kind: InlineModalKind; item?: ItemDoc; id?: number }) => {
+    /** 敌人：可选，指定打开后默认选中的变体 id（地图 / 敌群里点出来的都是变体 id） */
+    const enemyVariantId = ref<number | null>(null);
+
+    const open = (payload: {
+        kind: InlineModalKind;
+        item?: ItemDoc;
+        id?: number;
+        enemyVariantId?: number | null;
+    }) => {
         kind.value = payload.kind;
         item.value = payload.item ?? null;
         id.value = payload.id ?? null;
+        enemyVariantId.value = payload.enemyVariantId ?? null;
         show.value = true;
     };
 
@@ -40,6 +49,7 @@ export const useInlineModalStore = defineStore('inline-modal-v2', () => {
         kind,
         item,
         id,
+        enemyVariantId,
         open,
         close,
     };

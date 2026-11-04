@@ -356,6 +356,8 @@ export interface EffectKind {
 /** 召唤出来的单位：敌人分类 + 等级 + 数量 */
 export interface SkillSummon {
     category: number;
+    /** 被召唤的具体变体 id（EnemyFriendLayout.enemy_id）；旧数据可能缺失，缺失时退回分类 */
+    variant?: number;
     level: number;
     count: number;
 }

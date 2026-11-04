@@ -5,11 +5,11 @@
                 <div class="flex flex-col min-h-0 bg-[#312721]! border! border-[#463d38]! rounded">
                     <!-- 头部：图标 + 图鉴编号 / 名称 / 日文名；右侧 ID、英文类型、原始 JSON -->
                     <div class="shrink-0 bg-[#312721] px-4 pt-3 pb-2 border-b! border-[#463d38]!">
-                        <div class="flex items-start gap-3">
+                        <div class="flex flex-wrap items-start gap-3">
                             <WikiImg
                                 v-if="item?.icon"
                                 :imageName="`${item.icon}.png`"
-                                class="w-16 h-16 object-contain shrink-0 self-center"
+                                class="w-12 h-12 md:w-16 md:h-16 object-contain shrink-0 self-center"
                             />
                             <div class="flex-1 min-w-0">
                                 <div class="text-sm text-light">
@@ -26,7 +26,7 @@
                                     {{ foreignName }}
                                 </div>
                             </div>
-                            <div class="flex flex-col items-end gap-1 shrink-0">
+                            <div class="flex w-full md:w-auto flex-col items-end gap-1 shrink-0">
                                 <span v-if="item" class="text-xs text-gray-600">ID {{ item.id }}</span>
                                 <span class="text-xs text-gray-500">{{ shortType }}</span>
                                 <NButton v-if="canEdit" size="tiny" quaternary @click="showRaw = !showRaw">

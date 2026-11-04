@@ -372,9 +372,15 @@
                                         </tr>
                                     </tbody>
                                 </table>
+                                <div class="mt-2 flex items-center gap-2">
+                                    <NCheckbox v-model:checked="showDecimal">显示取整前数值</NCheckbox>
+                                </div>
                                 <div class="text-xs opacity-60 mt-2">
                                     所有特性值、能力值均不包含任何被动技能、装备等效果，克己技能除外：按上方的克己等级叠加，
                                     括号内为克己部分
+                                </div>
+                                 <div class="text-xs opacity-60 mt-2">
+                                    计算方法不能确保与游戏内完全相同，数值仅供参考
                                 </div>
                             </div>
 
@@ -655,7 +661,7 @@
 
 <script setup lang="ts">
 import { QuestionCircle as QuestionIcon } from '@vicons/fa';
-import { NButton, NEmpty, NIcon, NInputNumber, NModal, NSelect, NSlider, NSpin, NTooltip } from 'naive-ui';
+import { NButton, NCheckbox, NEmpty, NIcon, NInputNumber, NModal, NSelect, NSlider, NSpin, NTooltip } from 'naive-ui';
 import { computed, ref, watch } from 'vue';
 import ElementIcon from '../../components/ElementIcon.vue';
 import WikiImg from '../../components/huiji/WikiImg.vue';
@@ -974,6 +980,8 @@ const RANDOM_GROWTH_MIN = 0.06;
 const RANDOM_GROWTH_MAX = 0.09;
 
 const calcLevel = ref(CALC_LEVEL_MAX);
+/** 特性值显示小数（开启后不向上取整，仅影响显示，不影响能力值计算） */
+const showDecimal = ref(false);
 const calcJobId = ref<number | null>(null);
 const calcGrade = ref<number | 'auto'>('auto');
 const calcIndividual = ref<StatKey | 'none'>('none');
@@ -1173,8 +1181,10 @@ const setDisciplineLevel = (value: string | number | Array<string | number> | nu
     disciplineLevel.value = Math.min(DISCIPLINE_LEVEL_MAX, Math.max(0, Number.isFinite(next) ? next : 0));
 };
 
+/** 抹平浮点误差（不取整，用于显示小数） */
+const rawGrowth = (growth: number, levelItem: number) => Math.round(growth * levelItem * 1e6) / 1e6;
 /** 抹平浮点误差后再向上取整 */
-const ceilGrowth = (growth: number, levelItem: number) => Math.ceil(Math.round(growth * levelItem * 1e6) / 1e6);
+const ceilGrowth = (growth: number, levelItem: number) => Math.ceil(rawGrowth(growth, levelItem));
 
 interface CalcRow {
     key: StatKey;
@@ -1225,7 +1235,12 @@ const calcRows = computed<CalcRow[]>(() => {
 
         const growthText =
             growthMin === growthMax ? growthMin.toFixed(2) : `${growthMin.toFixed(2)}~${growthMax.toFixed(2)}`;
-        const rangeText = valueMin === valueMax ? String(valueMin) : `${valueMin}~${valueMax}`;
+        // 显示值：开关开启时用未取整的小数；valueMin / valueMax 保持取整，供能力值计算
+        const fmtStat = (value: number) => String(Math.round(value * 1e6) / 1e6);
+        const shownMinText = fmtStat(showDecimal.value ? base + rawGrowth(growthMin, levelItem) : valueMin);
+        const shownMaxText = fmtStat(showDecimal.value ? base + rawGrowth(growthMax, levelItem) : valueMax);
+        const rangeText =
+            shownMinText === shownMaxText ? shownMinText : `${shownMinText}~${shownMaxText}`;
 
         return {
             key,

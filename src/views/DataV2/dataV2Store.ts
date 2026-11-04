@@ -320,6 +320,7 @@ export const useDataV2Store = defineStore('data-v2', () => {
             .filter((unit) => unit.category)
             .map((unit) => ({
                 category: unit.category,
+                variant: typeof unit.variant === 'number' ? unit.variant : undefined,
                 level: unit.level || 0,
                 count: unit.count || 1,
             })),

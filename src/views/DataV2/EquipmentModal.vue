@@ -4,11 +4,11 @@
             <div class="w-[95vw] md:w-[880px] h-[88vh] m-auto flex flex-col huiji-css-hook bg-transparent!">
                 <div class="flex flex-col min-h-0 bg-[#312721]! border! border-[#463d38]! rounded">
                     <div class="shrink-0 bg-[#312721] px-4 pt-3 pb-2 border-b! border-[#463d38]!">
-                        <div class="flex items-start gap-3">
+                        <div class="flex flex-wrap items-start gap-3">
                             <WikiImg
                                 v-if="item?.icon"
                                 :imageName="`${item.icon}.png`"
-                                class="w-16 h-16 object-contain shrink-0 self-center"
+                                class="w-12 h-12 md:w-16 md:h-16 object-contain shrink-0 self-center"
                             />
                             <div class="flex-1 min-w-0">
                                 <div v-if="item" class="text-sm text-light">
@@ -28,7 +28,7 @@
                                     {{ foreignName }}
                                 </div>
                             </div>
-                            <div class="flex items-center gap-3 shrink-0">
+                            <div class="flex w-full md:w-auto items-center gap-3 justify-end md:justify-start shrink-0">
                                 <span v-if="item" class="text-xs text-gray-600">ID {{ item.id }}</span>
                                 <NButton
                                     v-if="canEdit"
@@ -435,47 +435,147 @@
 
                                 <NTabPane v-if="item.bonus && item.bonus.length" name="bonus" tab="加护">
                                     <div class="mt-2">
-                                        <div class="flex items-center mt-4">
+                                        <div class="flex items-center mt-4 gap-4">
                                             <NRadioGroup v-model:value="orderType" class="flex gap-2">
                                                 <NRadio value="attribute">属性顺序</NRadio>
                                                 <NRadio value="probability">概率顺序</NRadio>
                                             </NRadioGroup>
+                                            <NButton type="primary" size="small" @click="resetBonuses">
+                                                重置加护选择
+                                            </NButton>
                                         </div>
+
+                                        <!-- 4 个加护槽横排并列；每槽一个下拉选属性 -->
                                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-                                            <div
-                                                v-for="(slot, index) in bonusSlots"
+                                            <template
+                                                v-for="(slotData, index) in item.bonus"
                                                 :key="index"
-                                                class="flex flex-col gap-2"
+                                            >
+                                                <div v-if="slotData" class="flex flex-col gap-2">
+                                                    <div
+                                                        class="text-center text-md text-light font-semibold bg-black/50 px-2 py-1"
+                                                    >
+                                                        加护 {{ index + 1 }}
+                                                    </div>
+                                                    <!-- 下拉框：选了属性后，后续槽按不放回规则重算 -->
+                                                    <div class="flex justify-center">
+                                                        <NSelect
+                                                            v-model:value="selectedAttributes[index]"
+                                                            placeholder="请选择属性"
+                                                            style="width: 100%"
+                                                            :options="attributeOptions"
+                                                            clearable
+                                                            :disabled="isSelectDisabled[index]"
+                                                            @update:value="handleAttributeSelect(index, $event)"
+                                                        />
+                                                    </div>
+                                                    <table class="wikitable w-full text-center">
+                                                        <thead>
+                                                            <tr>
+                                                                <th class="text-left">属性</th>
+                                                                <th class="text-right">概率</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <template
+                                                                v-for="(value, i) in sortedBonuses[index] ?? []"
+                                                                :key="i"
+                                                            >
+                                                                <tr v-if="Math.abs(value) > 0.0001">
+                                                                    <th class="text-left">
+                                                                        {{ sortedAttributeNames[index]?.[i] }}
+                                                                    </th>
+                                                                    <td class="text-right">
+                                                                        {{ value.toFixed(4) }}%
+                                                                    </td>
+                                                                </tr>
+                                                            </template>
+                                                            <tr
+                                                                v-if="getNonZeroCount(sortedBonuses[index]) === 0"
+                                                            >
+                                                                <td colspan="2" class="text-center text-gray-400">
+                                                                    无属性
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </template>
+                                        </div>
+
+                                        <!-- 加护组合概率计算结果 -->
+                                        <div
+                                            v-if="bonusCombinationProbabilities.length > 0"
+                                            class="mt-8"
+                                        >
+                                            <div
+                                                class="text-xl text-light font-bold bg-[#2c231d] px-3 py-2 rounded mb-4"
+                                            >
+                                                初始加护组合生成概率
+                                            </div>
+                                            <div
+                                                v-for="result in bonusCombinationProbabilities"
+                                                :key="result.totalSlots"
+                                                class="mb-6"
                                             >
                                                 <div
-                                                    class="text-center text-md text-light font-semibold bg-black/50 px-2 py-1"
+                                                    class="text-md text-light font-semibold bg-black/50 px-2 py-1 mb-2"
                                                 >
-                                                    加护 {{ index + 1 }}
+                                                    初始拥有
+                                                    <span :class="getGradeColorClass(result.totalSlots + 1)">
+                                                        {{ result.totalSlots }}
+                                                    </span>
+                                                    条加护
+                                                </div>
+                                                <div class="mb-2 text-gray-300">
+                                                    总概率: {{ result.totalProbability.toFixed(4) }}%
                                                 </div>
                                                 <table class="wikitable w-full text-center">
                                                     <thead>
                                                         <tr>
-                                                            <th class="text-left">属性</th>
-                                                            <th class="text-right">概率</th>
+                                                            <th>组合位置</th>
+                                                            <th class="md:w-[10em]">概率</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        <tr v-for="row in slot.rows" :key="row.name">
-                                                            <th class="text-left">{{ row.name }}</th>
-                                                            <td class="text-right">{{ row.value.toFixed(4) }}%</td>
-                                                        </tr>
-                                                        <tr v-if="!slot.rows.length">
-                                                            <td colspan="2" class="text-center text-gray-400">
-                                                                无属性
+                                                        <tr
+                                                            v-for="(comb, cidx) in result.combinations"
+                                                            :key="cidx"
+                                                        >
+                                                            <td>
+                                                                <div class="flex flex-wrap gap-2 justify-center">
+                                                                    <span
+                                                                        v-for="(attr, pos) in comb.attributeNames"
+                                                                        :key="pos"
+                                                                        class="px-2 py-1 bg-[#3a312a]! rounded"
+                                                                        :class="{ 'text-gray-400': attr === '其他' }"
+                                                                    >
+                                                                        {{ attr }}
+                                                                    </span>
+                                                                </div>
                                                             </td>
+                                                            <td>{{ comb.probability.toFixed(4) }}%</td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
                                             </div>
                                         </div>
+
                                         <div class="text-sm text-gray-400 mt-4">
-                                            ※
-                                            加护数据来自攻略站统计，每件装备有 4 个加护槽，数值为该属性在对应品质下出现的百分比。
+                                            <div>
+                                                <span>※ 数据来自</span>
+                                                <a
+                                                    href="https://wizardry.info/daphne/gacha_rates/zh_cn/alternations.html"
+                                                    target="_blank"
+                                                >
+                                                    官方提供的数据
+                                                </a>
+                                            </div>
+                                            <div>
+                                                ※
+                                                选择加护属性后，后续槽的概率会按「不放回」规则重算（已选属性不再出现，其余按比例归一化到
+                                                100%）。
+                                            </div>
                                         </div>
                                     </div>
                                 </NTabPane>
@@ -911,15 +1011,212 @@ const cellColor = (key: EquipmentStatKey, lv: number) => {
     return zero === 0 ? 'text-gray-700' : '';
 };
 
-const bonusSlots = computed(() => {
-    const bonus = item.value?.bonus ?? [];
-    return bonus.map((rates) => {
-        const rows = rates
-            .map((value, index) => ({ name: BONUS_ATTRIBUTES[index] ?? `属性${index + 1}`, value }))
-            .filter((row) => Math.abs(row.value) > 0.0001);
-        if (orderType.value === 'probability') rows.sort((a, b) => b.value - a.value);
-        return { rows };
-    });
+// ---------- 加护：不放回选择 ----------
+// 每条加护选一个属性，后续槽概率按已选属性重算（已选属性置 0，其余按原始权重归一化到 100%）。
+const selectedAttributes = ref<(number | null)[]>([null, null, null, null]);
+
+const attributeOptions = computed(() =>
+    BONUS_ATTRIBUTES.map((name, index) => ({ label: name, value: index })),
+);
+
+const resetBonuses = () => {
+    selectedAttributes.value = [null, null, null, null];
+};
+
+const handleAttributeSelect = (slot: number, value: number | null) => {
+    selectedAttributes.value[slot] = value;
+    // 清空当前槽时，一并清空其后所有槽
+    if (value === null) {
+        for (let i = slot + 1; i < 4; i++) selectedAttributes.value[i] = null;
+    }
+};
+
+// 前面的槽没选时，后续槽禁用（强制按顺序选）
+const isSelectDisabled = computed(() => {
+    const disabled = [false, false, false, false];
+    for (let i = 1; i < 4; i++) {
+        for (let j = 0; j < i; j++) {
+            if (selectedAttributes.value[j] === null) {
+                disabled[i] = true;
+                break;
+            }
+        }
+    }
+    return disabled;
+});
+
+const getNonZeroCount = (array: number[] | undefined): number =>
+    (array ?? []).filter((v) => Math.abs(v) > 0.0001).length;
+
+// 不放回重算：已选属性在后续槽中置 0，其余按原始权重归一化到 100%
+const recalculatedBonuses = computed(() => {
+    const original = item.value?.bonus;
+    if (!original) return [];
+    const result = JSON.parse(JSON.stringify(original)) as number[][];
+    for (let slot = 0; slot < result.length; slot++) {
+        if (!result[slot]) continue;
+        const selectedIndex = selectedAttributes.value[slot];
+        if (selectedIndex !== null && slot < result.length - 1) {
+            for (let nextSlot = slot + 1; nextSlot < result.length; nextSlot++) {
+                if (!result[nextSlot]) continue;
+                const forbidden = new Set<number>();
+                for (let prev = 0; prev <= slot; prev++) {
+                    const p = selectedAttributes.value[prev];
+                    if (p !== null) forbidden.add(p);
+                }
+                let remain = 0;
+                for (let attr = 0; attr < original[nextSlot].length; attr++) {
+                    if (!forbidden.has(attr)) remain += original[nextSlot][attr];
+                }
+                if (remain <= 0.0001) {
+                    for (let attr = 0; attr < result[nextSlot].length; attr++) result[nextSlot][attr] = 0;
+                    continue;
+                }
+                for (let attr = 0; attr < result[nextSlot].length; attr++) {
+                    result[nextSlot][attr] = forbidden.has(attr)
+                        ? 0
+                        : parseFloat(((original[nextSlot][attr] / remain) * 100).toFixed(4));
+                }
+            }
+        }
+    }
+    return result;
+});
+
+const sortSlot = (slotBonus: number[]): number[] => {
+    if (orderType.value === 'attribute') return slotBonus;
+    const indices = [...Array(slotBonus.length).keys()]
+        .filter((i) => Math.abs(slotBonus[i]) > 0.0001)
+        .sort((a, b) => slotBonus[b] - slotBonus[a]);
+    const out = new Array(slotBonus.length).fill(0);
+    indices.forEach((orig, n) => (out[n] = slotBonus[orig]));
+    return out;
+};
+
+const sortedBonuses = computed(() =>
+    recalculatedBonuses.value.map((slot) => (slot ? sortSlot(slot) : slot)),
+);
+
+const sortedAttributeNames = computed(() =>
+    recalculatedBonuses.value.map((slotBonus) => {
+        if (!slotBonus) return null;
+        if (orderType.value === 'attribute') return BONUS_ATTRIBUTES;
+        const indices = [...Array(slotBonus.length).keys()]
+            .filter((i) => Math.abs(slotBonus[i]) > 0.0001)
+            .sort((a, b) => slotBonus[b] - slotBonus[a]);
+        const out = new Array(slotBonus.length).fill('');
+        indices.forEach((orig, n) => (out[n] = BONUS_ATTRIBUTES[orig]));
+        return out;
+    }),
+);
+
+// 生成所选属性的所有排列
+const getPermutations = (arr: number[]): number[][] => {
+    if (arr.length === 0) return [[]];
+    const result: number[][] = [];
+    for (let i = 0; i < arr.length; i++) {
+        const current = arr[i];
+        const remaining = arr.slice(0, i).concat(arr.slice(i + 1));
+        for (const perm of getPermutations(remaining)) result.push([current, ...perm]);
+    }
+    return result;
+};
+
+// 从 n 个位置中选 k 个的所有组合
+const getPositionCombinations = (n: number, k: number): number[][] => {
+    const result: number[][] = [];
+    const temp: number[] = [];
+    const backtrack = (start: number) => {
+        if (temp.length === k) {
+            result.push([...temp]);
+            return;
+        }
+        for (let i = start; i < n; i++) {
+            temp.push(i);
+            backtrack(i + 1);
+            temp.pop();
+        }
+    };
+    backtrack(0);
+    return result;
+};
+
+// 计算特定位置组合 + 属性排列的概率（不放回）
+const calculateCombinationProbability = (
+    positions: number[],
+    selectedAttrs: number[],
+    totalSlots: number,
+): number => {
+    const bonus = item.value?.bonus;
+    if (!bonus) return 0;
+    let probability = 1.0;
+    const usedAttrs = new Set<number>();
+    for (let slot = 0; slot < totalSlots; slot++) {
+        const slotData = bonus[slot];
+        if (!slotData) return 0;
+        const positionIndex = positions.indexOf(slot);
+        const targetAttr = positionIndex !== -1 ? selectedAttrs[positionIndex] : null;
+        let availableWeight = 0;
+        for (let attr = 0; attr < slotData.length; attr++) {
+            if (!usedAttrs.has(attr)) availableWeight += slotData[attr];
+        }
+        if (availableWeight <= 0.0001) return 0;
+        if (targetAttr !== null) {
+            probability *= slotData[targetAttr] / availableWeight;
+            usedAttrs.add(targetAttr);
+        } else {
+            let otherWeight = 0;
+            for (let attr = 0; attr < slotData.length; attr++) {
+                if (!usedAttrs.has(attr) && !selectedAttrs.includes(attr)) otherWeight += slotData[attr];
+            }
+            probability *= otherWeight / availableWeight;
+        }
+    }
+    return probability * 100;
+};
+
+// 加护组合生成概率
+const bonusCombinationProbabilities = computed(() => {
+    const selectedAttrs: number[] = [];
+    const used = new Set<number>();
+    for (const attr of selectedAttributes.value) {
+        if (attr !== null && !used.has(attr)) {
+            selectedAttrs.push(attr);
+            used.add(attr);
+        }
+    }
+    if (selectedAttrs.length === 0) return [];
+    const totalSlotsMax = item.value?.bonus?.length ?? 4;
+    const results: Array<{
+        totalSlots: number;
+        combinations: Array<{ positions: number[]; probability: number; attributeNames: string[] }>;
+        totalProbability: number;
+    }> = [];
+    for (let totalSlots = selectedAttrs.length; totalSlots <= totalSlotsMax; totalSlots++) {
+        if (totalSlots === 0) continue;
+        const positionCombinations = getPositionCombinations(totalSlots, selectedAttrs.length);
+        const combinations: Array<{
+            positions: number[];
+            probability: number;
+            attributeNames: string[];
+        }> = [];
+        for (const positions of positionCombinations) {
+            for (const permutedAttrs of getPermutations(selectedAttrs)) {
+                const probability = calculateCombinationProbability(positions, permutedAttrs, totalSlots);
+                const attrNames = new Array(totalSlots).fill('其他');
+                positions.forEach((pos, index) => {
+                    attrNames[pos] = BONUS_ATTRIBUTES[permutedAttrs[index]];
+                });
+                combinations.push({ positions, probability, attributeNames: attrNames });
+            }
+        }
+        const valid = combinations.filter((c) => c.probability > 0.0001);
+        const totalProbability = valid.reduce((sum, c) => sum + c.probability, 0);
+        if (valid.length > 0) {
+            results.push({ totalSlots, combinations: valid, totalProbability });
+        }
+    }
+    return results;
 });
 
 /**

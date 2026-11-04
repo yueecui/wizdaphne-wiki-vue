@@ -40,7 +40,7 @@
                                     >
                                         <span
                                             class="cursor-pointer text-sky-300 underline decoration-dotted decoration-1 underline-offset-2 hover:text-light"
-                                            @click="openEnemy(unit.category)"
+                                            @click="openEnemy(unit.category, unit.variant)"
                                         >
                                             {{ unit.name }}
                                         </span>
@@ -274,7 +274,7 @@
         <EquipmentModal v-if="equipmentShow" v-model:show="equipmentShow" :identification="equipmentId" />
 
         <!-- 召唤单位点开的敌人详情：必须 v-if，否则会随技能详情一起创建（组件互相嵌套） -->
-        <EnemyModal v-if="enemyShow" v-model:show="enemyShow" :enemy-id="enemyId" />
+        <EnemyModal v-if="enemyShow" v-model:show="enemyShow" :enemy-id="enemyId" :enemy-variant-id="enemyVariantId" />
     </NSpin>
 </template>
 
@@ -290,6 +290,7 @@ import type {
     SkillLevel,
     SkillRef,
     SkillSubEffect,
+    SkillSummon,
     SubEffectBrief,
     SubEffectBriefLeaf,
 } from './types';
@@ -316,9 +317,11 @@ const openSkill = (identification?: number | null) => {
 // ---------- 召唤单位 → 敌人详情 ----------
 const enemyShow = ref(false);
 const enemyId = ref<number | null>(null);
-const openEnemy = (category: number) => {
+const enemyVariantId = ref<number | null>(null);
+const openEnemy = (category: number, variant?: number) => {
     if (!store.enemyById.has(category)) return;
     enemyId.value = category;
+    enemyVariantId.value = variant ?? null;
     enemyShow.value = true;
 };
 
@@ -524,7 +527,7 @@ const damageValues = (label: string, fn: (d: SkillDamage) => string) =>
 
 /** 攻击开始时触发的效果单独成行，避免和同名的伤害后效果混在一起 */
 const subLabel = (s: SkillSubEffect) =>
-    `${s.from === 'attack_start' ? '攻击前 · ' : ''}${s.kind_name ?? `效果 #${s.kind}`}`;
+    `${s.from === 'attack_start' ? '攻击前 · ' : ''}${store.effectKinds[String(s.kind)]?.name ?? s.kind_name ?? `效果 #${s.kind}`}`;
 
 /**
  * 参数名末尾的 ``%`` 表示「这个值是百分数」（如 百分比% / 概率%）。
@@ -709,10 +712,17 @@ const skillRef = (value: number): { id: number; name: string } | null => {
     return { id, name: level > 0 && level <= 9 ? `${name} Lv${level}` : name };
 };
 
-/** 参数 -> 「参数名 / 值」；0 也照常显示，只有原始 id 对不上技能时才跳过 */
+/**
+ * 参数 -> 「参数名 / 值」；0 也照常显示，只有原始 id 对不上技能时才跳过。
+ * ``kind`` / ``summons`` 仅用于 kind 6000「仲間呼び」：它的 ``param_1`` 是
+ * ``friend_layout_id``（召唤布局），不是技能 id，不能再自动连成技能——这里直接
+ * 显示该布局放出的单位，与技能「召唤」区口径一致。
+ */
 const paramFields = (
     params: Array<number | null> | null | undefined,
     labels: Array<EffectParamEntry | null> | null | undefined,
+    kind?: number | null,
+    summons?: SkillSummon[] | null,
 ): SubField[] => {
     const out: SubField[] = [];
     (params ?? []).forEach((raw, index) => {
@@ -731,6 +741,17 @@ const paramFields = (
             return;
         }
         if (isRawId(value)) {
+            // kind 6000「仲間呼び」的 param_1 = friend_layout_id（召唤布局），
+            // 不是技能 id：显示该布局放出的单位，查不到布局时退化为原始 id
+            if (kind === 6000 && index === 0) {
+                const text = summons?.length
+                    ? summons
+                          .map((u) => store.enemyById.get(u.category)?.name ?? `#${u.category}`)
+                          .join(' / ')
+                    : String(value);
+                out.push({ name: paramName(label, index), value: text, slot: index });
+                return;
+            }
             const skill = skillRef(value);
             if (skill) {
                 out.push({ name: paramName(label, index), value: skill.name, slot: index, skill: skill.id });
@@ -765,7 +786,7 @@ const miscFields = (s: SkillSubEffect): SubField[] => {
  * long cell, so ``turn == 9999`` (permanent) reads as its own line too.
  */
 const subFields = (s: SkillSubEffect): SubField[] => {
-    const out: SubField[] = [...paramFields(s.params, s.param_labels)];
+    const out: SubField[] = [...paramFields(s.params, s.param_labels, s.kind, data.value?.summons)];
     // ``strength`` often duplicates param_2 (e.g. 气绝), don't list it twice
     if (s.strength && !(s.params ?? []).includes(s.strength)) {
         out.push({ name: '强度', value: String(s.strength) });
@@ -799,7 +820,7 @@ interface EffectNode {
 /** brief 版的效果 -> 参数名 / 值（参数名同样以 effect_kinds.json 为准） */
 const briefFields = (e: SubEffectBriefLeaf): SubField[] => {
     const kind = e.kind == null ? null : store.effectKinds[String(e.kind)];
-    const out: SubField[] = [...paramFields(e.params, kind?.params)];
+    const out: SubField[] = [...paramFields(e.params, kind?.params, e.kind)];
     if (e.strength && !(e.params ?? []).includes(e.strength)) {
         out.push({ name: '强度', value: String(e.strength) });
     }
@@ -1211,6 +1232,8 @@ const constantLink = (row: Row) => {
 /** 召唤单位：敌人分类 id（``EnemyCategory.id``）+ 合并后的数量 */
 interface SummonLink {
     category: number;
+    variant?: number;
+    level: number;
     count: number;
     name: string;
 }
@@ -1279,14 +1302,16 @@ const infoRows = computed<InfoRow[]>(() => {
         });
     }
 
-    // 召唤：EnemyFriendLayout 里列出的被召唤单位（同名的多个分类合并计数，名字可点开敌人详情）
+    // 召唤：EnemyFriendLayout 里列出的被召唤单位（按分类 + 变体 + 等级聚合计数，
+    // 名字可点开敌人详情，并带上变体 id 直接跳到游戏里实际被召唤的那个变体）
     const summons = new Map<string, SummonLink>();
     for (const unit of d.summons ?? []) {
         const enemy = store.enemyById.get(unit.category);
         const name = enemy?.name || enemy?.name_jp || `#${unit.category}`;
-        const merged = summons.get(name);
+        const key = `${unit.category}-${unit.variant ?? ''}-${unit.level}`;
+        const merged = summons.get(key);
         if (merged) merged.count += unit.count;
-        else summons.set(name, { category: unit.category, count: unit.count, name });
+        else summons.set(key, { category: unit.category, variant: unit.variant, count: unit.count, level: unit.level, name });
     }
     if (summons.size) {
         out.push({ label: '召唤', summons: [...summons.values()] });

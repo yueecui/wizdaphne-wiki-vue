@@ -4,7 +4,7 @@
             <div class="w-[95vw] md:w-[880px] max-h-[88vh] m-auto flex flex-col huiji-css-hook bg-transparent!">
                 <div class="flex flex-col min-h-0 bg-[#312721]! border! border-[#463d38]! rounded">
                     <div class="shrink-0 bg-[#312721] px-4 pt-3 pb-2 border-b! border-[#463d38]!">
-                        <div class="flex items-start gap-3">
+                        <div class="flex flex-wrap items-start gap-3">
                             <div class="flex-1 min-w-0">
                                 <div class="text-sm text-light">
                                     技能 No. {{ currentId ?? '—' }}
@@ -16,7 +16,7 @@
                                     {{ subtitle }}
                                 </div>
                             </div>
-                            <div class="flex items-center gap-3 shrink-0">
+                            <div class="flex w-full md:w-auto items-center gap-3 justify-end md:justify-start shrink-0">
                                 <NButton
                                     v-if="canEdit"
                                     size="tiny"

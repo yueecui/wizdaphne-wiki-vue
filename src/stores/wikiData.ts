@@ -516,8 +516,8 @@ export interface RawSkill {
     level0: boolean;
     sources: string[];
     jobs: number[];
-    /** 被召唤出来的单位（``EnemyFriendLayout``）：敌人分类 + 等级 + 数量 */
-    summons?: Array<{ category: number; level: number; count: number }>;
+    /** 被召唤出来的单位（``EnemyFriendLayout``）：敌人分类 + 具体变体 id + 等级 + 数量 */
+    summons?: Array<{ category: number; variant?: number; level: number; count: number }>;
     description?: string;
     detail_description?: string;
     description_lang?: string;
@@ -1200,7 +1200,17 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         const next = { ...enums.value.effect_kind };
         for (const [key, fix] of Object.entries(patch)) {
             const base = next[key];
-            if (!base) continue; // 只修数据里存在的 kind
+            if (!base) {
+                // 解包字典里没有这个 kind（例如只出现在子效果引用链里、清洗漏统计），
+                // 手工表补的中文名 / 参数名仍要生效，否则展开子项目只能退回日文名。
+                if (fix.name == null && !fix.params) continue;
+                next[key] = {
+                    id: Number(key),
+                    name: fix.name,
+                    params: (fix.params ?? null) as EffectKindEntry['params'],
+                };
+                continue;
+            }
             const params =
                 base.params && fix.params
                     ? base.params.map((label, index) => {

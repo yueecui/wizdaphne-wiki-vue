@@ -116,20 +116,27 @@ def main(argv: list[str]) -> int:
 
     # ---------- 召唤 ----------
     # ``EnemyFriendLayout`` 每行是一个被召唤出来的 Enemy 实例（位置 / 等级），
-    # ``friend_layout_id`` 有两种挂法：
-    #   1. 等于施放技能自己（大多数情况，布局 id = ``Skill.id``）；
-    #   2. 由 ``SkillSubEffect`` 里 kind 6000「仲間呼び」的 ``param_1`` 指过去
-    #      （例如 213106000「召唤」→ 布局 123001000，此时布局 id 与技能 id 无关）。
-    # 只按第一种join会漏掉后一种，所以两种都认。
+    # 通过 ``friend_layout_id`` 聚合。召唤技在 ``SkillSubEffect`` 里用
+    # kind 6000「仲間呼び」表示，其 ``param_1`` 指向 ``friend_layout_id``
+    # （例如 211206000「召集伙伴」→ 6000 的 param_1 = 112000000 = 布局 id，
+    # 与技能 id 自身无关）。
+    # 注意：``friend_layout_id`` 属于「敌人布局」命名空间，与「技能 identification」
+    # 可能撞号（如敌人 112000000 的布局 id 与玩家咒文 BADIOS 的 identification
+    # 同为 112000000）。因此只能以 6000 的 ``param_1`` 去查 ``friend_layout_id``，
+    # 绝不能直接把 ``friend_layout_id`` 当成技能 id 来 join，否则会把敌人布局
+    # 错挂到编号恰好相同的玩家技能上。
     enemy_rows = {r["id"]: r for r in load("Enemy")}
-    summon_units: dict[int, dict[tuple[int, int], int]] = collections.defaultdict(
+    # key = (变体 id, 分类 id, 等级)。保留变体 id（EnemyFriendLayout.enemy_id），
+    # 这样前端能直接跳到游戏里实际被召唤的那个变体，而不是默认落到分类的第一个变体
+    summon_units: dict[int, dict[tuple[int, int, int], int]] = collections.defaultdict(
         lambda: collections.defaultdict(int))
     for r in load("EnemyFriendLayout"):
         enemy = enemy_rows.get(r.get("enemy_id")) or {}
         category = enemy.get("category_id")
         if not r.get("friend_layout_id") or not category:
             continue
-        summon_units[r["friend_layout_id"]][(category, r.get("level") or 0)] += 1
+        variant = r.get("enemy_id")
+        summon_units[r["friend_layout_id"]][(variant, category, r.get("level") or 0)] += 1
 
     #: ident -> 该技能 6000 子效果里出现的 friend_layout_id（第二种挂法用）
     summon_layout_of: dict[int, list[int]] = collections.defaultdict(list)
@@ -195,26 +202,16 @@ def main(argv: list[str]) -> int:
 
     # ---------- build ----------
     #: identification -> 召唤出来的单位（分类 / 等级 / 数量）
+    # 唯一来源：技能 6000 子效果的 param_1 → friend_layout_id → 被召唤单位。
     summon_by_ident: dict[int, list[dict]] = collections.defaultdict(list)
-    for skill_id, units in summon_units.items():
-        ident = ident_of(skill_id, known)
-        if ident is None:
-            continue
-        for (category, level), count in units.items():
-            summon_by_ident[ident].append(
-                {"category": category, "level": level, "count": count})
-
-    # 第二种挂法兜底：布局 id 与技能 id 无关，只能从 6000 的 param_1 查
     for ident, layout_ids in summon_layout_of.items():
-        if summon_by_ident.get(ident):
-            continue
-        units: dict[tuple[int, int], int] = collections.defaultdict(int)
+        units: dict[tuple[int, int, int], int] = collections.defaultdict(int)
         for layout_id in layout_ids:
-            for (category, level), count in (summon_units.get(layout_id) or {}).items():
-                units[(category, level)] += count
-        for (category, level), count in units.items():
+            for (variant, category, level), count in (summon_units.get(layout_id) or {}).items():
+                units[(variant, category, level)] += count
+        for (variant, category, level), count in units.items():
             summon_by_ident[ident].append(
-                {"category": category, "level": level, "count": count})
+                {"category": category, "variant": variant, "level": level, "count": count})
 
     idents = sorted(by_ident)
     if args.limit:
@@ -353,6 +350,8 @@ def main(argv: list[str]) -> int:
                 if not s:
                     return None
                 k = s.get("kind")
+                if k is not None:
+                    kind_count[k] += 1
                 tgt = targets.get(s.get("skill_target_id")) or {}
                 brief = {
                     "id": sid,
@@ -489,7 +488,22 @@ def main(argv: list[str]) -> int:
                     item_sub["child_sub_effects"] = kids
                 return item_sub
 
-            for gid in gids + list(r.get("passive_skill_effect_group_ids") or []):
+            # 真正的效果（伤害 / 子效果）可能不在直接效果组里，而是放在
+            # ``child_effect_group_id`` 指向的子组（例：194000050 的直接组只有
+            # child_effect_group_id，子组才有 damage_effect_ids / sub_effect_ids）。
+            # 不走这一步会导致「能造成伤害 / 有附加效果」的技能清洗后丢失这些信息。
+            # 这里用 BFS 顺着 child_effect_group_id 把所有相关效果组都纳入处理。
+            proc_gids: list[int] = list(gids) + list(r.get("passive_skill_effect_group_ids") or [])
+            seen_gids = set(proc_gids)
+            i = 0
+            while i < len(proc_gids):
+                cgrp = groups.get(proc_gids[i]) or {}
+                child = cgrp.get("child_effect_group_id")
+                if child and child not in seen_gids:
+                    seen_gids.add(child)
+                    proc_gids.append(child)
+                i += 1
+            for gid in proc_gids:
                 grp = groups.get(gid) or {}
                 for did in grp.get("damage_effect_ids") or []:
                     d = damage.get(did)
@@ -569,6 +583,30 @@ def main(argv: list[str]) -> int:
             "invalid_kinds": row.get("invalid_sub_effect_kinds") or None,
             "remove_kinds": row.get("remove_sub_effect_kinds") or None,
         }
+
+    # 某些 kind 只作为「互斥 / 移除」关系被引用，并不出现在任何子效果主体里，
+    # 上面的 kind_count 遍历会漏掉它们；这里把所有被引用到的 kind 补进字典，
+    # 否则前端拿不到名字（只能显示 id / 日文），手工表也看不到、无法补译名。
+    referenced = set()
+    for entry in kind_dict.values():
+        for f in ("invalid_kinds", "remove_kinds"):
+            for rk in entry.get(f) or []:
+                referenced.add(rk)
+    for rk in sorted(referenced):
+        if str(rk) not in kind_dict:
+            row = kinds.get(rk) or {}
+            ja, _ = text(row.get("name"))
+            kind_dict[str(rk)] = {
+                "id": rk,
+                "name_jp": ja,
+                "name": ja,
+                "category": row.get("category"),
+                "primary_category": row.get("primary_category"),
+                "count": 0,
+                "params": param_labels(rk),
+                "invalid_kinds": row.get("invalid_sub_effect_kinds") or None,
+                "remove_kinds": row.get("remove_sub_effect_kinds") or None,
+            }
 
     out_dir = os.path.join(CLEAN, "skill")
     write_json(os.path.join(out_dir, "skills.json"), entries)

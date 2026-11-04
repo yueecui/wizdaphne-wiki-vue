@@ -286,7 +286,9 @@ export const useInlineLink = () => {
             case 'enemy': {
                 const row = findEnemyLink(ref);
                 if (!row) return fail();
-                modal.open({ kind: 'enemy', id: row.id });
+                // 模板里的 id 通常是「变体」id（地图 / 敌群点出来的也是），连同它一起传，
+                // modal 会按 enemyVariantId 自动切到对应变体；不是变体 id 时取不到变体、停在变体 1
+                modal.open({ kind: 'enemy', id: row.id, enemyVariantId: parseId(ref.id) });
                 return;
             }
             case 'map': {

@@ -20,5 +20,7 @@ const monster = computed(() => link.findEnemyLink({ id: props.monsterId, name: p
 
 const label = computed(() => monster.value?.name || props.monsterName || (props.monsterId ? `#${props.monsterId}` : '敌人'));
 
+// openLink 内部会先 ensureWikiData 加载数据，并把变体 id 一并传给 modal，
+// modal 按 enemyVariantId 自动切到对应变体
 const handleClick = () => void link.openLink('enemy', { id: props.monsterId, name: props.monsterName });
 </script>

@@ -1,7 +1,7 @@
 <template>
     <ItemModal v-if="kind === 'item'" v-model:show="show" :item="item" />
     <EquipmentModal v-else-if="kind === 'equipment'" v-model:show="show" :identification="id" />
-    <EnemyModal v-else-if="kind === 'enemy'" v-model:show="show" :enemy-id="id" />
+    <EnemyModal v-else-if="kind === 'enemy'" v-model:show="show" :enemy-id="id" :enemy-variant-id="enemyVariantId" />
     <SkillModal v-else-if="kind === 'skill'" v-model:show="show" :identification="id" />
     <MapFloorModal v-else-if="kind === 'mapFloor'" v-model:show="show" :floor-id="id" />
     <ThemeConfigProvider v-else-if="kind === 'character'">
@@ -38,7 +38,7 @@ const CharacterDetail = defineAsyncComponent(() => import('../views/DataV2/Chara
 const JunkModal = defineAsyncComponent(() => import('../views/DataV2/junk/JunkModal.vue'));
 
 const store = useInlineModalStore();
-const { show, kind, item, id } = storeToRefs(store);
+const { show, kind, item, id, enemyVariantId } = storeToRefs(store);
 const { close } = store;
 
 const junkModal = useJunkModalStore();
