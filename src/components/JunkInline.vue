@@ -1,17 +1,24 @@
 <template>
-    <span @click="handleClick" class="cursor-pointer text-blue-200 hover:text-blue-400">
-        {{ junk?.name || junkName || '杂物' }}
-    </span>
+    <InlineLinkBase
+        :name="props.junkName"
+        :resolved-name="junk?.name"
+        :custom-class="props.customClass"
+        fallback="杂物"
+        @activate="handleClick"
+    />
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import InlineLinkBase from './InlineLinkBase.vue';
 import { useJunkModalStore } from '../views/DataV2/junk/junkModalStore';
 import { useJunkStore } from '../views/DataV2/junk/junkStore';
 
 const props = defineProps<{
     junkName?: string;
     junkHash?: string;
+    /** 自定义样式类（模板里的 `data-class`）：有值时替换掉默认的蓝色 */
+    customClass?: string;
 }>();
 
 const junkStore = useJunkStore();

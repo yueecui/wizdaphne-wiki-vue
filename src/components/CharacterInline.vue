@@ -1,7 +1,8 @@
 <template>
-    <a class="cursor-pointer text-blue-200 hover:text-blue-400" @click.prevent="handleClick">
+    <!-- 默认色取自站点链接样式（site.css：a / a:hover），传了 data-class 就整组替换 -->
+    <span class="cursor-pointer" :class="customClass || 'text-[#d4ad7a] hover:text-[#f4cf9e]'" @click="handleClick">
         {{ label }}
-    </a>
+    </span>
 </template>
 
 <script setup lang="ts">
@@ -13,6 +14,8 @@ const props = defineProps<{
     characterName?: string;
     /** 角色 ID：有就优先按它定位 */
     characterId?: string;
+    /** 自定义样式类（模板里的 `data-class`） */
+    customClass?: string;
 }>();
 
 const link = useInlineLink();

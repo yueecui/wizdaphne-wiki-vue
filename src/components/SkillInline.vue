@@ -1,5 +1,6 @@
 <template>
-    <span @click="handleClick" class="cursor-pointer text-blue-200 hover:text-blue-400">
+    <!-- 传了 customClass 时默认蓝色（普通 / hover）不再生效，文字颜色等完全由它决定 -->
+    <span class="cursor-pointer" :class="customClass || 'text-blue-200 hover:text-blue-400'" @click="handleClick">
         {{ label }}
     </span>
 </template>
@@ -13,6 +14,8 @@ const props = defineProps<{
     skillName?: string;
     /** 技能 identification：靠它定位 */
     skillId?: string;
+    /** 自定义样式类（模板里的 `data-class`）：有值时替换掉默认的蓝色 */
+    customClass?: string;
 }>();
 
 const link = useInlineLink();

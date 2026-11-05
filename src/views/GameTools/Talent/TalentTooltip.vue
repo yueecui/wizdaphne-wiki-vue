@@ -2,7 +2,7 @@
     <Teleport to="body">
         <div
             ref="tooltipRef"
-            class="fixed bg-[#25201d] border-2! border-[#37322a]! rounded-lg w-40 text-[#dfdfdf] z-10000"
+            class="fixed bg-[#25201d] border-2! border-[#37322a]! rounded-lg w-max max-w-[min(92vw,420px)] text-[#dfdfdf] z-10000"
             :style="tooltipStyle"
         >
             <div class="text-[#e3cc99] bg-black px-2 py-1 rounded-t-lg border-b-2! border-[#37322a]!">
@@ -18,7 +18,7 @@
                         可能出现的能力
                     </div>
                     <div v-for="(option, index) in info.node.options" :key="index" class="text-sm">
-                        {{ option }}
+                        {{ option }}<span v-if="info.node.getPercent(index)" class="text-[#9a8f80]">（{{ info.node.getPercent(index) }}）</span>
                     </div>
                     <div v-if="info.node.options.length > (info.node.number || 1)" class="text-[#e3cc99] mt-1">
                         随机 {{ info.node.number }} 条
@@ -30,37 +30,55 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { TooltipInfo } from './types';
 
 const props = defineProps<{ info: TooltipInfo }>();
 
 const tooltipRef = ref<HTMLDivElement | null>(null);
-const tooltipHeight = ref(150); // 估计高度，实际会通过 DOM 获取
 
-// 获取 tooltip 实际高度
-watch(
-    () => props.info,
-    () => {
-        if (tooltipRef.value) {
-            tooltipHeight.value = tooltipRef.value.offsetHeight;
-        }
-    },
-    { immediate: true },
-);
+/** 宽度由内容撑开（w-max），这里存实际渲染尺寸用于边界判断 */
+const tooltipWidth = ref(0);
+const tooltipHeight = ref(0);
+
+/** 首帧还没量到尺寸时的估计值 */
+const FALLBACK_WIDTH = 288;
+
+const measure = () => {
+    const el = tooltipRef.value;
+    if (!el) return;
+    tooltipWidth.value = el.offsetWidth;
+    tooltipHeight.value = el.offsetHeight;
+};
+
+let observer: ResizeObserver | null = null;
+
+onMounted(() => {
+    if (tooltipRef.value) {
+        // 内容变化时宽度会变，跟着重量
+        observer = new ResizeObserver(measure);
+        observer.observe(tooltipRef.value);
+    }
+    measure();
+});
+
+onBeforeUnmount(() => observer?.disconnect());
+
+watch(() => props.info, () => nextTick(measure), { immediate: true });
 
 const tooltipStyle = computed(() => {
     const padding = 16; // 边距
     const offsetX = 14;
     const offsetY = 10;
+    const width = tooltipWidth.value || FALLBACK_WIDTH;
 
     let left = props.info.x + offsetX;
     let top = props.info.y - offsetY;
 
     // 检查右侧边界
-    const maxLeft = window.innerWidth - 160 - padding; // 160 是 tooltip 宽度
+    const maxLeft = window.innerWidth - width - padding;
     if (left > maxLeft) {
-        left = props.info.x - 160 - offsetX;
+        left = props.info.x - width - offsetX;
     }
 
     // 检查底部边界，如果超出则向上显示

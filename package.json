@@ -11,7 +11,7 @@
         "build": "run-p typecheck build-only",
         "上传到COS": "node ./local_scripts/dist/uploadToCos.js",
         "[UPDATE 1] 清洗解包数据": "python ./local_scripts/clean/character.py && python ./local_scripts/clean/job.py && python ./local_scripts/clean/skill.py && python ./local_scripts/clean/dialogue.py && python ./local_scripts/clean/blessing.py",
-        "[UPDATE 2] 转换为 mock": "tsx ./local_scripts/wiki/fetchWikiExtras.ts && python ./local_scripts/clean/build_data.py && python ./local_scripts/clean/build_mock.py",
+        "[UPDATE 2] 转换为 mock": "tsx ./local_scripts/wiki/fetchWikiExtras.ts && python ./local_scripts/clean/build_data.py && python ./local_scripts/clean/build_mock.py && tsx ./local_scripts/wiki/genTalentTree.ts",
         "[UPDATE 3] 上传到 wiki": "tsx ./local_scripts/wiki/uploadDataToWiki.ts",
         "update:haken": "tsx ./local_scripts/wiki/updateHakenPage.ts",
         "preview": "vite preview --port 4173",
@@ -25,7 +25,8 @@
         "update:junk": "tsx ./local_scripts/src/scrapeJunkRates.ts",
         "update:equipment-bonus": "tsx ./local_scripts/src/updateEquipmentBonusRates.ts",
         "update:character-extra": "tsx ./local_scripts/src/fetchCharacterExtra.ts",
-        "update:character-status": "tsx ./local_scripts/src/character_status_scraper.ts"
+        "update:character-status": "tsx ./local_scripts/src/character_status_scraper.ts",
+        "gen:talent": "tsx ./local_scripts/wiki/genTalentTree.ts"
     },
     "dependencies": {
         "@tailwindcss/vite": "^4.0.17",

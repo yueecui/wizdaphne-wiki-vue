@@ -16,6 +16,7 @@
  *   Data:Map/<id>.json         dtype: "map"
  *   Data:EnemyPool/<id>.json   dtype: "enemy_pool"
  *   Data:Blessing.json        单文件（整包，`public/blessing.json`）
+ *   Data:Talent.json          单文件（整包，`public/talent.gamedata.json`，由 genTalentTree 生成）
  *   Data:MapMeta.json          整表（地图分类，层在 Data:Map/<id>.json）
  *   Data:Enum.json             整表（id 字典 + effect_kind），单条目
  *
@@ -31,7 +32,7 @@
  *   默认 `D:\WizardyDaphne\workspace\wikitext.sqlite`，可用 `WIKI_CACHE_SQLITE_PATH` 覆盖。
  *
  * 顺序：character → job → skill → equipment → item → shop → relic →
- *       enemy → map → map_meta → enemy_pool → blessing → enum
+ *       enemy → map → map_meta → enemy_pool → blessing → talent → enum
  * （各自失败互不影响，最后汇总失败数）。
  * 效果种类名表（Data:EffectKind.json）在 wiki 上手工维护，但本脚本会在 skill 阶段后
  * 把解包里出现、页面上还没有的新效果种类**追加**进去（日文名兜底，已有项不覆盖）。
@@ -66,6 +67,7 @@ import { execFileSync } from 'node:child_process';
 import { promises as fs, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { STORY_PAGE_PREFIX, buildStoryPages, publishStoryPages } from './updateCharacterStory';
 
 dotenv.config();
 
@@ -140,6 +142,7 @@ const KIND_NAMES = [
     'map_meta',
     'enemy_pool',
     'blessing',
+    'talent',
     'enum',
 ] as const;
 type KindName = (typeof KIND_NAMES)[number];
@@ -244,6 +247,17 @@ const KINDS: Record<KindName, KindSpec> = {
         singleton: true,
         byDefault: true,
         note: '哈肯的加护（单文件：效果已展开，名字字典内嵌）',
+    },
+    talent: {
+        sub: null,
+        title: 'Talent',
+        // 天赋树是一整张图（节点 / 连线 / 配色），不拆记录级页面。
+        // 文件由 genTalentTree 从解包数据生成，并合并线上人工维护的名称 / 分组 / 配色 / 总点数
+        file: '../talent.gamedata.json',
+        whole: true,
+        singleton: true,
+        byDefault: true,
+        note: '心器之渊天赋树（单文件：节点坐标 / 连线 / 选项权重 / 分组配色）',
     },
     enum: {
         sub: null,
@@ -870,6 +884,24 @@ const parseArgs = () => {
     };
 };
 
+/** 角色背景故事（Data:角色故事/<风格><角色名>.json）：基础版 + 特殊风格版，觉醒版跳过 */
+async function syncCharacterStory(bot: HuijiWiki, options: { dryRun: boolean }): Promise<void> {
+    const pages = await buildStoryPages();
+    console.log(`  角色故事页面：${pages.length} 个`);
+    if (pages.length === 0) return;
+
+    if (options.dryRun) {
+        const sample = JSON.stringify(pages[0].page, null, 2);
+        console.log(`  [dry-run] ${pages[0].title}（共 ${pages.length} 个）预览:`);
+        console.log(sample.length > 600 ? `${sample.slice(0, 600)}…` : sample);
+        return;
+    }
+
+    const { uploaded, skipped, failed } = await publishStoryPages(bot, pages);
+    console.log(`  本类完成: 上传 ${uploaded} / 跳过 ${skipped} / 失败 ${failed}`);
+    if (failed > 0) throw new Error(`${failed} 个角色故事页面失败`);
+}
+
 async function main(): Promise<void> {
     const { kinds, concurrency, limit, force, dryRun, achievement } = parseArgs();
 
@@ -926,6 +958,17 @@ async function main(): Promise<void> {
         } catch (err) {
             failedTotal++;
             console.error(`  × ${CHARACTER_EXTRA_TITLE} 同步失败: ${err instanceof Error ? err.message : err}`);
+        }
+    }
+
+    // 角色背景故事（Data:角色故事/<风格><角色名>.json）：基础版 + 特殊风格版，觉醒版跳过
+    if (kinds.includes('character')) {
+        console.log(`\n===== character-story (${STORY_PAGE_PREFIX}) =====`);
+        try {
+            await syncCharacterStory(bot, { dryRun });
+        } catch (err) {
+            failedTotal++;
+            console.error(`  × 角色故事同步失败: ${err instanceof Error ? err.message : err}`);
         }
     }
 

@@ -1,11 +1,16 @@
 <template>
-    <span @click="handleClick" class="cursor-pointer text-blue-200 hover:text-blue-400">
-        {{ label }}
-    </span>
+    <InlineLinkBase
+        :show-name="props.showName"
+        :name="props.mapName"
+        :id="props.mapId"
+        :custom-class="props.customClass"
+        fallback="地图"
+        @activate="handleClick"
+    />
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import InlineLinkBase from './InlineLinkBase.vue';
 import { useInlineLink } from './inlineLink';
 
 const props = defineProps<{
@@ -15,13 +20,11 @@ const props = defineProps<{
     showName?: string;
     /** 地图层 ID：有就优先按它定位 */
     mapId?: string;
+    /** 自定义样式类（模板里的 `data-class`）：有值时替换掉默认的蓝色 */
+    customClass?: string;
 }>();
 
 const link = useInlineLink();
-
-const label = computed(
-    () => props.showName || props.mapName || (props.mapId ? `#${props.mapId}` : '地图'),
-);
 
 // V2 没有地图级 modal，按名字 / ID 对到对应的一层（`MapFloorModal`）
 const handleClick = () => void link.openLink('map', { id: props.mapId, name: props.mapName });

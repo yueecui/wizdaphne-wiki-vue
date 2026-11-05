@@ -41,12 +41,21 @@ export const useTalentStore = defineStore('talent', () => {
         isLoading.value = true;
 
         try {
-            const response = await fetch(
-                IS_DEV ? '/talent.json' : 'https://wizdaphne.huijiwiki.com/wiki/Data:Talent.json?action=raw',
-            );
+            // 开发环境优先用「从解包主数据生成」的 talent.gamedata.json，取不到再退回手工版 talent.json
+            const sources = IS_DEV
+                ? ['/talent.gamedata.json', '/talent.json']
+                : ['https://wizdaphne.huijiwiki.com/wiki/Data:Talent.json?action=raw'];
 
-            if (response.ok) {
-                const data: ITalentJson = await response.json();
+            let data: ITalentJson | null = null;
+            for (const url of sources) {
+                const response = await fetch(url);
+                if (response.ok) {
+                    data = await response.json();
+                    break;
+                }
+            }
+
+            if (data) {
                 totalPoints.value = data.totalPoints ?? 50;
                 width.value = data.width ?? 2400;
                 height.value = data.height ?? 2400;
@@ -297,7 +306,8 @@ export const useTalentStore = defineStore('talent', () => {
                 ...n.data,
                 options: n.data.options.filter((s) => s.trim()),
             })),
-            edges: edges.value.filter((e) => e.isValid()).map((e) => ({ from: e.from, to: e.to })),
+            // 带上 distant 等附加字段，别在保存时丢掉跨区标记
+            edges: edges.value.filter((e) => e.isValid()).map((e) => ({ ...e.data })),
             colors: Array.from(colors.value.values()),
         };
 

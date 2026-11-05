@@ -25,6 +25,7 @@
                         :y2="nodes.find((n) => n.id === edge.to)?.getY()"
                         :stroke="edge.getColor()"
                         :stroke-width="edge.getWidth()"
+                        :opacity="edge.getOpacity()"
                         stroke-linecap="round"
                     />
                 </template>

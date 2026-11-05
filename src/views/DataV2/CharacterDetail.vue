@@ -513,13 +513,14 @@
                             </section>
 
                             <section v-if="tavernRows.length" class="flex flex-col gap-2">
-                                <div class="flex items-center gap-2">
+                                <div class="flex flex-col gap-1">
                                     <span class="text-sm text-warning">酒馆</span>
+                                    <span class="text-xs opacity-60">选择饮料的类型不影响信赖度</span>
                                 </div>
                                 <div
                                     v-for="row in tavernRows"
                                     :key="row.topic"
-                                    class="flex flex-col gap-1 p-2 rounded bg-black/20 border! border-solid border-[#463d38]!"
+                                    class="flex flex-col gap-1 mt-2 p-2 rounded bg-black/20 border! border-solid border-[#463d38]!"
                                 >
                                     <div class="text-sm text-light">{{ row.topic }}</div>
                                     <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs">

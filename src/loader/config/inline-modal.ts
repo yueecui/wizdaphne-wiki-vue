@@ -17,6 +17,8 @@ const INLINE_SELECTORS = [
     '#character-profile-v2',
     '#character-skills-v2',
     '#character-dialogue-v2',
+    // wiki 职业页：技能名 / 角色名都要能点开 modal
+    '#job-skills-v2',
 ];
 
 /**

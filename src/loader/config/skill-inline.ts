@@ -19,7 +19,9 @@ const config: LoaderConfig = {
             getParams: (element) => {
                 const skillName = element.getAttribute('data-name');
                 const skillId = element.getAttribute('data-id');
-                return { skillName, skillId };
+                // 自定义样式类：有值时默认的蓝色（普通 / hover）都不生效
+                const customClass = element.getAttribute('data-class') ?? undefined;
+                return { skillName, skillId, customClass };
             },
             app: () => import('../../components/SkillInline.vue'),
         },

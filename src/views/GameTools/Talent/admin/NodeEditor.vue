@@ -2,20 +2,6 @@
     <div v-if="selectedNode" class="border-[#37322a]! border! rounded-lg bg-black p-3">
         <div class="text-sm text-center text-[#e3cc99] mb-3">节点数据</div>
 
-        <!-- ID -->
-        <div class="mb-2">
-            <label class="text-xs text-gray-400 block">
-                ID
-                <span v-if="isIdDuplicate" class="text-red-500 ml-1">重复ID</span>
-            </label>
-            <NInput
-                :value="selectedNode.data.id"
-                @update:value="(v) => (selectedNode!.data.id = v)"
-                size="small"
-                :class="{ 'border-red-500': isIdDuplicate }"
-            />
-        </div>
-
         <!-- Label -->
         <div class="mb-2">
             <label class="text-xs text-gray-400 block">名称</label>
@@ -37,68 +23,39 @@
             />
         </div>
 
-        <!-- Cost -->
-        <div class="mb-2">
-            <label class="text-xs text-gray-400 block">消耗点数</label>
-            <NInputNumber
-                :value="selectedNode.data.cost"
-                @update:value="(v) => v !== null && (selectedNode!.data.cost = v)"
-                :min="0"
-                :max="99"
-                size="small"
-            />
-        </div>
-
-        <!-- Type -->
-        <div class="mb-2">
-            <label class="text-xs text-gray-400 block">类型</label>
-            <NSelect
-                :value="selectedNode.data.type ?? 0"
-                @update:value="(v) => (selectedNode!.data.type = v)"
-                :options="typeOptions"
-                size="small"
-            />
-        </div>
-
-        <!-- Position -->
-        <div class="mb-2">
-            <label class="text-xs text-gray-400 block">位置</label>
-            <div class="flex gap-2">
-                <NInputNumber
-                    :value="selectedNode.data.x"
-                    @update:value="(v) => v !== null && (selectedNode!.data.x = v)"
-                    size="small"
-                />
-                <NInputNumber
-                    :value="selectedNode.data.y"
-                    @update:value="(v) => v !== null && (selectedNode!.data.y = v)"
-                    size="small"
-                />
+        <!-- 其余字段来自游戏数据，只读展示 -->
+        <div class="flex flex-col gap-1 text-xs text-gray-400 border-t! border-[#37322a]! pt-2 mb-2">
+            <div class="flex justify-between gap-2">
+                <span class="shrink-0">ID</span>
+                <span class="text-gray-200 text-right break-all">{{ selectedNode.data.id }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span>消耗点数</span>
+                <span class="text-gray-200">{{ selectedNode.data.cost }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span>类型</span>
+                <span class="text-gray-200">{{ typeLabel }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span>位置</span>
+                <span class="text-gray-200">{{ selectedNode.data.x }}, {{ selectedNode.data.y }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span>能力随机数量</span>
+                <span class="text-gray-200">{{ selectedNode.number }}</span>
             </div>
         </div>
 
         <!-- Options -->
-        <div class="mb-3">
-            <label class="text-xs text-gray-400 block">能力（每行一个）</label>
-            <NInput
-                :value="selectedNode.data.options.join('\n')"
-                @update:value="(v) => (selectedNode!.data.options = v.split('\n'))"
-                type="textarea"
-                size="small"
-                :rows="4"
-            />
-        </div>
-
-        <!-- Number -->
-        <div class="mb-2">
-            <label class="text-xs text-gray-400 block">能力随机数量</label>
-            <NInputNumber
-                :value="selectedNode.data.number ?? 3"
-                @update:value="(v) => v !== null && (selectedNode!.data.number = v)"
-                :min="0"
-                :max="99"
-                size="small"
-            />
+        <div v-if="optionRows.length" class="mb-3">
+            <div class="text-xs text-gray-400 mb-1">可能出现的能力</div>
+            <div class="flex flex-col gap-0.5 max-h-40 overflow-y-auto thin-scrollbar">
+                <div v-for="(row, index) in optionRows" :key="index" class="flex justify-between gap-2 text-xs">
+                    <span class="text-gray-200 break-all">{{ row.name }}</span>
+                    <span v-if="row.percent" class="text-gray-500 shrink-0">{{ row.percent }}</span>
+                </div>
+            </div>
         </div>
 
         <!-- Actions -->
@@ -126,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { NButton, NInput, NInputNumber, NSelect } from 'naive-ui';
+import { NButton, NInput, NSelect } from 'naive-ui';
 import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
 import { useTalentStore } from '../talentStore';
@@ -137,18 +94,20 @@ const { selectedNode } = storeToRefs(talent);
 
 const groupOptions = computed(() => talent.colorsArray.map((c) => ({ label: c.group, value: c.group as NodeGroup })));
 
-const isIdDuplicate = computed(() => {
-    if (!selectedNode.value || !selectedNode.value.data.id) return false;
-    const currentId = selectedNode.value.data.id;
-    const count = talent.nodes.filter((node) => node.data.id === currentId).length;
-    return count >= 2;
-});
+const typeLabels: Record<number, string> = {
+    0: '普通节点',
+    1: '初始激活',
+    2: '未知节点',
+};
 
-const typeOptions = [
-    { label: '普通节点', value: 0 },
-    { label: '初始激活', value: 1 },
-    { label: '未知节点', value: 2 },
-];
+const typeLabel = computed(() => typeLabels[selectedNode.value?.data.type ?? 0] ?? `未知(${selectedNode.value?.data.type})`);
+
+/** 能力 + 出现概率（只读，权重来自游戏数据） */
+const optionRows = computed(() => {
+    const node = selectedNode.value;
+    if (!node) return [];
+    return node.options.map((name, index) => ({ name, percent: node.getPercent(index) }));
+});
 
 const handleRestore = () => {
     talent.restoreNode();

@@ -44,6 +44,26 @@ export class TalentNode {
         return this.data.options ?? [];
     }
 
+    /** 与 options 对齐的权重；长度对不上时视为没有权重 */
+    get weights() {
+        const weights = this.data.weights ?? [];
+        return weights.length === this.options.length ? weights : [];
+    }
+
+    /** 是否需要随机抽取（选项多于抽取数量）；不需要随机时概率没有意义 */
+    get isRandom() {
+        return this.options.length > this.number;
+    }
+
+    /** 第 index 个选项的权重占比（没有权重 / 不需要随机时返回空串） */
+    getPercent(index: number) {
+        const weights = this.weights;
+        if (!weights.length || !this.isRandom) return '';
+        const total = weights.reduce((sum, weight) => sum + weight, 0);
+        if (total <= 0) return '';
+        return `${((weights[index] / total) * 100).toFixed(1)}%`;
+    }
+
     get number() {
         return this.data.number ?? 1;
     }
