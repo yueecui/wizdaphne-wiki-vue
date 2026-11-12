@@ -13,6 +13,24 @@ export const templateBody = (name?: string | null, id?: number | string | null) 
     return text ? `${text}|${key}` : key;
 };
 
+/**
+ * 复制 `{{模板|正文}}` 到剪贴板。右键菜单与详情页的「复制」按钮共用，
+ * 保证两处产出的文本完全一样。
+ */
+export const copyTemplateText = (templateName: string, body?: string | null) => {
+    const textBody = (body ?? '').trim();
+    if (!textBody) {
+        window.wiz.$message.error('没有可复制的名称');
+        return;
+    }
+
+    const text = `{{${templateName}|${textBody}}}`;
+    navigator.clipboard
+        .writeText(text)
+        .then(() => window.wiz.$message.success(`已复制 ${text} 模板到剪贴板`))
+        .catch(() => window.wiz.$message.error('复制失败，请手动复制'));
+};
+
 export interface CopyMenuState<T> {
     show: boolean;
     x: number;
@@ -48,17 +66,7 @@ export const useCopyMenu = <T>(templateName: string, bodyOf: (item: T) => string
         const item = menu.value.item;
         const body = item ? (bodyOf(item) ?? '').trim() : '';
         closeMenu();
-
-        if (!body) {
-            window.wiz.$message.error('没有可复制的名称');
-            return;
-        }
-
-        const text = `{{${templateName}|${body}}}`;
-        navigator.clipboard
-            .writeText(text)
-            .then(() => window.wiz.$message.success(`已复制 ${text} 模板到剪贴板`))
-            .catch(() => window.wiz.$message.error('复制失败，请手动复制'));
+        copyTemplateText(templateName, body);
     };
 
     onBeforeUnmount(() => document.removeEventListener('click', closeMenu));

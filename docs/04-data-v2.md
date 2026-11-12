@@ -85,12 +85,17 @@ cd /d D:\WizardyDaphne\wizdaphne-wiki-vue
 python local_scripts\clean\character.py
 python local_scripts\clean\job.py
 python local_scripts\clean\skill.py
+python local_scripts\clean\shop.py       :: 商店（equipment / item 的商店来源，必须在前）
 python local_scripts\clean\equipment.py
+python local_scripts\clean\item.py
+python local_scripts\clean\relic.py
+python local_scripts\clean\enemy.py
 python local_scripts\clean\dialogue.py   :: 营地/酒馆对话（读 out\topic_digest）
 python local_scripts\clean\blessing.py   :: 哈肯的加护 -> public\blessing.json（单文件，不参加下面两轮）
 
 :: 2) 第一轮：长键精简 -> <repo>\data
 python local_scripts\clean\build_data.py
+python local_scripts\clean\build_map.py  :: 地图 / 敌群（读 out\tmp\map_v3，build_mock 需要）
 
 :: 3) 第二轮：短键 + API 形状 -> <repo>\public\mock
 python local_scripts\clean\build_mock.py

@@ -70,87 +70,110 @@
                 </tbody>
             </table>
 
-            <div v-if="detailRows.length" class="mt-3 overflow-x-auto thin-scrollbar">
-                <table class="wikitable w-full min-w-[520px] text-center text-sm border-collapse m-0!">
-                    <tbody>
-                        <tr>
-                            <th :colspan="detailCols" class="bg-black/50 px-2 py-1 border! border-[#463d38]!">
-                                详细数值
-                            </th>
-                        </tr>
-                        <tr>
-                            <th class="text-left px-2 py-1 whitespace-nowrap border! border-[#463d38]!">项目</th>
-                            <th
-                                v-for="lv in levels"
-                                :key="lv.level"
-                                class="px-2 py-1 whitespace-nowrap border! border-[#463d38]!"
-                            >
-                                Lv{{ lv.level }}
-                            </th>
-                        </tr>
-                        <tr v-for="(row, index) in detailRows" :key="index">
-                            <td
-                                class="text-left px-2 py-1 whitespace-nowrap border! border-[#463d38]!"
-                                :style="row.depth ? { paddingLeft: `${0.5 + row.depth * 0.9}rem` } : undefined"
-                            >
-                                <template v-if="row.group">
-                                    <!-- 标出 sub effect id，方便对照 EffectKind 表（所有人都能看） -->
-                                    <NTag
-                                        v-if="row.kind != null"
-                                        size="tiny"
-                                        :bordered="false"
-                                        type="warning"
-                                        class="mr-1! align-middle"
-                                    >
-                                        {{ row.kind }}
-                                    </NTag>
-                                    <span>{{ row.group }}</span>
-                                    <template v-if="row.name">
-                                        <span class="mx-1 opacity-50">·</span>
-                                        <span class="opacity-60">{{ row.name }}</span>
-                                    </template>
-                                </template>
-                                <template v-else>{{ row.label }}</template>
-                            </td>
-                            <td
-                                v-if="row.constant"
-                                :colspan="levels.length"
-                                class="px-2 py-1 border! border-[#463d38]! text-center whitespace-normal break-words"
-                                :class="row.dim ? 'opacity-60' : ''"
-                            >
-                                <span
-                                    v-if="constantLink(row) != null"
-                                    class="cursor-pointer hover:underline"
-                                    @click="openSkill(constantLink(row))"
+            <!-- 页签与数值表同属一个容器：外层 flex 的 gap 不会插进它们之间 -->
+            <div class="flex flex-col">
+                <!-- 多动作技能：与敌人详情的「基础情报 / 技能 / AI 规则」同一套页签（例：集中 / 更加集中 / 豪雪击打） -->
+                <!-- 面板留空，页签与表格之间保持 naive-ui 默认的 8px（与敌人详情一致） -->
+                <NTabs
+                    v-if="actions.length > 1"
+                    v-model:value="activeActionKey"
+                    type="card"
+                    size="small"
+                >
+                    <NTabPane
+                        v-for="(action, index) in actions"
+                        :key="action.id"
+                        :name="String(action.id)"
+                        :tab="action.name || action.name_jp || `技能 ${index + 1}`"
+                    />
+                </NTabs>
+
+                <!-- 内容统一在下面这张表里按当前动作过滤 -->
+                <div v-if="detailRows.length" class="overflow-x-auto thin-scrollbar">
+                    <table class="wikitable w-full min-w-[520px] text-center text-sm border-collapse m-0!">
+                        <tbody>
+                            <tr>
+                                <th :colspan="detailCols" class="bg-black/50 px-2 py-1 border! border-[#463d38]!">
+                                    详细数值
+                                </th>
+                            </tr>
+                            <tr>
+                                <th class="text-left px-2 py-1 whitespace-nowrap border! border-[#463d38]!">项目</th>
+                                <th
+                                    v-for="lv in levels"
+                                    :key="lv.level"
+                                    class="px-2 py-1 whitespace-nowrap border! border-[#463d38]!"
                                 >
-                                    {{ row.values[0] }}
-                                </span>
-                                <template v-else>{{ row.values[0] }}</template>
-                            </td>
-                            <template v-else>
+                                    Lv{{ lv.level }}
+                                </th>
+                            </tr>
+                            <tr v-for="(row, index) in detailRows" :key="index">
                                 <td
-                                    v-for="(v, i) in row.values"
-                                    :key="i"
-                                    class="px-2 py-1 border! border-[#463d38]! whitespace-nowrap"
+                                    class="text-left px-2 py-1 whitespace-nowrap border! border-[#463d38]!"
+                                    :style="row.depth ? { paddingLeft: `${0.5 + row.depth * 0.9}rem` } : undefined"
+                                >
+                                    <template v-if="row.group">
+                                        <!-- 标出 sub effect id，方便对照 EffectKind 表（所有人都能看） -->
+                                        <NTag
+                                            v-if="row.kind != null"
+                                            size="tiny"
+                                            :bordered="false"
+                                            type="warning"
+                                            class="mr-1! align-middle"
+                                        >
+                                            {{ row.kind }}
+                                        </NTag>
+                                        <span>{{ row.group }}</span>
+                                        <template v-if="row.name">
+                                            <span class="mx-1 opacity-50">·</span>
+                                            <span class="opacity-60">{{ row.name }}</span>
+                                        </template>
+                                    </template>
+                                    <template v-else>{{ row.label }}</template>
+                                </td>
+                                <td
+                                    v-if="row.constant"
+                                    :colspan="levels.length"
+                                    class="px-2 py-1 border! border-[#463d38]! text-center whitespace-normal break-words"
                                     :class="row.dim ? 'opacity-60' : ''"
                                 >
-                                    <!-- 低级时的空位用更暗更小的占位符 -->
-                                    <span v-if="!v" class="text-[0.75rem] leading-none opacity-30">—</span>
-                                    <!-- 参数里识别出来的技能：点开详情 -->
                                     <span
-                                        v-else-if="row.links?.[i] != null"
+                                        v-if="constantLink(row) != null"
                                         class="cursor-pointer hover:underline"
-                                        @click="openSkill(row.links[i])"
+                                        @click="openSkill(constantLink(row))"
                                     >
-                                        {{ v }}
+                                        {{ row.values[0] }}
                                     </span>
-                                    <template v-else>{{ v }}</template>
+                                    <template v-else>{{ row.values[0] }}</template>
                                 </td>
-                            </template>
-                        </tr>
-                    </tbody>
-                </table>
+                                <template v-else>
+                                    <td
+                                        v-for="(v, i) in row.values"
+                                        :key="i"
+                                        class="px-2 py-1 border! border-[#463d38]! whitespace-nowrap"
+                                        :class="row.dim ? 'opacity-60' : ''"
+                                    >
+                                        <!-- 低级时的空位用更暗更小的占位符 -->
+                                        <span v-if="!v" class="text-[0.75rem] leading-none opacity-30">—</span>
+                                        <!-- 参数里识别出来的技能：点开详情 -->
+                                        <span
+                                            v-else-if="row.links?.[i] != null"
+                                            class="cursor-pointer hover:underline"
+                                            @click="openSkill(row.links[i])"
+                                        >
+                                            {{ v }}
+                                        </span>
+                                        <template v-else>{{ v }}</template>
+                                    </td>
+                                </template>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
+
+            <!-- 玩家技能：效果值随能力值变化（X = 能力值，Y = 伤害 / 治疗量），阈值处打折 -->
+            <SkillPowerChart v-if="data.player" :levels="levels" :param-labels="REFERENCE_PARAM" />
 
             <table class="wikitable w-full table-fixed! text-center text-sm border-collapse m-0!">
                 <colgroup>
@@ -279,12 +302,14 @@
 </template>
 
 <script setup lang="ts">
-import { NEmpty, NModal, NSpin, NTag } from 'naive-ui';
+import { NEmpty, NModal, NSpin, NTabPane, NTabs, NTag } from 'naive-ui';
 import { computed, defineAsyncComponent, ref, watch } from 'vue';
+import SkillPowerChart from './SkillPowerChart.vue';
 import { useDataV2Store } from './dataV2Store';
 import { effectParamText, effectParamUnit } from './types';
 import type {
     EffectParamEntry,
+    SkillAction,
     SkillDamage,
     SkillDetail,
     SkillLevel,
@@ -473,8 +498,8 @@ const REFERENCE_PARAM: Record<number, string> = {
     4: '防御力',
     5: '法术防御力',
     6: '抵抗',
-    7: '暴击',
-    8: '暴击回避',
+    7: '会心',
+    8: '会心回避',
     9: '探知',
     10: '陷阱解除',
     11: '陷阱回避',
@@ -483,8 +508,8 @@ const REFERENCE_PARAM: Record<number, string> = {
     14: '命中',
     20: '力量',
     21: '智慧',
-    22: '信仰',
-    23: '体力',
+    22: '信仰心',
+    23: '生命力',
     24: '敏捷',
     25: '灵巧',
     26: '运气',
@@ -493,7 +518,69 @@ const REFERENCE_PARAM: Record<number, string> = {
     29: '最大HP',
 };
 
-const levels = computed<SkillLevel[]>(() => data.value?.levels ?? []);
+/**
+ * 多动作技能的动作页签。以下情况不拆，直接用等级顶层的 damage / sub_effects
+ * （本来就是各动作效果的合并，按等级并排展示即可）：
+ * - 效果组 id 每个等级都不同（110000030 的 7 级各有一套「蓄力 / 全力一击」），
+ *   按 id 去重会列出十几个同名页签；
+ * - 只有部分等级被拆成多动作（194002010 只有 Lv7 有两个无名效果组），
+ *   按动作过滤会让其它等级的效果全被清空；
+ * - 动作名全是空的，拆出来只剩「技能 1 / 技能 2」，没有信息量。
+ */
+const actions = computed<SkillAction[]>(() => {
+    const levels = data.value?.levels ?? [];
+    const map = new Map<number, SkillAction>();
+    for (const level of levels) {
+        for (const action of level.actions ?? []) {
+            if (!map.has(action.id)) map.set(action.id, action);
+        }
+    }
+    const list = [...map.values()];
+    const perLevel = Math.max(0, ...levels.map((level) => (level.actions ?? []).length));
+    const splitLevels = levels.filter((level) => (level.actions ?? []).length >= 2).length;
+    const allUnnamed =
+        list.length > 0 && list.every((action) => !(action.name || action.name_jp || '').trim());
+    if (list.length > perLevel || allUnnamed) return [];
+    if (splitLevels > 0 && splitLevels < levels.length) return [];
+    return list;
+});
+
+/** 当前页签（值是动作 id 的字符串，NTabs 只接受 string / number） */
+const activeActionKey = ref('');
+watch(
+    actions,
+    (list) => {
+        // 换技能 / 数据重载后，页签若落在不存在的动作上就回到第一个
+        if (!list.some((action) => String(action.id) === activeActionKey.value)) {
+            activeActionKey.value = list[0] ? String(list[0].id) : '';
+        }
+    },
+    { immediate: true },
+);
+
+/** 当前动作 id；没有多动作时为 null（表格与改造前完全一致） */
+const activeActionId = computed(() => {
+    if (actions.value.length < 2 || !activeActionKey.value) return null;
+    const id = Number(activeActionKey.value);
+    return Number.isFinite(id) ? id : null;
+});
+
+/**
+ * 等级数据：多动作技能只保留当前动作自己的伤害 / 子效果，其余（消耗、射程、
+ * 回合 …）与动作无关，照旧按等级并排对比。
+ */
+const levels = computed<SkillLevel[]>(() => {
+    const all = data.value?.levels ?? [];
+    const active = activeActionId.value;
+    if (active == null) return all;
+    return all.map((level) => {
+        const levelActions = level.actions ?? [];
+        // 该等级没有被拆成多动作时保留顶层效果，避免整级被清空
+        if (!levelActions.length) return level;
+        const action = levelActions.find((item) => item.id === active);
+        return { ...level, damage: action?.damage ?? [], sub_effects: action?.sub_effects ?? [] };
+    });
+});
 
 const jobName = (id: number) => store.jobById.get(id)?.name ?? `职业 #${id}`;
 
@@ -551,19 +638,28 @@ const paramTag = (label: EffectParamEntry | null | undefined): string | null => 
 };
 
 /**
- * ``@bt`` 的兜底：5700「常時ベースパラメータの割合分を上乗せ」里**被加成的那一项**。
- * 由技能描述反推（智慧防壁→防御力 5、智慧精神力→MP 2、贪婪之力→HP1/攻击力4/防御力5/法术防御力7 …），
- * wiki 上可用 ``Data:Enum.json`` 的 ``buff_target`` 分组覆盖 / 补全。
+ * ``@bt`` 的兜底：技能效果里**被加成的那一项**（StatusType 编号，与 ``@bp`` 不是同一套）。
+ * 由技能描述反推，例如：
+ * - 250「剩余 HP 越低威力越高」→ 1 HP
+ * - 5730「状态异常数量提升攻击力」→ 4 攻击力
+ * - 5710「装备双手剑时命中提升」→ 9 命中
+ * - 6520「装备盾时抵抗提升」→ 11 抵抗
+ *
+ * 注意线上 ``Api/GetV2Enum`` 没有 ``buff_target`` 分组，``enumText`` 恒为空，
+ * 所以这里就是实际生效的那张表（详见 docs/09-skill-param-refs.md）。
  */
 const BUFF_TARGET: Record<number, string> = {
     1: 'HP',
     2: 'MP',
+    3: 'SP',
     4: '攻击力',
     5: '防御力',
     6: '魔力',
     7: '法术防御力',
     8: '神力',
+    9: '命中',
     10: '回避',
+    11: '抵抗',
     12: '会心',
     14: '行动速度',
 };

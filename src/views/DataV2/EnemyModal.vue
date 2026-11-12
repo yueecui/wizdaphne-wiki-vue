@@ -389,7 +389,7 @@
                                                         class="cursor-pointer hover:text-light"
                                                         @click="openSkill(entry.skill.identification)"
                                                     >
-                                                        {{ entry.skill.name }}
+                                                        {{ entry.skill.chain_name || entry.skill.name }}
                                                     </span>
                                                     <span v-if="entry.percent" class="opacity-40">({{ entry.percent }}%)</span>
                                                     <span v-if="entry.target" class="opacity-60">
@@ -1026,7 +1026,8 @@ const interruptBySkill = (list: EnemyInterrupt[]) => {
  */
 const skillRows = computed(() => {
     const item = variant.value;
-    const seen = new Set<number>();
+    // 同一技能可能既是普通行动又是插入（引用等级不同），按「技能 + 分栏」去重
+    const seen = new Set<string>();
     const rows: Array<{
         id: number;
         name: string;
@@ -1038,8 +1039,10 @@ const skillRows = computed(() => {
     }> = [];
 
     const push = (ref: SkillRef | null | undefined, trigger: string) => {
-        if (!ref || seen.has(ref.identification)) return;
-        seen.add(ref.identification);
+        if (!ref) return;
+        const key = `${ref.identification}|${trigger}`;
+        if (seen.has(key)) return;
+        seen.add(key);
         const skill = store.skillById.get(ref.identification);
         // 该等级自己的名字（多级技能名字不同时才有），没有就用技能本名
         const levelRow =
@@ -1054,7 +1057,8 @@ const skillRows = computed(() => {
         }
         rows.push({
             id: ref.identification,
-            name: levelRow?.name || ref.name || skill?.name || `#${ref.identification}`,
+            // 引用已按等级带上对应动作链；单动作等级回退技能本名
+            name: ref.chain_name || levelRow?.name || ref.name || skill?.name || `#${ref.identification}`,
             // 等级名本身已经带了等级时不再重复标；其余多级技能才标 Lv
             level: levelRow?.name
                 ? 0
@@ -1068,10 +1072,14 @@ const skillRows = computed(() => {
     };
 
     const action = item?.action_skills ?? [];
+    // 清洗层会把插入里出现的技能从 action_skills 剔除；AI 规则表才是实际抽选的行动池
+    const aiAction = (item?.ai_plan ?? []).flatMap((rule) =>
+        rule.skills.filter((entry) => entry.weight > 0).map((entry) => entry.skill),
+    );
     const interrupt = interruptBySkill(item?.interrupts ?? []);
     const passive = item?.passive_skills ?? [];
     if (action.length || interrupt.length || passive.length) {
-        action.forEach((ref) => push(ref, '行动'));
+        [...action, ...aiAction].forEach((ref) => push(ref, '行动'));
         // 触发条件（HP 档位等）在 AI 行动规则表里已经列了，这列只标「插入 / 一次」
         for (const hit of interrupt) {
             push(hit.skill, hit.once ? '插入·一次' : '插入');

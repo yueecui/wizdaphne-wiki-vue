@@ -14,6 +14,9 @@ import {
     type RawMapFloor,
     type RawMapFormation,
     type RawSkill,
+    type RawSkillDamage,
+    type RawSkillLevel,
+    type RawSkillSubEffect,
     type RawSubEffectBrief,
     type RawSubEffectBriefLeaf,
 } from '../../stores/wikiData';
@@ -30,9 +33,11 @@ import type {
     JobDetail,
     Manifest,
     Ref,
+    SkillDamage,
     SkillDetail,
     SkillListItem,
     SkillRef,
+    SkillSubEffect,
     StatKey,
     SubEffectBrief,
     SubEffectBriefLeaf,
@@ -91,24 +96,82 @@ export const useDataV2Store = defineStore('data-v2', () => {
             .filter((item) => Number.isFinite(item) && item > 0);
     };
 
-    /** identification -> name triple, built once per data load */
+    /**
+     * 多动作技能的链式名：把一个等级的各动作名按顺序用 ``→`` 连接
+     * （例：``集中→更加集中→豪雪击打``）。相邻同名动作只留一个；
+     * 没有两个以上不同名字时返回 null，调用方回退成技能名。
+     */
+    const chainNameOf = (levels: RawSkillLevel[] | undefined): string | null => {
+        let best: string[] = [];
+        for (const level of levels ?? []) {
+            const actions = level.actions ?? [];
+            if (actions.length < 2) continue;
+            const names = actions.map((action) => (action.name || action.name_jp || '').trim());
+            // 有动作没有名字时不拼（会缺一段，读起来像漏了），回退成技能名
+            if (names.some((name) => !name)) continue;
+            const unique = names.filter((name, index) => index === 0 || name !== names[index - 1]);
+            if (unique.length > 1 && unique.length > best.length) best = unique;
+        }
+        return best.length > 1 ? best.join('→') : null;
+    };
+
+    /**
+     * 按等级列出链式名：同一技能不同等级的动作数可能不同
+     * （213300030 的 Lv0 只有「冰雪击打」，Lv1 才是「集中→冰雪击打」）。
+     * 只有一个动作时不输出该项，调用方回退技能本名。
+     */
+    const chainNamesOf = (levels: RawSkillLevel[] | undefined): Record<number, string> => {
+        const out: Record<number, string> = {};
+        for (const level of levels ?? []) {
+            const actions = level.actions ?? [];
+            if (actions.length < 2) continue;
+            const names = actions.map((action) => (action.name || action.name_jp || '').trim());
+            if (names.some((name) => !name)) continue;
+            const unique = names.filter((name, index) => index === 0 || name !== names[index - 1]);
+            if (unique.length > 1) out[level.level ?? 0] = unique.join('→');
+        }
+        return out;
+    };
+
+    /** identification -> name triple (+ 完整链名 / 按等级链名), built once per data load */
     const skillNameMap = computed(() => {
-        const map = new Map<number, { name: string; name_jp: string | null; name_en: string | null }>();
+        const map = new Map<
+            number,
+            {
+                name: string;
+                name_jp: string | null;
+                name_en: string | null;
+                chain_name: string | null;
+                chain_names: Record<number, string>;
+            }
+        >();
         for (const skill of wiki.skills) {
-            map.set(skill.id, { name: skill.name, name_jp: skill.name_jp, name_en: skill.name_en });
+            map.set(skill.id, {
+                name: skill.name,
+                name_jp: skill.name_jp,
+                name_en: skill.name_en,
+                chain_name: chainNameOf(skill.levels),
+                chain_names: chainNamesOf(skill.levels),
+            });
         }
         return map;
     });
 
-    const skillRef = (identification: number, level?: number): SkillRef => ({
-        identification,
-        ...(level ? { level } : {}),
-        ...(skillNameMap.value.get(identification) ?? {
-            name: `#${identification}`,
-            name_jp: null,
-            name_en: null,
-        }),
-    });
+    const skillRef = (identification: number, level?: number): SkillRef => {
+        const info = skillNameMap.value.get(identification);
+        return {
+            identification,
+            ...(level ? { level } : {}),
+            name: info?.name ?? `#${identification}`,
+            name_jp: info?.name_jp ?? null,
+            name_en: info?.name_en ?? null,
+            // 明确给了引用等级就只认该等级的动作链；没给才用技能的完整链名
+            chain_name:
+                level === undefined
+                    ? (info?.chain_name ?? null)
+                    : (info?.chain_names[level] ?? null),
+        };
+    };
 
     const fateOf = (identification: number): FateSkill => {
         const name = skillNameMap.value.get(identification);
@@ -304,6 +367,74 @@ export const useDataV2Store = defineStore('data-v2', () => {
         return [...kinds].sort((a, b) => a - b);
     };
 
+    /** 伤害行（技能等级与动作共用同一套字段） */
+    const toDamage = (damage: RawSkillDamage): SkillDamage => ({
+        attack_rate: damage.attack_rate || null,
+        attack_rate_both_hands: damage.attack_rate_both_hands || null,
+        add_damage_rate: damage.add_damage_rate || null,
+        add_critical_rate: damage.add_critical_rate || null,
+        valid_cap_parameter_value: damage.valid_cap_parameter_value || null,
+        valid_cap_parameter_value_both_hands: damage.valid_cap_parameter_value_both_hands || null,
+        valid_start_parameter_value: damage.valid_start_parameter_value || null,
+        damage_type: damage.damage_type || null,
+        attack_type: damage.attack_type || null,
+        reference_parameter: damage.reference_parameter || null,
+        reference_parameter_2: damage.reference_parameter_2 || null,
+        aptitude_ids: damage.aptitude_ids ?? [],
+        fixed_damage: damage.fixed_damage || null,
+        hit_rate: damage.hit_rate || null,
+        damage_count: damage.damage_count || null,
+        only_once: damage.only_once,
+        target: damage.target || null,
+        target_text: wiki.enums.target[String(damage.target)]?.name ?? null,
+    });
+
+    /** 子效果（技能等级与动作共用；嵌套摘要统一走 subBriefOf） */
+    const toSubEffect = (sub: RawSkillSubEffect): SkillSubEffect => {
+        const kind = wiki.enums.effect_kind[String(sub.kind)];
+        return {
+            kind: sub.kind || null,
+            kind_name: kind?.name ?? null,
+            strength: sub.strength || null,
+            turn: sub.turn || null,
+            target: sub.target || null,
+            target_text: wiki.enums.target[String(sub.target)]?.name ?? null,
+            params: sub.params ?? [],
+            param_labels: kind?.params ?? null,
+            from: sub.from,
+            reference_parameter: sub.reference_parameter ?? null,
+            reference_parameter_rate: sub.reference_parameter_rate ?? null,
+            abnormal_valid_start_parameter_value: sub.abnormal_valid_start_parameter_value ?? null,
+            abnormal_valid_cap_parameter_value: sub.abnormal_valid_cap_parameter_value ?? null,
+            force_apply: sub.force_apply ?? null,
+            is_ignore_resist: sub.is_ignore_resist ?? null,
+            calc_reference_parameter: sub.calc_reference_parameter ?? null,
+            calc_reference_parameter_2: sub.calc_reference_parameter_2 ?? null,
+            calc_reference_parameter_rate: sub.calc_reference_parameter_rate ?? null,
+            calc_reference_parameter_rate_2: sub.calc_reference_parameter_rate_2 ?? null,
+            calc_valid_cap_parameter_value: sub.calc_valid_cap_parameter_value ?? null,
+            calc_valid_start_parameter_value: sub.calc_valid_start_parameter_value ?? null,
+            reference_resist: sub.reference_resist ?? null,
+            child_sub_effect_ids: sub.child_sub_effect_ids ?? null,
+            target_race_ids: sub.target_race_ids ?? null,
+            extension_params: sub.extension_params ?? null,
+            child_sub_effects: (sub.child_sub_effects ?? []).map(subBriefOf),
+            extension_effects: (sub.extension_effects ?? []).map(subBriefOf),
+            param_refs: Object.fromEntries(
+                Object.entries(normalizeNumericKeys(sub.param_refs)).map(([index, ref]) => [
+                    index,
+                    subBriefOf(ref),
+                ]),
+            ),
+            // kind 2790：按敌人 buff 数量档替换到的效果组
+            step_replace: (sub.step_replace ?? []).map((item) => ({
+                step: item.step,
+                effect_group: item.effect_group,
+                effects: (item.effects ?? []).map(subBriefOf),
+            })),
+        };
+    };
+
     const toSkill = (raw: RawSkill): SkillDetail => ({
         identification: raw.id,
         name: raw.name,
@@ -330,6 +461,8 @@ export const useDataV2Store = defineStore('data-v2', () => {
             player: Boolean(raw.player),
         },
         sub_kinds: subKindsOf(raw),
+        // 多动作技能的链式名（集中→更加集中→豪雪击打），列表与标题都用它
+        chain_name: chainNameOf(raw.levels),
         description: raw.description ?? null,
         detail_description: raw.detail_description ?? null,
         description_lang: raw.description_lang,
@@ -351,70 +484,18 @@ export const useDataV2Store = defineStore('data-v2', () => {
             description_lang: level.description_lang,
             name: level.name,
             name_lang: level.name_lang,
-            damage: (level.damage ?? []).map((damage) => ({
-                attack_rate: damage.attack_rate || null,
-                attack_rate_both_hands: damage.attack_rate_both_hands || null,
-                add_damage_rate: damage.add_damage_rate || null,
-                add_critical_rate: damage.add_critical_rate || null,
-                valid_cap_parameter_value: damage.valid_cap_parameter_value || null,
-                valid_cap_parameter_value_both_hands: damage.valid_cap_parameter_value_both_hands || null,
-                valid_start_parameter_value: damage.valid_start_parameter_value || null,
-                damage_type: damage.damage_type || null,
-                attack_type: damage.attack_type || null,
-                reference_parameter: damage.reference_parameter || null,
-                reference_parameter_2: damage.reference_parameter_2 || null,
-                aptitude_ids: damage.aptitude_ids ?? [],
-                fixed_damage: damage.fixed_damage || null,
-                hit_rate: damage.hit_rate || null,
-                damage_count: damage.damage_count || null,
-                only_once: damage.only_once,
-                target: damage.target || null,
-                target_text: wiki.enums.target[String(damage.target)]?.name ?? null,
-            })),
-            sub_effects: (level.sub_effects ?? []).map((sub) => {
-                const kind = wiki.enums.effect_kind[String(sub.kind)];
-                return {
-                    kind: sub.kind || null,
-                    kind_name: kind?.name ?? null,
-                    strength: sub.strength || null,
-                    turn: sub.turn || null,
-                    target: sub.target || null,
-                    target_text: wiki.enums.target[String(sub.target)]?.name ?? null,
-                    params: sub.params ?? [],
-                    param_labels: kind?.params ?? null,
-                    from: sub.from,
-                    reference_parameter: sub.reference_parameter ?? null,
-                    reference_parameter_rate: sub.reference_parameter_rate ?? null,
-                    abnormal_valid_start_parameter_value: sub.abnormal_valid_start_parameter_value ?? null,
-                    abnormal_valid_cap_parameter_value: sub.abnormal_valid_cap_parameter_value ?? null,
-                    force_apply: sub.force_apply ?? null,
-                    is_ignore_resist: sub.is_ignore_resist ?? null,
-                    calc_reference_parameter: sub.calc_reference_parameter ?? null,
-                    calc_reference_parameter_2: sub.calc_reference_parameter_2 ?? null,
-                    calc_reference_parameter_rate: sub.calc_reference_parameter_rate ?? null,
-                    calc_reference_parameter_rate_2: sub.calc_reference_parameter_rate_2 ?? null,
-                    calc_valid_cap_parameter_value: sub.calc_valid_cap_parameter_value ?? null,
-                    calc_valid_start_parameter_value: sub.calc_valid_start_parameter_value ?? null,
-                    reference_resist: sub.reference_resist ?? null,
-                    child_sub_effect_ids: sub.child_sub_effect_ids ?? null,
-                    target_race_ids: sub.target_race_ids ?? null,
-                    extension_params: sub.extension_params ?? null,
-                    child_sub_effects: (sub.child_sub_effects ?? []).map(subBriefOf),
-                    extension_effects: (sub.extension_effects ?? []).map(subBriefOf),
-                    param_refs: Object.fromEntries(
-                        Object.entries(normalizeNumericKeys(sub.param_refs)).map(([index, ref]) => [
-                            index,
-                            subBriefOf(ref),
-                        ]),
-                    ),
-                    // kind 2790：按敌人 buff 数量档替换到的效果组
-                    step_replace: (sub.step_replace ?? []).map((item) => ({
-                        step: item.step,
-                        effect_group: item.effect_group,
-                        effects: (item.effects ?? []).map(subBriefOf),
-                    })),
-                };
-            }),
+            damage: (level.damage ?? []).map(toDamage),
+            sub_effects: (level.sub_effects ?? []).map(toSubEffect),
+            // 多动作技能：每个顶层效果组是一个动作，详情里分页显示
+            actions: level.actions?.length
+                ? level.actions.map((action) => ({
+                      id: action.id,
+                      name: action.name,
+                      name_jp: action.name_jp,
+                      damage: (action.damage ?? []).map(toDamage),
+                      sub_effects: (action.sub_effects ?? []).map(toSubEffect),
+                  }))
+                : undefined,
         })),
     });
 
@@ -499,6 +580,20 @@ export const useDataV2Store = defineStore('data-v2', () => {
     const toEnemyVariant = (raw: RawEnemyVariant): EnemyVariant => {
         // 同一 identification 可能被不同分栏引用；等级以清洗时记下的为准
         const ref = (identification: number) => skillRef(identification, raw.skill_levels?.[identification]);
+        const interruptIds = new Set((raw.interrupts ?? []).map((item) => item.skill));
+        /**
+         * 行动池引用的是 AI 技能组里的技能行（多数是 Lv0），插入才用高等级行。
+         * 清洗层把两类引用压成同一个 identification，只留一份 skill_levels；
+         * 当「Lv0 没有动作链、高等级才有链」时（如 213300030），按 Lv0 还原行动引用。
+         */
+        const actionRef = (identification: number) => {
+            const level = raw.skill_levels?.[identification] ?? 0;
+            const chains = skillNameMap.value.get(identification)?.chain_names ?? {};
+            if (level > 0 && interruptIds.has(identification) && !chains[0] && chains[level]) {
+                return skillRef(identification, 0);
+            }
+            return ref(identification);
+        };
         return {
             id: raw.id,
             kind: raw.kind,
@@ -516,7 +611,7 @@ export const useDataV2Store = defineStore('data-v2', () => {
             fly: Boolean(raw.fly),
             body_size: raw.body_size ?? [],
             skills: (raw.skills ?? []).map(ref),
-            action_skills: (raw.action_skills ?? []).map(ref),
+            action_skills: (raw.action_skills ?? []).map(actionRef),
             interrupts: (raw.interrupts ?? [])
                 .filter((item) => item.skill)
                 .map((item) => ({
@@ -533,7 +628,7 @@ export const useDataV2Store = defineStore('data-v2', () => {
                 skills: (rule.skills ?? [])
                     .filter((skill) => skill.skill)
                     .map((skill) => ({
-                        skill: ref(skill.skill),
+                        skill: actionRef(skill.skill),
                         weight: skill.weight ?? 0,
                         target: skill.target || null,
                     })),

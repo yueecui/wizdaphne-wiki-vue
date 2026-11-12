@@ -885,7 +885,10 @@ const parseArgs = () => {
 };
 
 /** 角色背景故事（Data:角色故事/<风格><角色名>.json）：基础版 + 特殊风格版，觉醒版跳过 */
-async function syncCharacterStory(bot: HuijiWiki, options: { dryRun: boolean }): Promise<void> {
+async function syncCharacterStory(
+    bot: HuijiWiki,
+    options: { dryRun: boolean; concurrency?: number; force?: boolean },
+): Promise<void> {
     const pages = await buildStoryPages();
     console.log(`  角色故事页面：${pages.length} 个`);
     if (pages.length === 0) return;
@@ -897,7 +900,10 @@ async function syncCharacterStory(bot: HuijiWiki, options: { dryRun: boolean }):
         return;
     }
 
-    const { uploaded, skipped, failed } = await publishStoryPages(bot, pages);
+    const { uploaded, skipped, failed } = await publishStoryPages(bot, pages, {
+        concurrency: options.concurrency,
+        useCache: !options.force,
+    });
     console.log(`  本类完成: 上传 ${uploaded} / 跳过 ${skipped} / 失败 ${failed}`);
     if (failed > 0) throw new Error(`${failed} 个角色故事页面失败`);
 }
@@ -965,7 +971,7 @@ async function main(): Promise<void> {
     if (kinds.includes('character')) {
         console.log(`\n===== character-story (${STORY_PAGE_PREFIX}) =====`);
         try {
-            await syncCharacterStory(bot, { dryRun });
+            await syncCharacterStory(bot, { dryRun, concurrency, force });
         } catch (err) {
             failedTotal++;
             console.error(`  × 角色故事同步失败: ${err instanceof Error ? err.message : err}`);

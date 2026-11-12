@@ -475,6 +475,18 @@ def main(argv: list[str]) -> int:
                 "name_lang": lv.get("name_lang"),
                 "damage": damage,
                 "sub_effects": subs,
+                # 多动作技能：每个顶层效果组 = 一个动作（名字 + 该动作的伤害/子效果）。
+                # 只有一个动作时 skill.py 不输出，前端按 actions 分页显示。
+                "actions": [
+                    {
+                        "id": action.get("id"),
+                        "name": action.get("name"),
+                        "name_jp": action.get("name_jp"),
+                        "damage": action.get("damage"),
+                        "sub_effects": action.get("sub_effects"),
+                    }
+                    for action in lv.get("actions") or []
+                ],
             })
             # 射程 0 = 近距离，compact 会把 0 当空值去掉，这里单独保留
             if lv.get("range_type") is not None:

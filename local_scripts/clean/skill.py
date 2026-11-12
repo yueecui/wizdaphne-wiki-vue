@@ -74,6 +74,34 @@ def display_name_zh(dn) -> str | None:
     return str(zh).strip()
 
 
+#: 动作名（效果组 ``display_name``）的最大长度：超长的一整句是描述不是名字
+#: （例「Arch Shadow Lord摆出十亿斩击的架势。」），拿来当页签会把界面撑爆。
+_ACTION_NAME_MAX = 16
+_SENTENCE_END = ("。", "！", "？", "!", "?", ".")
+
+
+def action_name(dn) -> tuple[str | None, str | None]:
+    """从效果组的 ``display_name`` 取「动作名」（中文, 日文）。
+
+    与技能名兜底不同：这里会丢掉过长 / 带句末标点的描述句，宁可让前端显示
+    「动作 N」，也不要把一整句话塞进页签。
+    """
+    if not isinstance(dn, dict):
+        return None, None
+
+    def pick(value):
+        if not value:
+            return None
+        label = str(value).strip()
+        if label in _DISPLAY_NAME_PLACEHOLDER:
+            return None
+        if len(label) > _ACTION_NAME_MAX or label.endswith(_SENTENCE_END):
+            return None
+        return label
+
+    return pick(dn.get("zhs") or dn.get("zht")), pick(dn.get("ja"))
+
+
 def ident_of(value: int, known: dict) -> int | None:
     """Skill references are stored in two shapes: row id (ident*100+lv) or ident."""
     if not value:
@@ -338,6 +366,30 @@ def main(argv: list[str]) -> int:
 
             dmg, sub = [], []
 
+            # 顶层效果组 = 一个「动作」：``SkillEffectGroup.display_name`` 就是动作名
+            # （例：213300070 的三个组 = 集中 / 更加集中 / 豪雪击打）。技能有多个
+            # 动作时前端在详情里分页显示；只有一个动作时不输出 actions（内容与
+            # level 自身的 damage / sub_effects 完全相同，白占体积）。
+            top_gids: list[int] = []
+            for g in list(gids) + list(r.get("passive_skill_effect_group_ids") or []):
+                if g and g not in top_gids:
+                    top_gids.append(g)
+            #: 子组 -> 所属顶层动作下标（child_effect_group_id 链归到父动作）
+            group_action: dict[int, int] = {}
+            for action_index, tid in enumerate(top_gids):
+                stack, seen_top = [tid], set()
+                while stack:
+                    cur = stack.pop()
+                    if cur in seen_top:
+                        continue
+                    seen_top.add(cur)
+                    group_action.setdefault(cur, action_index)
+                    child = (groups.get(cur) or {}).get("child_effect_group_id")
+                    if child:
+                        stack.append(child)
+            action_dmg: list[list] = [[] for _ in top_gids]
+            action_sub: list[list] = [[] for _ in top_gids]
+
             def brief_params(s):
                 """param_1..7，裁掉尾部连续的 0，避免带一堆空位。"""
                 params = [s.get(f"param_{i}") for i in range(1, 8)]
@@ -505,6 +557,8 @@ def main(argv: list[str]) -> int:
                 i += 1
             for gid in proc_gids:
                 grp = groups.get(gid) or {}
+                #: 该效果组所属的顶层动作（没挂到任何顶层组时为 None）
+                action_index = group_action.get(gid)
                 for did in grp.get("damage_effect_ids") or []:
                     d = damage.get(did)
                     if not d:
@@ -533,20 +587,51 @@ def main(argv: list[str]) -> int:
                         "target": d.get("skill_target_id"),
                         "target_text": text(tgt.get("convert_text"))[0],
                     })
+                    if action_index is not None:
+                        action_dmg[action_index].append(dmg[-1])
                     # damage-scoped sub effects (防御贯穿 / 准备状态特效 ...)
                     for sid in d.get("sub_effect_ids") or []:
                         s_item = sub_entry(sid, "damage")
-                        if s_item and s_item not in sub:
-                            sub.append(s_item)
+                        if s_item:
+                            # 合并列表去重，但每个动作各自保留一份（同组共享的效果不能丢）
+                            if s_item not in sub:
+                                sub.append(s_item)
+                            if action_index is not None and s_item not in action_sub[action_index]:
+                                action_sub[action_index].append(s_item)
                     # 攻击开始时先挂上的效果（准备状态 / 攻击前触发）
                     for sid in d.get("attack_start_sub_effect_ids") or []:
                         s_item = sub_entry(sid, "attack_start")
-                        if s_item and s_item not in sub:
-                            sub.append(s_item)
+                        if s_item:
+                            if s_item not in sub:
+                                sub.append(s_item)
+                            if action_index is not None and s_item not in action_sub[action_index]:
+                                action_sub[action_index].append(s_item)
                 for sid in (grp.get("sub_effect_ids") or []) + (grp.get("turn_end_sub_effect_ids") or []):
                     s_item = sub_entry(sid, "effect_group")
-                    if s_item and s_item not in sub:
-                        sub.append(s_item)
+                    if s_item:
+                        if s_item not in sub:
+                            sub.append(s_item)
+                        if action_index is not None and s_item not in action_sub[action_index]:
+                            action_sub[action_index].append(s_item)
+
+            # 多动作技能：每个动作一页（前端按 actions 分页），名字来自效果组
+            if len(top_gids) > 1:
+                actions = []
+                for action_index, tid in enumerate(top_gids):
+                    dn = (groups.get(tid) or {}).get("display_name") or {}
+                    action = {"id": tid}
+                    zh, ja = action_name(dn)
+                    if zh:
+                        action["name"] = zh
+                    if ja:
+                        action["name_jp"] = ja
+                    if action_dmg[action_index]:
+                        action["damage"] = action_dmg[action_index]
+                    if action_sub[action_index]:
+                        action["sub_effects"] = action_sub[action_index]
+                    actions.append(action)
+                item["actions"] = actions
+
             if dmg:
                 item["damage"] = dmg
             if sub:

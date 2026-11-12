@@ -301,6 +301,15 @@ SUB_EFFECT = [
     ("step_replace", "sx", "objArr", STEP_REPLACE),
 ]
 
+# 多动作技能（例：213300070 集中 → 更加集中 → 豪雪击打）：一个顶层效果组 = 一个动作
+ACTION = [
+    ("id", "i", "num"),
+    ("name", "zh", "str"),
+    ("name_jp", "jp", "str"),
+    ("damage", "dm", "objArr", DAMAGE),
+    ("sub_effects", "sb", "objArr", SUB_EFFECT),
+]
+
 LEVEL = [
     ("level", "l", "num"),
     ("cost", "c", "num"),
@@ -316,6 +325,7 @@ LEVEL = [
     ("name_lang", "nl", "str"),
     ("damage", "dm", "objArr", DAMAGE),
     ("sub_effects", "sb", "objArr", SUB_EFFECT),
+    ("actions", "ac", "objArr", ACTION),
 ]
 
 SKILL_DETAIL = [

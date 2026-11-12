@@ -17,6 +17,15 @@
                                 </div>
                             </div>
                             <div class="flex w-full md:w-auto items-center gap-3 justify-end md:justify-start shrink-0">
+                                <!-- 与技能列表右键菜单一致：复制 {{技能|名字|ID}} -->
+                                <NButton
+                                    v-if="canEdit"
+                                    size="tiny"
+                                    quaternary
+                                    @click="copySkillTemplate"
+                                >
+                                    复制 {{ copyLabel }}
+                                </NButton>
                                 <NButton
                                     v-if="canEdit"
                                     size="tiny"
@@ -72,6 +81,7 @@ import ThemeConfigProvider from '../../layout/ThemeConfigProvider.vue';
 import { useWikiDataStore } from '../../stores/wikiData';
 import SkillDetail from './SkillDetail.vue';
 import { useDataV2Store } from './dataV2Store';
+import { copyTemplateText, templateBody } from './useCopyMenu';
 import type { JobDetail, SkillListItem } from './types';
 
 defineOptions({ name: '技能详情ModalV2' });
@@ -112,7 +122,15 @@ const row = computed(() =>
     currentId.value == null ? null : (store.skillById.get(currentId.value) ?? null),
 );
 
-const title = computed(() => row.value?.name ?? '技能详情');
+/** 多动作技能用链式名（集中→更加集中→豪雪击打），否则用技能本名 */
+const title = computed(() => row.value?.chain_name ?? row.value?.name ?? '技能详情');
+
+/** 按钮上的字面量：模板里直接写 {{技能}} 会被当成插值，这里走变量 */
+const copyLabel = '{{技能}}';
+
+/** 复制当前技能，与技能列表右键菜单产出同一段 `{{技能|名字|ID}}` */
+const copySkillTemplate = () =>
+    copyTemplateText('技能', templateBody(row.value?.name, row.value?.identification));
 
 const subtitle = computed(() => [row.value?.name_jp, row.value?.name_en].filter(Boolean).join(' · '));
 

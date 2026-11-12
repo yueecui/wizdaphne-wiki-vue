@@ -93,6 +93,8 @@ export interface SkillRef extends LocalizedName {
     level?: number;
     need_point?: number;
     skill_level?: number;
+    /** 多动作技能的链式名（``集中→更加集中→豪雪击打``），没有时为 null */
+    chain_name?: string | null;
 }
 
 export interface CharacterDetail extends CharacterListItem {
@@ -376,6 +378,11 @@ export interface SkillListItem extends LocalizedName {
     flags: { test: boolean; level0: boolean; player: boolean };
     /** 技能用到的 sub effect kind（去重升序），供列表按 ID 精确筛选 */
     sub_kinds: number[];
+    /**
+     * 多动作技能的链式名（示例：``集中→更加集中→豪雪击打``）。
+     * 只有存在两个以上不同动作名时才有值，否则为 null（显示 :attr:`name`）。
+     */
+    chain_name: string | null;
 }
 
 export interface SkillDamage {
@@ -473,7 +480,7 @@ export interface SkillSubEffect {
     extension_effects?: SubEffectBrief[] | null;
     /** kind 2790：按敌人 buff 数量档替换的效果组 */
     step_replace?: StepReplace[] | null;
-    /** 效果量（恢复量等）参照的能力值：2 魔力 / 3 神力 / 22 信仰 / 23 体力 / 25 灵巧 / 26 运气 / 27 等级 */
+    /** 效果量（恢复量等）参照的能力值：2 魔力 / 3 神力 / 22 信仰心 / 23 生命力 / 25 灵巧 / 26 运气 / 27 等级 */
     calc_reference_parameter?: number | null;
     /** 第二个参照能力值（双属性折算时用） */
     calc_reference_parameter_2?: number | null;
@@ -485,6 +492,16 @@ export interface SkillSubEffect {
     calc_valid_cap_parameter_value?: number | null;
     /** 效果量的阈值起点 */
     calc_valid_start_parameter_value?: number | null;
+}
+
+/**
+ * 多动作技能的一个动作（一个顶层 ``SkillEffectGroup``）。
+ * 动作名来自解包 ``SkillEffectGroup.display_name``；伤害 / 子效果只属于这个动作。
+ */
+export interface SkillAction extends LocalizedName {
+    id: number;
+    damage?: SkillDamage[];
+    sub_effects?: SkillSubEffect[];
 }
 
 export interface SkillLevel {
@@ -509,6 +526,8 @@ export interface SkillLevel {
     name_lang?: string;
     damage?: SkillDamage[];
     sub_effects?: SkillSubEffect[];
+    /** 多动作技能：每个动作一页；只有一个动作时没有该字段 */
+    actions?: SkillAction[];
 }
 
 export interface SkillLearn {

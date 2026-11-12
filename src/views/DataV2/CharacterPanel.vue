@@ -43,7 +43,13 @@
                     <label class="text-sm">SP</label>
                 </div>
                 <div class="flex flex-row gap-2 items-center h-12">
-                    <NSelect v-model:value="spFilter" :options="spFilterOptions" class="w-full!" />
+                    <NSelect
+                        v-model:value="spFilter"
+                        :options="spFilterOptions"
+                        clearable
+                        placeholder="全部"
+                        class="w-full!"
+                    />
                 </div>
             </div>
             <div class="flex flex-col shrink-0 basis-[160px]">
@@ -232,7 +238,9 @@ const store = useDataV2Store();
 const keyword = usePersistentRef('character.keyword', '');
 const rarity = usePersistentRef<number | null>('character.rarity', null);
 const poolGroup = usePersistentRef<number | null>('character.group', null);
-const spFilter = usePersistentRef<'all' | 'show' | 'hide'>('character.spFilter', 'all');
+const spFilter = usePersistentRef<'show' | 'hide' | null>('character.spFilter', null);
+// 旧版本把「全部」存成了 'all'，迁移成 null（空 = 不过滤）
+if ((spFilter.value as string | null) === 'all') spFilter.value = null;
 const onlyPrimary = usePersistentRef('character.onlyPrimary', true);
 const jobFilter = usePersistentRef<number[]>('character.jobFilter', []);
 const race = usePersistentRef<number | null>('character.race', null);
@@ -352,7 +360,6 @@ const poolGroupOptions = [
 ];
 
 const spFilterOptions = [
-    { label: '全部', value: 'all' },
     { label: 'SP', value: 'show' },
     { label: '非SP', value: 'hide' },
 ];
@@ -429,7 +436,7 @@ const resetFilter = () => {
     keyword.value = '';
     rarity.value = null;
     poolGroup.value = null;
-    spFilter.value = 'all';
+    spFilter.value = null;
     onlyPrimary.value = true;
     jobFilter.value = [];
     race.value = null;

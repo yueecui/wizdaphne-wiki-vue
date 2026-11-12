@@ -481,6 +481,19 @@ export interface RawSkillSubEffect {
     calc_valid_start_parameter_value?: number;
 }
 
+/**
+ * 多动作技能的一个动作（一个顶层 ``SkillEffectGroup``）。名字来自
+ * ``display_name``，伤害 / 子效果只属于这个动作（``skill_effect_group_ids`` 里的
+ * 每一项；子组跟随父组）。只有一个动作的技能不输出该字段。
+ */
+export interface RawSkillAction {
+    id: number;
+    name?: string;
+    name_jp?: string;
+    damage?: RawSkillDamage[];
+    sub_effects?: RawSkillSubEffect[];
+}
+
 export interface RawSkillLevel {
     level: number;
     cost: number;
@@ -501,6 +514,8 @@ export interface RawSkillLevel {
     name_lang?: string;
     damage: RawSkillDamage[];
     sub_effects: RawSkillSubEffect[];
+    /** 多动作技能：每个顶层效果组是一个动作 */
+    actions?: RawSkillAction[];
 }
 
 export interface RawSkill {

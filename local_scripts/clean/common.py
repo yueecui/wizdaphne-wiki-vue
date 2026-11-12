@@ -88,21 +88,9 @@ _JST_OFFSET = timezone(timedelta(hours=8))  # release dates are written in game 
 #: 让两个技能各自成条，引用关系自然对上。排查与新增流程见
 #: ``docs/06-masterdata-patches.md``。
 SKILL_IDENT_FIXES: dict[int, int] = {
-    # 範囲魔術理解（范围魔术理解）：官方表把 identification 写成了 56167101
-    # （庇護巧者 / 庇护能手），装备 203101330 的 standard_skill_ids 引用的是
-    # 它自己的 56167201。
-    56167201: 56167201,
-    # 効率調合（效率调和）：identification 被写成 56164101（慧眼の祝福（両手剣）），
-    # 装备 104100430「调药棒」引用的是它自己的 56164201。
-    56164201: 56164201,
-    # 剣鬼の呪い（剑鬼的诅咒）：塞进了 53100401（混乱付与 Lv1-5）里，装备引用的是 56162501。
-    56162501: 56162501,
-    # 闇属性強化（暗属性强化）：塞进了 56165001（クラウストルムの力）。
-    56165101: 56165101,
-    # 下面三个都塞进了 56165801（常時器用さダウン）：一个 identification 下四条不同技能。
-    56165901: 56165901,   # 修正射撃 / 校正射击
-    56166001: 56166001,   # 常時探知・罠解除・攻撃力アップ / 探知・陷阱解除、攻击力持续提升
-    56166101: 56166101,   # 弓の習熟 / 熟习弓
+    # 装备侧「同一 identification 塞了多件装备的被动技能」由 ``auto_split_skill_ids()``
+    # 自动处理（判定见 docs/06 §3.1），不需要在这里逐条列。
+    #
     # 101001000（回复系）：6 行 skill.id 不同、名字不同（药草 / 创伤药 / 高级创伤药 /
     # 特级创伤药 / 究极创伤药 / 治愈秘药），却共用一个 identification。
     # 消耗品通过 ``Expendables.content_id``（= ``Skill.id``）引用，按 identification
@@ -115,13 +103,155 @@ SKILL_IDENT_FIXES: dict[int, int] = {
     10100100040: 10100100040,   # 治愈秘药
 }
 
+#: 被动类技能的 ``Skill.use_timing``：1 = 装备特性区（``5xxxxx``）里也用的写法，
+#: 5 = 常时。装备的标准技能两种写法都有（56167401 献身驱魔是 1，56167101 庇护能手
+#: 是 5），所以「被动」不能只看 5。
+PASSIVE_USE_TIMING = (1, 5)
+
+
+def _skill_label(row: dict) -> str:
+    """技能行用于判重的名字（优先日文原名，退回中 / 英）。"""
+    name = row.get("name")
+    if isinstance(name, dict):
+        return str(name.get("ja") or name.get("zhs") or name.get("en") or "")
+    return str(name or "")
+
+
+def _player_ident_references() -> set[int]:
+    """玩家侧按 **identification** 引用的技能 id。
+
+    这些 ident 不能拆：角色固有 / 继承 / 潜在技能、职业技能、克己、技能继承表、
+    技能组、套装、遗物之力、羁绊技能都写 ident，拆开后引用会指到别的技能上。
+    """
+    out: set[int] = set()
+    for c in load("Character"):
+        for key in ("skill_identification_1", "skill_identification_2",
+                    "sub_skill_identification_1", "sub_skill_identification_2"):
+            if c.get(key):
+                out.add(int(c[key]))
+        # 固有技能存的是行 id（ident*100+level）
+        for value in c.get("unique_skill_ids") or []:
+            out.add(int(value) // 100)
+        for value in c.get("same_skill_identification_ids") or []:
+            out.add(int(value))
+        for value in c.get("exclude_inheritance_skill_ids") or []:
+            out.add(int(value))
+    for r in load("CharacterSkill"):
+        if r.get("skill_id"):
+            out.add(int(r["skill_id"]) // 100)
+    for r in load("GuestCharacterSkillGroup"):
+        if r.get("skill_id"):
+            out.add(int(r["skill_id"]) // 100)
+    for r in load("FateCharacterStatuses"):
+        if r.get("default_skill_id"):
+            out.add(int(r["default_skill_id"]) // 100)
+    for table_name, key in (
+        ("CharacterSelfRestraintSkill", "skill_identification"),
+        ("SkillInheritance", "skill_identification"),
+        ("SkillGroup", "skill_identification"),
+        ("EquipSetSkills", "skill_identification"),
+        ("FateAdditionalSkills", "skill_identification"),
+        ("RelicSkill", "relic_skill_identification_1"),
+        ("RelicSkill", "relic_skill_identification_2"),
+    ):
+        for r in load(table_name):
+            if r.get(key):
+                out.add(int(r[key]))
+    return out
+
+
+#: ``auto_split_skill_idents()`` 的进程内缓存
+_AUTO_SPLIT: dict[int, int] | None = None
+
+
+def auto_split_skill_idents() -> dict[int, int]:
+    """装备引用的被动技能：同一 identification 下塞了别的技能时，按行 id 拆开。
+
+    判定（docs/06 §3.1）：
+
+      * 同一 identification 下、同一 level 出现多行且名字不同 → 冲突组；
+      * 组内至少有一行同时满足「被 ``Equipment.standard_skill_ids`` /
+        ``attack_skill_id`` 引用」与 ``use_timing`` ∈ :data:`PASSIVE_USE_TIMING`；
+      * 该 identification 没有被玩家侧按 ident 引用（:func:`_player_ident_references`）。
+
+    返回 ``{行 id: 目标 identification}``，只包含要改名的**外来技能行**：
+
+      * ``id == identification`` 的原主行保留原 ident；
+      * 与原主同名的多级行（如「混乱 Lv1-5」）也留在原 ident；
+      * 每个外来名字组统一落到该组首行（最低等级那行）的行 id，
+        所以多级外来技能仍是一条。
+
+    结果按进程缓存。
+    """
+    global _AUTO_SPLIT
+    if _AUTO_SPLIT is not None:
+        return _AUTO_SPLIT
+
+    equipment_refs: set[int] = set()
+    for row in load("Equipment"):
+        for value in row.get("standard_skill_ids") or []:
+            equipment_refs.add(int(value))
+        if row.get("attack_skill_id"):
+            equipment_refs.add(int(row["attack_skill_id"]))
+
+    grouped: dict[int, list[dict]] = {}
+    for row in load("Skill"):
+        ident = row.get("identification")
+        if ident:
+            grouped.setdefault(ident, []).append(row)
+
+    protected = _player_ident_references()
+    splits: dict[int, int] = {}
+    for ident, rows in grouped.items():
+        if ident in protected:
+            continue
+        by_level: dict[int, list[dict]] = {}
+        for row in rows:
+            by_level.setdefault(row.get("level") or 0, []).append(row)
+        conflict = any(
+            len(bucket) > 1 and len({_skill_label(r) for r in bucket}) > 1
+            for bucket in by_level.values()
+        )
+        if not conflict:
+            continue
+        if not any(r.get("id") in equipment_refs
+                   and r.get("use_timing") in PASSIVE_USE_TIMING for r in rows):
+            continue
+
+        # 原主：id 就是 identification 的那行；没有时取最低等级的首行
+        primary = next((r for r in rows if r.get("id") == ident), None) or min(
+            rows, key=lambda r: (r.get("level") or 0, r.get("id") or 0))
+        primary_name = _skill_label(primary)
+
+        by_name: dict[str, list[dict]] = {}
+        for row in rows:
+            if row is primary or _skill_label(row) == primary_name:
+                continue
+            by_name.setdefault(_skill_label(row), []).append(row)
+        for bucket in by_name.values():
+            target = min(bucket, key=lambda r: (r.get("level") or 0, r.get("id") or 0))
+            for row in bucket:
+                if row.get("id"):
+                    splits[int(row["id"])] = int(target["id"])
+    _AUTO_SPLIT = splits
+    return splits
+
 
 def skill_identification(row: dict):
-    """技能行真正的 identification（应用 ``SKILL_IDENT_FIXES`` 修正）。"""
+    """技能行真正的 identification。
+
+    优先级：``SKILL_IDENT_FIXES`` 手工条目 -> ``auto_split_skill_idents()``
+    （装备引用的被动技能冲突组）-> 表里写的 identification。
+    """
     if not isinstance(row, dict):
         return None
     fixed = SKILL_IDENT_FIXES.get(row.get("id"))
-    return fixed if fixed is not None else row.get("identification")
+    if fixed is not None:
+        return fixed
+    target = auto_split_skill_idents().get(row.get("id"))
+    if target is not None:
+        return target
+    return row.get("identification")
 
 #: 克己加成（``SkillSubEffect.kind``）-> 中文标签。名字只存在于 wiki 的
 #: ``Data:EffectKind.json``（日文），这里按习语给出中文，供筛选与展示使用。

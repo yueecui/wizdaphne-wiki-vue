@@ -33,6 +33,12 @@ export const STORY_PAGE_PREFIX = 'Data:角色故事';
 /** 普通（默认）风格名，页面标题里省略 */
 const DEFAULT_STYLE = '基本';
 const EDIT_DELAY_MS = 50;
+/** 编辑失败重试次数（与 uploadDataToWiki 的数据条目一致） */
+const RETRIES = 3;
+/** 默认并发数：故事页彼此独立，串行 97 个页面要等分钟级 */
+const DEFAULT_CONCURRENCY = 10;
+/** 进度打印间隔（页面数，故事页只有约 100 个） */
+const PROGRESS_EVERY = 20;
 
 const WIKI_PREFIX = process.env.VITE_WIKI_PREFIX;
 const WIKI_AUTHKEY = process.env.WIKI_AUTHKEY;
@@ -152,11 +158,15 @@ export async function buildStoryPages(): Promise<StoryPageEntry[]> {
 /**
  * 上传（或 dry-run 打印）角色故事页面。
  * ``dryRun`` 时只打印、不访问 wiki（此时 ``bot`` 可为 ``null``）。
+ *
+ * 增量判断走 ``bot.localCache``：``uploadDataToWiki`` 传入的 sqlite 缓存命中时
+ * 完全不发请求（旧实现每页都拉一次线上全文再比对，跳过也要等）；
+ * ``useCache: false``（``--force``）时重新拉取比对。
  */
 export async function publishStoryPages(
     bot: HuijiWiki | null,
     pages: StoryPageEntry[],
-    options: { dryRun?: boolean; delayMs?: number } = {},
+    options: { dryRun?: boolean; delayMs?: number; concurrency?: number; useCache?: boolean } = {},
 ): Promise<{ uploaded: number; skipped: number; failed: number }> {
     if (options.dryRun) {
         for (const item of pages) {
@@ -168,29 +178,54 @@ export async function publishStoryPages(
     if (!bot) throw new Error('publishStoryPages 需要已登录的 bot');
 
     const delay = options.delayMs ?? EDIT_DELAY_MS;
+    const useCache = options.useCache ?? true;
+    const total = pages.length;
     let uploaded = 0;
     let skipped = 0;
     let failed = 0;
+    let done = 0;
+    let next = 0;
 
-    for (let i = 0; i < pages.length; i++) {
-        const { title, page } = pages[i];
-        const content = JSON.stringify(page);
-        try {
-            const existing = await bot.getPageRawTextByTitle(title);
-            if (existing?.content?.trim() === content.trim()) {
-                skipped++;
-                continue;
+    const uploadOne = async (title: string, content: string): Promise<'uploaded' | 'skipped' | 'failed'> => {
+        // 增量：与上次上传的内容一致时直接跳过（不发请求）
+        if (useCache && (await bot!.localCache.compare(title, content))) return 'skipped';
+
+        let lastErr: unknown;
+        for (let attempt = 1; attempt <= RETRIES; attempt++) {
+            try {
+                const res = await bot!.editPage(title, content, { summary: '更新角色背景故事' });
+                if (res.error) throw new Error(res.error.info ?? JSON.stringify(res.error));
+                await bot!.localCache.set(title, content);
+                await sleep(delay);
+                return 'uploaded';
+            } catch (err) {
+                lastErr = err;
+                if (attempt < RETRIES) await sleep(1500 * attempt);
             }
-            const res = await bot.editPage(title, content, { summary: '更新角色背景故事' });
-            if (res.error) throw new Error(res.error.info ?? JSON.stringify(res.error));
-            uploaded++;
-            console.log(`[${i + 1}/${pages.length}] ${title}`);
-            await sleep(delay);
-        } catch (err) {
-            failed++;
-            console.error(`[${i + 1}/${pages.length}] 失败 ${title}:`, err instanceof Error ? err.message : err);
         }
-    }
+        console.error(`  × ${title} 上传失败: ${lastErr instanceof Error ? lastErr.message : lastErr}`);
+        return 'failed';
+    };
+
+    const worker = async (): Promise<void> => {
+        for (;;) {
+            const index = next++;
+            if (index >= total) return;
+            const { title, page } = pages[index];
+            const result = await uploadOne(title, JSON.stringify(page));
+            if (result === 'uploaded') uploaded++;
+            else if (result === 'skipped') skipped++;
+            else failed++;
+
+            done++;
+            if (done % PROGRESS_EVERY === 0 || done === total) {
+                console.log(`  进度 ${done}/${total}（上传 ${uploaded} / 跳过 ${skipped} / 失败 ${failed}）`);
+            }
+        }
+    };
+
+    const workerCount = Math.max(1, Math.min(options.concurrency ?? DEFAULT_CONCURRENCY, total));
+    await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
     return { uploaded, skipped, failed };
 }

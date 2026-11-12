@@ -39,22 +39,56 @@ python -c "import json,collections;sk=json.load(open('Skill.json',encoding='utf8
 
 ## 3. 补丁的位置
 
-`local_scripts/clean/common.py` → `SKILL_IDENT_FIXES`（`{Skill.id: 真正的 identification}`），
-由 `skill_identification(row)` 统一取值；`skill.py` 归组、`equipment.py` 解析 `standard_skill_ids` 都用它。
+`local_scripts/clean/common.py` 的 `skill_identification(row)` 统一取值，
+`skill.py` 归组、`equipment.py` 解析 `standard_skill_ids`、`item.py` / `enemy.py` 都用它。优先级：
+
+1. `SKILL_IDENT_FIXES`（`{Skill.id: 真正的 identification}`）—— 手工条目，
+   自动规则覆盖不到的情况（目前只有 6 种回复药 `101001000`）才写这里；
+2. `auto_split_skill_idents()` —— 装备引用的**被动**技能自动拆分（见 §3.1）；
+3. 表里写的 `identification`。
 
 > 不改 `out/masterdata`（每次解包都会被覆盖），也不在前端打补丁 —— 修正放在清洗入口，产物天然正确。
 
+### 3.1 自动规则：装备引用的被动技能（`auto_split_skill_idents()`）
+
+装备特性是「一件装备一条被动」，官方表却常把多件装备的行塞进同一个
+`identification`，于是装备页显示成别人的特性。这类问题不再逐条写补丁，
+由下面三个条件同时成立时自动拆：
+
+1. **冲突**：同一 `identification`、同一 `level` 出现多行且 `name.ja` 不同；
+2. **装备引用且被动**：组内至少一行被 `Equipment.standard_skill_ids` /
+   `attack_skill_id` 引用，且 `Skill.use_timing ∈ (1, 5)`；
+3. **玩家侧没有按 ident 引用**：`Character`（继承 / 潜在 / 固有 / same / exclude）、
+   `CharacterSkill`、`GuestCharacterSkillGroup`、`FateCharacterStatuses`、
+   `CharacterSelfRestraintSkill`、`SkillInheritance`、`SkillGroup`、`EquipSetSkills`、
+   `FateAdditionalSkills`、`RelicSkill` 里都没有写这个 ident —— 否则拆开会让引用指错技能。
+
+拆分方式：`id == identification` 的原主行保留原 ident；与原主**同名**的多级行
+（如「混乱 Lv1-5」）也留在原 ident；每个**名字不同**的外来组统一落到该组首行
+（最低等级那行）的行 id，多级外来技能仍是一条。
+
+`use_timing` 必须同时认 `1` 和 `5`：装备特性区（`5xxxxx`）两种写法都有 ——
+`56167101 庇护能手` 是 `5`，`56167401 献身驱魔` 是 `1`，只看 `5` 会漏掉后者。
+
 ### 已归档的条目
+
+### 已归档的条目
+
+**装备特性组：已由 §3.1 自动规则覆盖**（原来的 7 条手工补丁已从 `SKILL_IDENT_FIXES` 删除）：
+
+| 原 identification | 拆出的技能（行 id = 新 ident） | 引用装备 |
+|---|---|---|
+| 53100401 | 56162501 剑鬼的诅咒 / 剣鬼の呪い | 206000700 妖刀鬼之岛 |
+| 56164101 | 56164201 高效调和 / 効率調合 | 104100430 调药棒 |
+| 56165001 | 56165101 暗属性强化 / 闇属性強化 | 200100730 深渊使者 |
+| 56165801 | 56165901 校正射击、56166001 探知·陷阱解除·攻击力持续提升、56166101 熟习弓 | 205100430 陨星巨弓 / 500101830 星王外套 / 601101130 陨铁之射击护手 |
+| 56167101 | 56167201 范围法术理解 / 範囲魔術理解 | 203101330 哈欠法杖 |
+| 56167401 | 56167501 范围法术强化 / 範囲魔術強化 | 203101330 哈欠法杖（56167401 献身驱魔 / 献身の魔除け 留给 701100830 善报护腿） |
+
+**仍需手工补丁的条目**（`SKILL_IDENT_FIXES`）：
 
 | `Skill.id` | 表里写的 identification | 正确 identification | 技能 | 引用方 |
 |---|---|---|---|---|
-| 56167201 | 56167101 | 56167201 | 範囲魔術理解 / 范围法术理解 | `Equipment` 203101330「哈欠法杖」 |
-| 56164201 | 56164101 | 56164201 | 効率調合 / 高效调和 | `Equipment` 104100430「调药棒」 |
-| 56162501 | 53100401 | 56162501 | 剣鬼の呪い / 剑鬼的诅咒 | `Equipment` 206000700「妖刀鬼之岛」 |
-| 56165101 | 56165001 | 56165101 | 闇属性強化 / 暗属性强化 | `Equipment` 200100730「深渊使者」 |
-| 56165901 | 56165801 | 56165901 | 修正射撃 / 校正射击 | `Equipment` 205100430「陨星巨弓」 |
-| 56166001 | 56165801 | 56166001 | 常時探知・罠解除・攻撃力アップ / 探知・陷阱解除・攻击力持续提升 | `Equipment` 500101830「星王外套」 |
-| 56166101 | 56165801 | 56166101 | 弓の習熟 / 熟习弓 | `Equipment` 601101130「陨铁之射击护手」 |
 | 10100100000 | 101001000 | 10100100000 | 薬草 / 药草 | `Expendables` 30000000「药草」 |
 | 10100100003 | 101001000 | 10100100003 | 傷薬 / 创伤药 | `Expendables` 30000001「创伤药」 |
 | 10100100010 | 101001000 | 10100100010 | 上傷薬 / 高级创伤药 | `Expendables` 30000010「高级创伤药」 |
@@ -62,6 +96,8 @@ python -c "import json,collections;sk=json.load(open('Skill.json',encoding='utf8
 | 10100100030 | 101001000 | 10100100030 | 究極傷薬 / 究极创伤药 | `Expendables` 300000030「究极创伤药」 |
 | 10100100040 | 101001000 | 10100100040 | 治癒秘薬 / 治愈秘药 | `Expendables` 300000040「治愈秘药」 |
 
+> 消耗品走 `Expendables.content_id`（= `Skill.id`）引用，不属于装备、也不是被动，
+> 自动规则管不到，所以这 6 条只能手工列。
 > 同一个 identification 下最多塞了 4 个不同技能（56165801），所以「一条补丁 ≠ 一条 identification」：
 > 补丁键是 **`Skill.id`**，一行一条。
 
@@ -135,7 +171,9 @@ identification = 53100401 下是 混乱付与 的 Lv1–5（`id` 53100401…5310
 
 1. 从装备 / 怪物侧拿到引用的技能 id（通常是 `Skill.id`）。
 2. 在 `Skill.json` 里看该 id 的行、以及同一 identification 下的其它行，确认是「被写错 identification」而不是「正常的多级 / 同名变体」。
-3. 在 `common.py` 的 `SKILL_IDENT_FIXES` 加一行，**键写 `Skill.id`，值写正确的 identification**，并注释技能名与引用方。
+3. 先看 §3.1 的自动规则能不能覆盖（**装备引用 + 被动**、且玩家侧没有按 ident 引用）——
+   能覆盖就不用写手工条目；覆盖不了（如消耗品、敌人技能、遗物）才在 `common.py` 的
+   `SKILL_IDENT_FIXES` 加一行，**键写 `Skill.id`，值写正确的 identification**，并注释技能名与引用方。
 4. 按顺序重跑：
 
 ```powershell
@@ -149,34 +187,39 @@ python local_scripts\clean\build_mock.py
 
 | 检查点 | 期望 |
 |---|---|
-| `skill.py` 输出的条数 | 原始 3,031；当前 13 条补丁 → **3,043**（每拆一条 +1） |
+| `skill.py` 输出的条数 | 原始 identification 3,045；当前 6 条手工 + 8 行自动 → **3,058**（每拆一条 +1） |
 | `work/clean/skill/skills.json` | 拆出来的每一条都有正确 `name` / `description`，被拆的 identification 不再含别人的行 |
 | `work/clean/skill/skill_levels.json` | 拆出来的每个键下都只有它自己的等级行 |
 | `work/clean/equipment/equipments.json` | 受影响装备的 `skills` 指向各自的 id（如 203101330 → 56167201） |
-| `public/mock/SkillResponse.json` | 出现新 identification，`count` = **3043** |
+| `public/mock/SkillResponse.json` | 出现新 identification，`count` = **3058** |
 | `public/mock/EquipmentResponse.json` | 受影响装备的 `sk` 指向各自的 id |
 
 6. `public/mock` 入库后走 `update:wiki` 上传；前端不需要改代码，IndexedDB 侧靠 `DB_SCHEMA_VERSION` / `Api/Version` 自动刷新。
 
 ## 5. 检测结果与剩余情况
 
-`Skill` 表里「同 identification + 同 level + 名字不同」共 **12 组**：
+`Skill` 表里「同 identification + 同 level + 名字不同」共 **14 组**：
 
-- **已处理（6 组，13 条补丁）**：53100401、56164101、56165001、56165801、56167101、101001000。
-  前五组在装备被动特性（5xxxxx / 5310xxxx）区，每一行的行 id 都被装备当作独立技能引用过；
-  101001000 是 6 种回复药，`Expendables.content_id` 直接按行 id 引用。见 §3 归档表。
-- **保持原样（6 组）**：`150015997` / `150015998`（遗物酔い中度 / 重度）、`999954760`（测试行）、
-  `213080600000`、`214020010000`、`215000600000`（敌方技能）。这几组没有「引用方直接引用行 id」的证据，
-  共用 identification 属于设计如此，不要拆。
+- **装备特性（6 组，自动规则 §3.1）**：53100401、56164101、56165001、56165801、56167101、56167401。
+  这几组都有一行以上被 `Equipment.standard_skill_ids` 按行 id 引用、且行本身是被动
+  （`use_timing` 为 1 或 5），8 个外来行各自独立。见 §3 归档表。
+- **消耗品（1 组，6 条手工补丁）**：101001000（6 种回复药），`Expendables.content_id` 按行 id 引用。
+- **保持原样（7 组）**：`150015997` / `150015998`（遗物酔い中度 / 重度，无任何引用）、
+  `999954760`（测试行）、`210300000`（强酸变体）、`213080600000`、`214020010000`、
+  `215000600000`（敌方技能）。这些组不是装备引用，按 §3.1 不会被自动拆；
+  它们的行 id 虽然被 `EnemySkillGroup` 直接引用，但拆开只是把同一招的变体拆成多条，
+  对装备页没有收益，暂时保持合并。
 
 判断规则（以后照这个来）：
 
-1. 看**引用方**：装备 / 技能组 / 怪物技能表 / `Expendables.content_id` 里能不能直接引用那个行 id —— 能，就说明它本该是独立 identification；
-2. 看**行 id 与名字**：`id == identification` 的那行是「原主」，其余名字不同的行基本就是被塞进来的；
-3. 只共用一套名字、靠 level 或效果差异区分的，属于正常变体，**不要拆**。
+1. 先按 §3.1：**装备引用 + 被动**、同 identification 同 level 名字不同、玩家侧没有按 ident 引用 → 自动拆；
+2. 其余情况看**引用方**：`Expendables.content_id` / 怪物技能表里能不能直接引用那个行 id —— 能，说明它本该独立；
+3. 看**行 id 与名字**：`id == identification` 的那行是「原主」，其余名字不同的行基本就是被塞进来的；
+4. 只共用一套名字、靠 level 或效果差异区分的，属于正常变体，**不要拆**。
 
 ## 6. 注意
 
 - 补丁只影响清洗产物；`out/masterdata` 不动，重新解包不会丢掉补丁。
-- 拆分会让技能总数 +1，`data/`、`public/mock` 的 `count` 与体积随之变化，旧的验收数字（3,031）需要按新值核对（当前 3,043）。
-- 同一个 `Skill.id` 不要在多处重复修：只能写在 `SKILL_IDENT_FIXES` 里，`skill.py` / `equipment.py` 都读它。
+- 拆分会让技能总数 +1，`data/`、`public/mock` 的 `count` 与体积随之变化，旧的验收数字（3,031 / 3,043）需要按新值核对（当前 3,058）。
+- 自动规则依赖 `Equipment` / `Skill` / 玩家侧引用表，`common.py` 里按进程缓存；表结构变动（字段改名）时要一起改 `auto_split_skill_idents()`。
+- 同一个 `Skill.id` 不要在多处重复修：手工只能写在 `SKILL_IDENT_FIXES` 里，它优先于自动规则；`skill.py` / `equipment.py` / `item.py` / `enemy.py` 都读 `skill_identification()`。

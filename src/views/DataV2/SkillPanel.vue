@@ -52,7 +52,7 @@
                         >
                             <td class="whitespace-nowrap opacity-60">{{ row.identification }}</td>
                             <td class="text-left">
-                                <div>{{ row.name ?? '—' }}</div>
+                                <div>{{ row.chain_name ?? row.name ?? '—' }}</div>
                                 <div class="text-xs opacity-40">{{ row.name_jp }}</div>
                             </td>
                             <td class="whitespace-nowrap">{{ row.kind_name ?? '—' }}</td>
@@ -160,7 +160,7 @@ const filtered = computed(() => {
         if (subKind.value != null && !s.sub_kinds.includes(subKind.value)) return false;
         if (!kw) return true;
         if (asId) return String(s.identification) === kw;
-        return [s.name, s.name_jp, s.name_en]
+        return [s.name, s.name_jp, s.name_en, s.chain_name]
             .filter(Boolean)
             .some((v) => String(v).toLowerCase().includes(kw));
     });

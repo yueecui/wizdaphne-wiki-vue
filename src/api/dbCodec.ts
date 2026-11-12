@@ -153,6 +153,15 @@ const SUB_EFFECT: FieldSpec[] = [
     { long: 'step_replace', short: 'sx', kind: 'objArr', fields: STEP_REPLACE },
 ];
 
+/** 多动作技能的一个动作（一个顶层 ``SkillEffectGroup``，名字来自 display_name） */
+const ACTION: FieldSpec[] = [
+    { long: 'id', short: 'i', kind: 'num' },
+    { long: 'name', short: 'zh', kind: 'str' },
+    { long: 'name_jp', short: 'jp', kind: 'str' },
+    { long: 'damage', short: 'dm', kind: 'objArr', fields: DAMAGE },
+    { long: 'sub_effects', short: 'sb', kind: 'objArr', fields: SUB_EFFECT },
+];
+
 const LEVEL: FieldSpec[] = [
     { long: 'level', short: 'l', kind: 'num' },
     { long: 'cost', short: 'c', kind: 'num' },
@@ -169,6 +178,8 @@ const LEVEL: FieldSpec[] = [
     { long: 'name_lang', short: 'nl', kind: 'str' },
     { long: 'damage', short: 'dm', kind: 'objArr', fields: DAMAGE },
     { long: 'sub_effects', short: 'sb', kind: 'objArr', fields: SUB_EFFECT },
+    // 多动作技能：每个动作各自的伤害 / 子效果（只有一个动作时没有该字段）
+    { long: 'actions', short: 'ac', kind: 'objArr', fields: ACTION },
 ];
 
 export const CHAR_FIELDS: FieldSpec[] = [
