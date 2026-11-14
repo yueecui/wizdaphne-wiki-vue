@@ -5,6 +5,7 @@ import {
     type EnumEntry,
     type MapCategory,
     type RawCharacter,
+    type RawCharacterRate,
     type RawEnemy,
     type RawEnemyAiCondition,
     type RawEnemyPool,
@@ -596,6 +597,11 @@ export const useDataV2Store = defineStore('data-v2', () => {
         };
         return {
             id: raw.id,
+            // 变体自己的名字 / 头像：只有「比分类更具体」的变体才有（1033 的人斩罗刹月桃）
+            name: raw.name || null,
+            name_jp: raw.name_jp || null,
+            name_en: raw.name_en || null,
+            thumbnail: raw.thumbnail || null,
             kind: raw.kind,
             kind_name: enemyKindName(raw.kind),
             param: raw.param,
@@ -683,6 +689,25 @@ export const useDataV2Store = defineStore('data-v2', () => {
     const jobs = computed<JobDetail[]>(() => wiki.jobs.map(toJob));
 
     const characterById = computed(() => new Map(characterDetails.value.map((item) => [item.id, item])));
+
+    /**
+     * 角色组 -> 个体出现几率。
+     *
+     * ``rates`` 是按角色 id 抓包的，同组的新风格 / 觉醒版常常还没有自己那条
+     * （实测同组各风格的系数完全一致），所以按组留一份默认风格的兜底。
+     */
+    const rateByGroup = computed(() => {
+        const out = new Map<number, RawCharacterRate>();
+        const rows = [...characterById.value.values()].sort(
+            (a, b) => Number(b.is_default_style) - Number(a.is_default_style),
+        );
+        for (const row of rows) {
+            const rate = wiki.characterRates[row.id];
+            if (rate && !out.has(row.group)) out.set(row.group, rate);
+        }
+        return out;
+    });
+
     const jobById = computed(() => new Map(jobs.value.map((item) => [item.id, item])));
     const enemyById = computed(() => new Map(enemies.value.map((item) => [item.id, item])));
 
@@ -703,6 +728,14 @@ export const useDataV2Store = defineStore('data-v2', () => {
         const hit = enemyVariantById.value.get(id);
         return hit ? hit.enemy.name || `#${id}` : `#${id}`;
     };
+    /**
+     * 变体自己的名字（与分类名不同时才有，例如 1033 的第二形态「人斩罗刹月桃」）；
+     * 普通变体返回 null，调用方回退成分类名。
+     */
+    const enemyVariantName = (variant: EnemyVariant | null | undefined) =>
+        variant?.name || variant?.name_jp || null;
+    /** 变体专属缩略图（去掉 ``_s.png`` 后缀）；没有则用分类的 */
+    const enemyVariantThumb = (variant: EnemyVariant | null | undefined) => variant?.thumbnail || null;
     /** 变体 id -> 图鉴分类 id（打开 ``EnemyModal`` 用）；查不到返回 null */
     const enemyCategoryIdOf = (id: number) => enemyVariantById.value.get(id)?.enemy.id ?? null;
 
@@ -776,6 +809,19 @@ export const useDataV2Store = defineStore('data-v2', () => {
         return table?.[String(id)]?.name ?? null;
     };
     const skillById = computed(() => new Map(skillDetails.value.map((item) => [item.identification, item])));
+
+    /**
+     * 「一场战斗只能使用一次」的技能。客户端表里**没有**这个字段（``Skill.use_limit``
+     * 对这类技能也是 0），只有描述文案写了，例如 214102010 炉心激活
+     * 「バトル中に一度しか使用できない。」、213002000「バトル序盤に一度だけ使用される。」
+     * 所以只能按文案判断，命中时技能详情与敌人 AI 规则都会标「仅一次」。
+     */
+    const ONCE_PER_BATTLE = /一度しか使用でき|一度だけ使用される|只能使用一次|仅能使用一次|只能使用1次|仅可使用一次/;
+
+    const oncePerBattle = (identification: number | null | undefined) =>
+        identification == null
+            ? false
+            : ONCE_PER_BATTLE.test(skillById.value.get(identification)?.description ?? '');
 
     const effectKinds = computed<Record<string, EffectKind>>(() => {
         const out: Record<string, EffectKind> = {};
@@ -863,8 +909,19 @@ export const useDataV2Store = defineStore('data-v2', () => {
 
     const getCharacter = async (id: number): Promise<CharacterDetail | null> => characterById.value.get(id) ?? null;
 
-    /** 角色个体出现几率（``Api/GetV2Character`` 顶层 rates） */
-    const characterRate = (id: number) => wiki.characterRates[id] ?? null;
+    /**
+     * 角色个体出现几率（``Api/GetV2Character`` 顶层 rates）。
+     *
+     * 先按角色 id 取；新风格 / 觉醒版没有自己那条时，回退到同组默认风格的数据
+     * （同组各风格的系数一致，见 ``rateByGroup``）。这样切版本后高亮不会消失。
+     */
+    const characterRate = (id: number) => {
+        const direct = wiki.characterRates[id];
+        if (direct) return direct;
+        const group = characterById.value.get(id)?.group;
+        if (group == null) return null;
+        return rateByGroup.value.get(group) ?? null;
+    };
 
     /** 阶级（``CharacterGrade``）：id 升序，1 = 无阶 */
     const grades = computed(() =>
@@ -915,6 +972,10 @@ export const useDataV2Store = defineStore('data-v2', () => {
         enemyVariantById,
         /** 地图数据里的变体 id -> 敌人名 */
         enemyNameOf,
+        /** 变体自己的名字（与分类名不同时才有），没有返回 null */
+        enemyVariantName,
+        /** 变体专属缩略图（不含 `_s.png`），没有返回 null */
+        enemyVariantThumb,
         /** 变体 id -> 图鉴分类 id（打开敌人 modal） */
         enemyCategoryIdOf,
         /** 怪物图鉴编号 -> 遗物（敌群 / 地图的遗物列用） */
@@ -939,5 +1000,7 @@ export const useDataV2Store = defineStore('data-v2', () => {
         raceName,
         rangeName,
         enumText,
+        /** 描述里注明「一场战斗只能用一次」的技能（如 214102010 炉心激活） */
+        oncePerBattle,
     };
 });

@@ -82,6 +82,20 @@
                                         <NTag v-if="!row.no" size="tiny" :bordered="false">无图鉴</NTag>
                                     </div>
                                     <div class="text-xs opacity-40">{{ row.name_jp }}</div>
+                                    <!-- 变体专属名（与分类不同名的形态）：点一下直接打开该变体 -->
+                                    <div
+                                        v-if="variantAliases(row).length"
+                                        class="mt-1 flex flex-wrap items-center gap-1"
+                                    >
+                                        <span
+                                            v-for="item in variantAliases(row)"
+                                            :key="item.variant.id"
+                                            class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-400/10 border! border-amber-400/30! text-xs text-amber-200/90 cursor-pointer hover:bg-amber-400/20!"
+                                            @click.stop="openVariant(row.id, item.variant.id)"
+                                        >
+                                            {{ item.name }}
+                                        </span>
+                                    </div>
                                 </td>
                                 <td class="whitespace-nowrap">{{ row.race.name ?? '—' }}</td>
                                 <td class="break-words" :class="row.attribute.length ? undefined : 'opacity-40'">
@@ -135,6 +149,9 @@
                                     <div class="text-xs opacity-40">{{ item.enemy.name_jp }}</div>
                                 </td>
                                 <td class="whitespace-nowrap">
+                                    <div v-if="store.enemyVariantName(item.variant)" class="text-amber-200/90">
+                                        {{ store.enemyVariantName(item.variant) }}
+                                    </div>
                                     <div>{{ item.variant.kind_name ?? '—' }}</div>
                                     <div class="text-xs opacity-40">#{{ item.variant.id }}</div>
                                 </td>
@@ -223,6 +240,43 @@ const openVariant = (enemyId: number, variantId: number) => {
     modal.value = true;
 };
 
+/**
+ * 变体专属名：与分类不同名的形态（例如 1033 的「亡念剑鬼 / 人斩罗刹月桃」）。
+ * 清洗层只在变体名与分类名不同时才写出 ``name``，这里再去一次重（同名的多个变体只留一个）。
+ */
+const variantAliases = (enemy: EnemyListItem) => {
+    const seen = new Set<string>();
+    const out: Array<{ variant: EnemyVariant; name: string }> = [];
+    for (const variant of enemy.variants) {
+        const name = store.enemyVariantName(variant);
+        if (!name || name === enemy.name || name === enemy.name_jp) continue;
+        if (seen.has(name)) continue;
+        seen.add(name);
+        out.push({ variant, name });
+    }
+    return out;
+};
+
+/**
+ * 关键词是否命中该敌人：ID / 图鉴编号 / 变体 ID，或中 / 日 / 英名（含变体专属名，
+ * 这样搜「人斩罗刹月桃」也能找到 1033 这一条）。
+ */
+const matchesKeyword = (enemy: EnemyListItem, kw: string, asId: boolean) => {
+    if (!kw) return true;
+    if (asId) {
+        return (
+            String(enemy.id) === kw ||
+            String(enemy.no ?? '') === kw ||
+            enemy.variants.some((variant) => String(variant.id) === kw)
+        );
+    }
+    const fields: Array<string | null | undefined> = [enemy.name, enemy.name_jp, enemy.name_en];
+    for (const variant of enemy.variants) {
+        fields.push(variant.name, variant.name_jp, variant.name_en);
+    }
+    return fields.filter(Boolean).some((value) => String(value).toLowerCase().includes(kw));
+};
+
 // 右击行 → 复制 {{敌人|名字|ID}}
 const { menu, showMenu, copyTemplate } = useCopyMenu<EnemyListItem>('敌人', (row) =>
     templateBody(row.name, row.id),
@@ -273,13 +327,7 @@ const filtered = computed(() => {
             return false;
         }
         if (kind.value != null && !enemy.kinds.includes(kind.value)) return false;
-        if (!kw) return true;
-        if (asId) {
-            return String(enemy.id) === kw || String(enemy.no ?? '') === kw;
-        }
-        return [enemy.name, enemy.name_jp, enemy.name_en]
-            .filter(Boolean)
-            .some((value) => String(value).toLowerCase().includes(kw));
+        return matchesKeyword(enemy, kw, asId);
     });
     // 图鉴条目按图鉴序号排，没有图鉴的排到最后（按分类 id）
     return rows.sort((a, b) => {
@@ -385,16 +433,7 @@ const variantResults = computed(() => {
         if (race.value != null && enemy.race.id !== race.value) continue;
         if (attribute.value != null && !enemy.attribute.some((item) => item.id === attribute.value)) continue;
         if (kind.value != null && !enemy.kinds.includes(kind.value)) continue;
-        if (kw) {
-            if (asId) {
-                if (String(enemy.id) !== kw && String(enemy.no ?? '') !== kw) continue;
-            } else {
-                const hit = [enemy.name, enemy.name_jp, enemy.name_en]
-                    .filter(Boolean)
-                    .some((value) => String(value).toLowerCase().includes(kw));
-                if (!hit) continue;
-            }
-        }
+        if (!matchesKeyword(enemy, kw, asId)) continue;
         for (const variant of enemy.variants) {
             const conditions = variantConditions(variant).filter((condition) => aiTypeOf(condition) === aiType.value);
             if (conditions.length) rows.push({ enemy, variant, conditions });

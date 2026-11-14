@@ -71,6 +71,12 @@ export interface ExtraPayload {
     relicCategory: string[] | null;
     /** 角色补充：``[{ id, index, group, release_date, character_voice }]`` */
     characterExtra: unknown[] | null;
+    /**
+     * 商店商品出现条件的文案。两种形状都认（见 `stores/wikiData.ts` 的 `shopConditionMap`）：
+     * ``{ "<条件 id>": "文案" }``，或照 tabx 行吐出来的 ``[{ id, name }]`` / ``[[id, 文案]]``。
+     * 源文件是 wiki 的 ``Data:ShopCondition.tabx``，官方 masterdata 里没有这张表。
+     */
+    shopCondition: unknown;
 }
 
 export interface ModulePayload<T = unknown> {
@@ -120,9 +126,16 @@ const mockUrl = (name: string) => `${import.meta.env.BASE_URL}mock/${name}Respon
 const luaUrl = (module: string) => `/api.php?action=lua&module=${module}&format=json&utf8=1`;
 const apiUrl = (name: ModuleName) => luaUrl(`Api/GetV2${name}`);
 
+/**
+ * 追加时间戳做缓存穿透：数据页 / mock 都会被原地覆盖，浏览器之外的 CDN、代理、
+ * Wiki 那层的页面缓存都会留旧响应，`cache: 'no-store'` 只管浏览器这一层，
+ * 所以 URL 上也带一个 ``_`` 参数（MediaWiki 会忽略未知参数，Vite 也照常返回 mock）。
+ */
+const withTimestamp = (url: string) => `${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}`;
+
 async function getJson<T>(url: string): Promise<T> {
     // 数据页会被原地覆盖，不能吃 HTTP 缓存，否则版本变化后仍可能拿到旧内容
-    const response = await fetch(url, { cache: 'no-store' });
+    const response = await fetch(withTimestamp(url), { cache: 'no-store' });
     if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
 
     const text = await response.text();
@@ -200,6 +213,8 @@ export async function fetchExtra(): Promise<ExtraPayload> {
         equipmentExtra: asList(payload.equipmentExtra),
         relicCategory: asList<string>(payload.relicCategory),
         characterExtra: asList(payload.characterExtra),
+        // 形状由调用方归一化：对象 / 数组（`[{id,name}]`、`[[id,name]]`）都收
+        shopCondition: payload.shopCondition ?? null,
     };
 }
 

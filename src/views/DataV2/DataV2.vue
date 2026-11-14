@@ -162,8 +162,7 @@ const reloadExtra = async () => {
     error.value = null;
     try {
         await store.refreshExtra();
-        const kinds = Object.keys(store.effectKinds).length;
-        window.wiz.$message.success(`Extra 已重载`);
+        window.wiz.$message.success('Extra 已重载');
     } catch (e) {
         error.value = `Extra 重载失败：${e instanceof Error ? e.message : String(e)}`;
     } finally {

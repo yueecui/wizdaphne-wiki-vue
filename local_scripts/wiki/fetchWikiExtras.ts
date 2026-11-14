@@ -10,6 +10,9 @@
  *   Data:CharacterExtra.tabx  -> local_scripts/work/wiki/Data_CharacterExtra.tabx.json
  *   Data:EquipmentExtra.tabx  -> local_scripts/work/wiki/Data_EquipmentExtra.tabx.json
  *   Data:遗物酒.tabx          -> local_scripts/work/wiki/Data_遗物酒.tabx.json
+ *   Data:角色抽取率.tabx      -> local_scripts/work/wiki/Data_角色抽取率.tabx.json
+ *   Data:ShopCondition.tabx   -> local_scripts/work/wiki/Data_ShopCondition.tabx.json
+ *                                （商店商品出现条件文案，上传脚本会自动追加新 id）
  *   Data:EffectKind.json      -> public/mock/EffectKindResponse.json
  *                                （包成 {"items":[扁平字典], "count", "page", "limit"}，
  *                                 与 build_mock 现有的 EffectKindResponse.json 形状一致）
@@ -37,8 +40,32 @@ const TARGETS: { title: string; out: string; asEffectKind?: boolean }[] = [
     { title: 'Data:CharacterExtra.tabx', out: path.join(WIKI_TABX_DIR, 'Data_CharacterExtra.tabx.json') },
     { title: 'Data:EquipmentExtra.tabx', out: path.join(WIKI_TABX_DIR, 'Data_EquipmentExtra.tabx.json') },
     { title: 'Data:遗物酒.tabx', out: path.join(WIKI_TABX_DIR, 'Data_遗物酒.tabx.json') },
+    { title: 'Data:角色抽取率.tabx', out: path.join(WIKI_TABX_DIR, 'Data_角色抽取率.tabx.json') },
+    { title: 'Data:ShopCondition.tabx', out: path.join(WIKI_TABX_DIR, 'Data_ShopCondition.tabx.json') },
     { title: 'Data:EffectKind.json', out: path.join(MOCK_DIR, 'EffectKindResponse.json'), asEffectKind: true },
 ];
+
+/**
+ * 读页面源码。自己拼 `action=query&prop=revisions` 而不是用 `bot.getPageRawTextByTitle`，
+ * 是为了能多带一个时间戳参数 `_`：手工表刚改完就拉快照时，CDN / 代理可能还留着旧响应。
+ * 解析沿用手册的 `cleanQueryPropRevisionsResult`；失败时退回库自带的读法。
+ */
+async function readPage(bot: HuijiWiki, title: string): Promise<{ content?: string } | undefined> {
+    try {
+        const res = await bot.get<never>({
+            action: 'query',
+            prop: 'revisions',
+            rvprop: 'content',
+            rvslots: 'main',
+            titles: title,
+            _: Date.now(),
+        });
+        const pages = await bot.cleanQueryPropRevisionsResult(res as never);
+        return pages?.[title] ?? Object.values(pages ?? {})[0];
+    } catch {
+        return bot.getPageRawTextByTitle(title);
+    }
+}
 
 async function main(): Promise<void> {
     const prefix = process.env.VITE_WIKI_PREFIX;
@@ -55,7 +82,7 @@ async function main(): Promise<void> {
 
     let ok = 0;
     for (const target of TARGETS) {
-        const page = await bot.getPageRawTextByTitle(target.title);
+        const page = await readPage(bot, target.title);
         if (!page?.content) {
             console.warn(`  × ${target.title}: 读不到页面，跳过`);
             continue;

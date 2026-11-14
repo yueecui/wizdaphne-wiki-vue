@@ -39,7 +39,10 @@ TOPIC_DIGEST = os.environ.get(
 
 #: intermediates of the cleaning pass (regenerated every run, not committed)
 WORK = os.path.join(ROOT, "local_scripts", "work")
-CLEAN = os.path.join(WORK, "clean")
+
+#: 语义清洗层的落盘目录。默认 ``work/clean``；游戏更新后想先比对再覆盖旧数据时，
+#: 用 ``WIZDAPHNE_CLEAN=<临时目录>`` 把这一轮清洗写到别处（``diff_data.py`` 比对用）。
+CLEAN = os.environ.get("WIZDAPHNE_CLEAN") or os.path.join(WORK, "clean")
 
 #: fallback order for "the Chinese text we show on the wiki"
 ZH_ORDER = ("zhs", "zht", "ja", "en")
@@ -48,8 +51,11 @@ ZH_ORDER = ("zhs", "zht", "ja", "en")
 #: in the repo and merged over the cleaned master data on every run
 EXTRA_XLSX = os.path.join(ROOT, "config", "Data_CharacterExtra.tabx.xlsx")
 
-#: 个体出现几率（线上 ``CharacterResponse.rates`` 的本地备份，只用于生成 mock）
+#: 个体出现几率（线上 ``CharacterResponse.rates``）。
+#: 优先读 wiki 上手工维护的 ``Data:角色抽取率.tabx`` 快照（fetchWikiExtras.ts 拉取），
+#: 没拉过时回退 ``config/CharacterRates.json`` 这份旧抓包备份。
 RATES_JSON = os.path.join(ROOT, "config", "CharacterRates.json")
+RATES_WIKI = os.path.join(WIKI_TABX_DIR, "Data_角色抽取率.tabx.json")
 
 #: 遗物酒手工数据（推荐类别 / 掉落怪物），生成 ``relics_extra`` +
 #: ``relics_ccate`` 用；``id`` 列是遗物的物品图鉴编号（``CollectionItem.list_number``，
@@ -515,7 +521,15 @@ def parse_release(value) -> dict | None:
 
 
 def character_rates() -> list:
-    """``config/CharacterRates.json``：每条以「日文名 - 日文风格」标识角色。"""
+    """个体出现几率，每条以「日文名 - 日文风格」标识角色。
+
+    优先读 wiki 的 ``Data:角色抽取率.tabx`` 快照（``fetchWikiExtras.ts`` 落盘），
+    这样新版本角色（含新风格）一在 wiki 上补录就能进 mock；
+    没拉过快照时回退 ``config/CharacterRates.json``。
+    """
+    rows = read_wiki_tabx(RATES_WIKI)
+    if rows:
+        return rows
     if not os.path.isfile(RATES_JSON):
         return []
     with open(RATES_JSON, encoding="utf-8") as fh:
@@ -626,3 +640,31 @@ def relic_extra() -> tuple[list[dict], list[str]]:
     seen = {name: index for index, name in enumerate(categories)}
     categories.sort(key=lambda name: (order.get(name, len(order)), seen[name]))
     return rows, categories
+
+
+#: 商店商品「出现条件」的人工文案表（线上 ``Data:ShopCondition.tabx``，由
+#: ``uploadDataToWiki.ts`` 自动追加新 id、人工补文案；``build_mock.py`` 读快照
+#: 生成 ``Api/GetV2Extra.shopCondition``）
+SHOP_CONDITION_WIKI = os.path.join(WIKI_TABX_DIR, "Data_ShopCondition.tabx.json")
+
+
+def shop_condition_extra() -> dict[str, str]:
+    """``Data:ShopCondition.tabx`` 快照 -> ``{"100000000": "第一章", …}``。
+
+    键是 ``Shop.lineup_condition_id``（字符串，前端按 ``String(item.condition)`` 查），
+    值是人工写的中文文案；``name`` 空着的行跳过 —— 前端查不到就退回显示条件 id。
+    官方 masterdata 里没有这些 id 的文案表，所以这份是纯人工维护的补充数据。
+    """
+    out: dict[str, str] = {}
+    for row in read_wiki_tabx(SHOP_CONDITION_WIKI):
+        cid = row.get("id")
+        if cid is None or str(cid).strip() == "":
+            continue
+        text_value = row.get("name")
+        if text_value is None:
+            continue
+        text_value = str(text_value).strip()
+        if not text_value:
+            continue
+        out[str(int(cid))] = text_value
+    return out

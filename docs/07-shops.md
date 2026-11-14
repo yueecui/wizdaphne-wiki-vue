@@ -93,6 +93,21 @@ id 明显是分层的：`1000xxxxx` 主线阶段、`10003xxxx` / `10004xxxx` 对
 2. 人工补文案（金币商店只有 37 个 id，全表一百多个，量可控）；
 3. 只标「需解锁」。
 
+> 当前实现：商品表最后一列「出现条件」显示人工文案，没录入时退回条件 id（`0` / 空显示为 `—`）。
+
+### 4.1 文案放在 `Data:ShopCondition.tabx`
+
+文案是**纯人工维护**的补充数据，走 `Api/GetV2Extra.shopCondition`（`{ "<条件 id>": "文案" }`）：
+
+1. `yarn update:wiki` 跑完 `shop` 后会调用 `syncShopCondition()`，把 `ShopResponse.json` 里
+   **新出现**的条件 id 追加成新行（`name` 留空等人工补；已有行不覆盖；页面不存在则新建）；
+   也可以 `--only shop-condition` 单独跑这一步；
+2. 人工在 wiki 页面里给 `name` 补中文文案，空着的行前端会退回显示 id；
+3. `yarn fetch:wiki-extras` 把页面拉到 `local_scripts/work/wiki/Data_ShopCondition.tabx.json`，
+   `build_mock.py` 读它生成 `shopCondition`（`common.shop_condition_extra()`）。
+
+不用动解包链路（`ShopItemRow.condition` 一直有值）。
+
 ## 5. 货币 / 兑换所
 
 - `Point.json`：`type` 有 `Point::Gold`（金币）、`Point::Event`（活动点数，108 个）、
@@ -201,3 +216,27 @@ pnpm update:wiki --only shop
 | 黒樽亭 / 银鳞伯爵府 | 1 家 186 件 / 3 家 51 件 |
 | `public/mock/ShopResponse.json` | `count` = 122，约 565 KB |
 | 前端 | 「商店」页签：一级 全部 122 / 常驻 24 / 活动 98，二级 金币商店 4 / 宝石商 114 / 黒樽亭 1 / 银鳞伯爵府 3，左侧按类别分段选店、右侧看商品 |
+
+## 11. 正文内联模板
+
+两个模板共用一份商品表（`ShopPanel.vue` / `ShopModal.vue` / `ShopListTable.vue` 都渲染
+`views/DataV2/ShopGoodsTable.vue`），所以样式只维护一处：
+
+| 模板 | 行为 | 挂载点 |
+|---|---|---|
+| `{{商店|展示名|店铺ID}}` | 正文里一个可点的店名，点击打开商店弹窗（就是商店页右侧那张表） | `.shop-inline` |
+| `{{商店列表|标题|店铺ID}}` | 表格直接渲染在元素位置，商品行照旧可点开物品 / 装备 | `.shop-list-table` |
+
+wiki 侧模板产出（`data-name` 可省略，省略时用数据里的店名，形如「宝石商 · 悬赏勋章」）：
+
+```html
+<span class="shop-inline" data-id="1200" data-name="{{{1|}}}">{{{1|}}}</span>
+<div class="shop-list-table" data-id="1200" data-name="{{{1|}}}"></div>
+```
+
+- `data-name`：`{{商店}}` 里是**显示文字**（编辑者可自行起名，空则用店名）；
+  `{{商店列表}}` 里是**抬头标题**（空则用商品表自带的抬头：店名 + 货币 / 开放时间）。
+- `data-id`：`ShopDoc.id`。缺省时按名字查（全名、「 · 」后半段、忽略空白都能对上）。
+- `data-class`：自定义样式类，会替换掉 `{{商店}}` 默认的蓝色链接色。
+
+商店页左栏右击店铺可以复制这两种模板（`CopyTemplateMenu` 支持多模板项）。

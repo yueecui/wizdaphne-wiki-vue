@@ -17,7 +17,7 @@ required) so the frontend can be developed against DEV mocks:
     MapResponse.json          Api/GetV2Map         193 层（items）+ 顶层 maps 分类标签
     EnemyPoolResponse.json    Api/GetV2EnemyPool   367 个挂不到层的编队池（敌群页）
     EnumResponse.json         Api/GetV2Enum        {enum}：各分组字典
-    ExtraResponse.json        Api/GetV2Extra       人工维护（非解包）的六块，见下
+    ExtraResponse.json        Api/GetV2Extra       人工维护（非解包）的七块，见下
     VersionResponse.json      Api/Version          { version, extra }（extra = 人工表版本）
 
     JobResponse.json / RelicResponse.json 前端不再请求，只作为上传脚本的输入
@@ -31,6 +31,7 @@ required) so the frontend can be developed against DEV mocks:
     relicExtra        遗物掉落怪物 / 推荐类别（``config/Data_遗物酒.xlsx``）
     relicCategory     遗物推荐类别可选项与顺序
     characterExtra    角色卡池组 / 上线日期 / 声优（``config/Data_CharacterExtra.tabx.xlsx``）
+    shopCondition     商店商品的出现条件文案（wiki 的 ``Data:ShopCondition.tabx``）
 
 ``EffectKindResponse.json``（效果种类名的手改表）不在这里生成：那份数据只在 wiki 上
 手工维护（``Data:EffectKind.json``），DEV 直接把同名文件放到 ``public/mock``，
@@ -71,6 +72,7 @@ from common import (  # noqa: E402
     read_config_json,
     read_wiki_tabx,
     relic_extra,
+    shop_condition_extra,
 )
 
 DEFAULT_DATA = os.path.join(ROOT, "data")
@@ -387,6 +389,11 @@ EQUIP_SHOP = [
     ("shop_name", "sn", "str"),
     ("price", "p", "num"),
     ("currency_name", "cn", "str"),
+    # 出现条件 id（`Shop.lineup_condition_id`，文案在 Extra.shopCondition）
+    ("condition", "cd", "num"),
+    # 商品行自己的上架时段（Unix 秒；0 / 缺省 = 不限）
+    ("start_at", "sa", "num"),
+    ("end_at", "ea", "num"),
 ]
 
 # ---------- 遗物（Relic） ----------
@@ -431,6 +438,8 @@ EQUIPMENT = [
     ("element", "el", "num"),
     ("element_name", "eln", "str"),
     ("special", "sp", "bool"),
+    # 稀有掉落（Equipment.is_rare_drop）：先存数据，前端暂不展示
+    ("rare_drop", "rd", "bool"),
     ("note", "nt", "str"),
     # 图标资源名（list_icon = 列表小图，icon = 背包大图，均不含 .png）
     ("list_icon", "li", "str"),
@@ -477,6 +486,9 @@ ITEM_SHOP = [
     ("condition", "cd", "num"),
     ("town", "t", "num"),
     ("point_shop_id", "ps", "num"),
+    # 商品行自己的上架时段（Unix 秒；0 / 缺省 = 不限）
+    ("start_at", "sa", "num"),
+    ("end_at", "ea", "num"),
 ]
 
 ITEM_FISHING = [
@@ -546,6 +558,9 @@ SHOP_ITEM = [
     ("limit_num", "ln", "num"),
     ("repeat", "rp", "bool"),
     ("condition", "cd", "num"),
+    # 商品自己的上架时段（`Shop.start_at` / `Shop.end_at`）：悬赏勋章的技能书按月轮换
+    ("start_at", "sa", "num"),
+    ("end_at", "ea", "num"),
 ]
 
 SHOP = [
@@ -623,6 +638,11 @@ ENEMY_AI_RULE = [
 #: 一个出现变体：参数 id + 等级区间 + 技能 + 该变体的完整数值
 ENEMY_VARIANT = [
     ("id", "i", "raw"),
+    # 变体自己的名字 / 头像（与分类名不同时才有，例如 1033 的第二形态「人斩罗刹月桃」）
+    ("name", "zh", "str"),
+    ("name_jp", "jp", "str"),
+    ("name_en", "en", "str"),
+    ("thumbnail", "th", "str"),
     ("kind", "k", "num"),
     ("param", "p", "raw"),
     ("exp", "e", "num"),
@@ -1063,7 +1083,7 @@ def main(argv: list[str]) -> int:
         equipmentExtra = equipment_extra_rows
     else:
         equipmentExtra = equip_api.get("extra") or []
-    # 人工维护的那六块：整包算个指纹当版本号，内容不变就不会让前端重拉
+    # 人工维护的那七块：整包算个指纹当版本号，内容不变就不会让前端重拉
     extra_payload = {
         "effectKinds": kind_names,
         "equipmentBaseStat": equip_api.get("baseStat") or {},
@@ -1071,6 +1091,8 @@ def main(argv: list[str]) -> int:
         "relicExtra": relic_extra_rows,
         "relicCategory": relic_categories,
         "characterExtra": char_extra,
+        # 商店商品「出现条件」文案（线上 Data:ShopCondition.tabx，键 = 条件 id 字符串）
+        "shopCondition": shop_condition_extra(),
     }
     extra_version = int(
         hashlib.md5(json.dumps(extra_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()[:8],

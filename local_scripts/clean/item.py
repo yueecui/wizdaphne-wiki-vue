@@ -202,6 +202,10 @@ def main(argv: list[str]) -> int:
                     "condition": row.get("condition") or 0,
                     "town": shop.get("town") or 0,
                     "point_shop_id": shop.get("point_shop_id") or 0,
+                    # 商品行自己的上架时段（``Shop.start_at`` / ``Shop.end_at``，0 = 不限）：
+                    # 悬赏勋章的技能书按月轮换，同一本书会有多行不同时段
+                    "start_at": row.get("start_at") or 0,
+                    "end_at": row.get("end_at") or 0,
                 })
     else:
         print(f"  {shops_path} 不存在：先跑 shop.py，否则道具没有商店信息")
@@ -265,7 +269,8 @@ def main(argv: list[str]) -> int:
 
         shops = shop_by_item.get(item_id)
         if shops:
-            shops.sort(key=lambda s: (s.get("price") or 0, s.get("town") or 0))
+            # 同一商品多行不同时段时，按时段先后排
+            shops.sort(key=lambda s: (s.get("price") or 0, s.get("town") or 0, s.get("start_at") or 0))
             entry["shop"] = shops
 
         entries.append(entry)

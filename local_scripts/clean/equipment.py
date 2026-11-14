@@ -348,6 +348,11 @@ def main(argv: list[str]) -> int:
                         # 兑换点数写实际点数名（「银鳞硬币」）
                         "currency_name": (shop.get("point_name") if currency == 5
                                           else row.get("currency_name")),
+                        # 出现条件（``Shop.lineup_condition_id``，文案在 Extra.shopCondition）
+                        "condition": row.get("condition") or 0,
+                        # 商品行自己的上架时段（``Shop.start_at`` / ``Shop.end_at``，0 = 不限）
+                        "start_at": row.get("start_at") or 0,
+                        "end_at": row.get("end_at") or 0,
                     }
                     bucket = shop_by_ident[ident]
                     if entry_row not in bucket:
@@ -519,6 +524,10 @@ def main(argv: list[str]) -> int:
             "element": element,
             "element_name": ELEMENT.get(element),
             "special": bool(pick(rolls, "is_special")),
+            # 稀有掉落标记（本版新增列 ``Equipment.is_rare_drop``）：
+            # 同一 identification 下有多行（尾数不同的掉落/强化版本），只要有一版标了
+            # 就算稀有掉落。前端暂时不用，只先落进数据里。
+            "rare_drop": bool(pick(rolls, "is_rare_drop")),
             "note": note if isinstance(note, str) else None,
             # 列表图标（img_wiki/list_icon）与背包大图标（assets.lib/sprite/EquipmentIcon），
             # 都是「文件名去掉 .png」，并已按 wiki 标题规则规范化

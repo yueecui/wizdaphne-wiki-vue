@@ -44,6 +44,10 @@
  * 装备跑完后还会检查 ``Data:EquipmentExtra.tabx``（手工维护的特典分类 / 获取途径），
  * 把本地有、页面上没有的新装备**追加**进去（已有行不动，页面解析失败则跳过）。
  *
+ * 商店跑完后还会检查 ``Data:ShopCondition.tabx``（商品的出现条件文案，官方 masterdata
+ * 没有对应表）：把本地 ``ShopResponse.json`` 里新出现的 ``Shop.lineup_condition_id``
+ * **追加**成新行（``name`` 留空等人工补，已有行不覆盖），页面不存在时按默认表头新建。
+ *
  * 最后会重建 ``Data:成就.tabx``：先抓线上旧表，交给 ``build_achievement.py``
  * 合并解包 ``AchievementMasterData``（保留旧 id、补 ``uid``、追加新增条目），
  * 再整体回写；内容无变化则跳过。``--only achievement`` 可只跑这一步。
@@ -53,6 +57,7 @@
  *   yarn update:wiki -- --force                   # 忽略缓存全部重传
  *   yarn update:wiki -- --only skill              # 只传一类
  *   yarn update:wiki -- --only achievement        # 只更新成就 tabx
+ *   yarn update:wiki -- --only shop-condition     # 只补商店出现条件 tabx
  *   yarn update:wiki -- --only skill --limit 100  # 试传前 100 条
  *   yarn update:wiki -- --dry-run                 # 只本地预览，不登录不写 wiki
  *   yarn update:wiki -- --concurrency 20          # 并发数（默认 10）
@@ -709,6 +714,99 @@ export async function syncCharacterExtra(
     return { added: added.length, total };
 }
 
+// ==================== 手工补充表：Data:ShopCondition.tabx ====================
+
+/** wiki 上手工维护的商店「出现条件」文案表（`Api/GetV2Extra.shopCondition` 从它来） */
+const SHOP_CONDITION_TITLE = 'Data:ShopCondition.tabx';
+
+/** 新建页面时用的表头（之后由人补文案） */
+const SHOP_CONDITION_SCHEMA = {
+    description: { zh: '由上传脚本生成：name 留空 = 还没录文案，前端会退回显示条件 id' },
+    schema: {
+        fields: [
+            { name: 'id', type: 'number', title: { en: 'id', zh: '条件ID' } },
+            { name: 'name', type: 'string', title: { en: 'name', zh: '出现条件' } },
+        ],
+    },
+};
+
+/**
+ * 把本地商店里**新出现**的 `Shop.lineup_condition_id` 追加到 ``Data:ShopCondition.tabx``。
+ *
+ * 官方 masterdata 里没有这些 id 的文案表（见 `docs/07-shops.md` §4），所以这张表是纯人工
+ * 维护的：脚本只保证「新 id 一定有行」，`name` 留空等人补，补好的行一律不覆盖。
+ *   * 页面不存在 / 内容为空：按 `SHOP_CONDITION_SCHEMA` 整表新建；
+ *   * 页面解析失败：报错跳过，不覆盖手工数据；
+ *   * 页面里多出来的行不删（可能是还没进解包的条件）。
+ */
+export async function syncShopCondition(
+    bot: HuijiWiki,
+    options: { dryRun?: boolean } = {},
+): Promise<{ added: number; total: number; created: boolean }> {
+    const payload = await readJson<MockPayload>(path.join(MOCK_DIR, 'ShopResponse.json'));
+    /** 本地出现的全部条件 id（按出现顺序，方便人工对着表补文案） */
+    const localIds: number[] = [];
+    const seen = new Set<number>();
+    for (const shop of payload.items ?? []) {
+        for (const item of (shop.it as Record<string, unknown>[] | undefined) ?? []) {
+            const id = Number(item.cd);
+            if (!Number.isFinite(id) || id <= 0 || seen.has(id)) continue;
+            seen.add(id);
+            localIds.push(id);
+        }
+    }
+
+    const page = await bot.getPageRawTextByTitle(SHOP_CONDITION_TITLE);
+    let tabx: TabxPage;
+    let created = false;
+    let addedIds: number[] = [];
+
+    if (!page?.content?.trim()) {
+        if (localIds.length === 0) {
+            console.log(`  ${SHOP_CONDITION_TITLE}: 页面不存在、本地也没有条件 id，跳过`);
+            return { added: 0, total: 0, created: false };
+        }
+        // 首次：按默认表头新建，把本地条件全部写进去（name 由人工补）
+        tabx = { ...SHOP_CONDITION_SCHEMA, data: localIds.map((id) => [id, null]) } as TabxPage;
+        addedIds = localIds;
+        created = true;
+        console.log(`  ${SHOP_CONDITION_TITLE}: 页面不存在，新建 ${localIds.length} 行`);
+    } else {
+        try {
+            tabx = JSON.parse(page.content) as TabxPage;
+        } catch {
+            throw new Error(`${SHOP_CONDITION_TITLE} 不是合法 JSON，已跳过（不覆盖手工数据）`);
+        }
+        if (!Array.isArray(tabx.data) || !Array.isArray(tabx.schema?.fields)) {
+            throw new Error(`${SHOP_CONDITION_TITLE} 缺少 schema.fields / data，已跳过`);
+        }
+        const fields = tabx.schema.fields.map((field) => field.name);
+        const idIndex = fields.indexOf('id');
+        if (idIndex < 0) throw new Error(`${SHOP_CONDITION_TITLE} 的 schema 里没有 id 字段`);
+
+        const known = new Set(tabx.data.map((row) => Number(row[idIndex])));
+        addedIds = localIds.filter((id) => !known.has(id));
+        if (addedIds.length === 0) {
+            console.log(`  ${SHOP_CONDITION_TITLE}: 没有新条件（现有 ${tabx.data.length} 行）`);
+            return { added: 0, total: tabx.data.length, created: false };
+        }
+        tabx.data.push(...addedIds.map((id) => [id, null] as unknown[]));
+        console.log(
+            `  ${SHOP_CONDITION_TITLE}: 追加 ${addedIds.length} 个新条件 -> ${tabx.data.length} 行` +
+                `（${addedIds.join(', ')}）`,
+        );
+    }
+
+    const total = tabx.data.length;
+    if (options.dryRun) return { added: addedIds.length, total, created };
+
+    const res = await bot.editPage(SHOP_CONDITION_TITLE, JSON.stringify(tabx, null, 4), {
+        summary: created ? `新建商店出现条件表（${total} 行）` : `追加 ${addedIds.length} 个新条件`,
+    });
+    if (res.error) throw new Error(res.error.info ?? JSON.stringify(res.error));
+    return { added: addedIds.length, total, created };
+}
+
 // ==================== 效果种类名表：Data:EffectKind.json ====================
 
 /** 解包 `effect_kinds.json` 里单个效果种类的形状（只取需要的两个字段） */
@@ -853,7 +951,7 @@ const parseArgs = () => {
     };
 
     const only = valueOf('--only');
-    const extraOnly = ['achievement'];
+    const extraOnly = ['achievement', 'shop-condition'];
     if (only && !(only in KINDS) && !extraOnly.includes(only)) {
         throw new Error(`--only 需要以下之一: ${[...Object.keys(KINDS), ...extraOnly].join(', ')}`);
     }
@@ -881,6 +979,8 @@ const parseArgs = () => {
         force: argv.includes('--force'),
         dryRun: argv.includes('--dry-run'),
         achievement: !only || only === 'achievement',
+        // 商店跑完顺带补条件表；单独跑时用 --only shop-condition
+        shopCondition: only ? only === 'shop-condition' : kinds.includes('shop'),
     };
 };
 
@@ -909,7 +1009,7 @@ async function syncCharacterStory(
 }
 
 async function main(): Promise<void> {
-    const { kinds, concurrency, limit, force, dryRun, achievement } = parseArgs();
+    const { kinds, concurrency, limit, force, dryRun, achievement, shopCondition } = parseArgs();
 
     if (!WIKI_PREFIX || !WIKI_AUTHKEY) {
         throw new Error('缺少环境变量 VITE_WIKI_PREFIX / WIKI_AUTHKEY（见 .env.example）');
@@ -986,6 +1086,17 @@ async function main(): Promise<void> {
         } catch (err) {
             failedTotal++;
             console.error(`  × ${EQUIP_EXTRA_TITLE} 同步失败: ${err instanceof Error ? err.message : err}`);
+        }
+    }
+
+    // 商店手工补充表（Data:ShopCondition.tabx）：把本地新出现的条件 id 追加进去
+    if (shopCondition) {
+        console.log(`\n===== shop-condition (${SHOP_CONDITION_TITLE}) =====`);
+        try {
+            await syncShopCondition(bot, { dryRun });
+        } catch (err) {
+            failedTotal++;
+            console.error(`  × ${SHOP_CONDITION_TITLE} 同步失败: ${err instanceof Error ? err.message : err}`);
         }
     }
 

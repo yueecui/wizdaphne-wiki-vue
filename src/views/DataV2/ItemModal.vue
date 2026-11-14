@@ -175,7 +175,24 @@
                             </thead>
                             <tbody>
                                 <tr v-for="(row, index) in shopRows" :key="index">
-                                    <td class="text-left">{{ row.shop }}</td>
+                                    <td class="text-left">
+                                        {{ row.shop }}
+                                        <!-- 出现条件（人工文案表 Data:ShopCondition.tabx），没好文案时显示条件 id -->
+                                        <template v-if="row.condition">
+                                            <br />
+                                            <span class="text-xs opacity-50">条件：{{ row.condition }}</span>
+                                        </template>
+                                        <!-- 上架时段 + 状态：只显示有时限的（结束时间不限的商品不显示） -->
+                                        <template v-if="row.window">
+                                            <br />
+                                            <span class="text-xs">
+                                                <span :class="SHOP_WINDOW_STATE_CLASS[row.state]">
+                                                    [{{ row.state }}]
+                                                </span>
+                                                <span class="opacity-50"> {{ row.window }}</span>
+                                            </span>
+                                        </template>
+                                    </td>
                                     <td>{{ row.quantity }}</td>
                                     <td class="whitespace-nowrap">{{ row.price }}</td>
                                     <td class="whitespace-nowrap">
@@ -207,6 +224,7 @@ import WikiImg from '../../components/huiji/WikiImg.vue';
 import { MwConfig } from '../../huiji/MwConfig';
 import ThemeConfigProvider from '../../layout/ThemeConfigProvider.vue';
 import { getImageUrl } from '../../util/getImageUrl';
+import { useWikiDataStore } from '../../stores/wikiData';
 import { useDataV2Store } from './dataV2Store';
 import SkillModal from './SkillModal.vue';
 import {
@@ -215,6 +233,10 @@ import {
     LIMIT_LABELS,
     parseDescription,
     SHOP_KIND_LABELS,
+    SHOP_WINDOW_STATE_CLASS,
+    shopConditionText,
+    shopWindowState,
+    shopWindowText,
     type ItemDoc,
     type ItemShopRow,
 } from './itemTypes';
@@ -223,6 +245,8 @@ const props = defineProps<{ show: boolean; item: ItemDoc | null }>();
 const emit = defineEmits<{ 'update:show': [value: boolean] }>();
 
 const store = useDataV2Store();
+/** 人工表 `Api/GetV2Extra.shopCondition`：商店出现条件的文案 */
+const wiki = useWikiDataStore();
 const canEdit = MwConfig.getInstance().canEdit;
 
 /** `Item::Expendable` -> `Expendable` */
@@ -305,13 +329,28 @@ const limitTextOf = (row: ItemShopRow) => {
 
 /** 商店行：直接铺开后端（shop.py）清洗好的 `item.shop`，不再加载商店模块 */
 const shopRows = computed(() => {
-    const rows: Array<{ shop: string; price: string; quantity: number; limit: string }> = [];
+    const rows: Array<{
+        shop: string;
+        price: string;
+        quantity: number;
+        limit: string;
+        condition: string;
+        /** 上架时段；空串 = 结束时间不限（永久上架），不显示 */
+        window: string;
+        /** 上架状态（上架中 / 未上架 / 已结束）；随 `window` 一起为空 */
+        state: string;
+    }> = [];
     for (const row of props.item?.shop ?? []) {
         rows.push({
             shop: row.shop_name || SHOP_KIND_LABELS[row.shop_kind ?? 0] || '特殊',
             price: priceText(row),
             quantity: row.quantity ?? 1,
             limit: limitTextOf(row),
+            // 出现条件文案（Extra.shopCondition），没录入时是条件 id
+            condition: shopConditionText(row, wiki.shopConditions),
+            // 商品行自己的上架时段（悬赏勋章的技能书按月轮换，同一本书会有多行）
+            window: shopWindowText(row),
+            state: shopWindowState(row),
         });
     }
     return rows;

@@ -20,6 +20,12 @@ export interface ItemShopRow {
     /** 0 = 所有城镇通用 */
     town?: number;
     point_shop_id?: number;
+    /**
+     * 这一行自己的上架时段（`Shop.start_at` / `Shop.end_at`，Unix 秒；0 / 缺省 = 不限）。
+     * 悬赏勋章店的技能书按月轮换：同一本书会有多行不同时段。
+     */
+    start_at?: number;
+    end_at?: number;
 }
 
 export interface ItemFishing {
@@ -284,6 +290,58 @@ export const TOWN_LABELS: Record<number, string> = {
     3: '伊斯贝克',
     5: '瓜尔达要塞',
     44: '诺森霍洛村',
+};
+
+/**
+ * 商店出现条件文案（modal 里「条件：XXX」）。文案来自人工表
+ * `Api/GetV2Extra.shopCondition`（wiki 的 `Data:ShopCondition.tabx`），没录入时退回条件 id。
+ * 参数放宽成 `{ condition?: number }`，装备的商店行也能直接用。0 / 缺省返回空串。
+ */
+export const shopConditionText = (
+    row: { condition?: number },
+    labels?: Record<string, string>,
+): string => {
+    if (!row.condition) return '';
+    const id = String(row.condition);
+    return labels?.[id] || id;
+};
+
+const JST_DATE = new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+});
+
+/**
+ * 商店行的上架时段文案（modal 里「上架 A ~ B」）。
+ * 只在「结束时间有值时」返回内容，永久上架（`end_at` 为空）返回空串。
+ * 时段边界是游戏时间（JST 整月），按 `Asia/Tokyo` 格式化，避免本地时区把日期算偏一天。
+ * 参数放宽成 `{ start_at?: number; end_at?: number }`，装备的商店行也能直接用。
+ */
+export const shopWindowText = (row: { start_at?: number; end_at?: number }): string => {
+    if (!row.end_at) return '';
+    const fmt = (seconds?: number) => (seconds ? JST_DATE.format(new Date(seconds * 1000)) : '不限');
+    return `${fmt(row.start_at)} ~ ${fmt(row.end_at)}`;
+};
+
+/** 上架状态：没有结束时间（永久上架）返回空串，其余必是三态之一 */
+export type ShopWindowState = '' | '上架中' | '未上架' | '已结束';
+
+/** 相对当前时间的上架状态（`上架中` / `未上架` / `已结束`）；永久上架返回空串 */
+export const shopWindowState = (row: { start_at?: number; end_at?: number }): ShopWindowState => {
+    if (!row.end_at) return '';
+    const now = Date.now() / 1000;
+    if (row.start_at && now < row.start_at) return '未上架';
+    if (now > row.end_at) return '已结束';
+    return '上架中';
+};
+
+/** 上架状态配色：上架中=绿、未上架=琥珀、已结束=压暗 */
+export const SHOP_WINDOW_STATE_CLASS: Record<string, string> = {
+    上架中: 'text-green-400',
+    未上架: 'text-amber-300/90',
+    已结束: 'opacity-40',
 };
 
 export const describeShop = (row: ItemShopRow): string => {

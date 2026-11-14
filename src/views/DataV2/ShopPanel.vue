@@ -17,7 +17,7 @@
         </div>
 
         <div class="grid gap-3 md:grid-cols-[17rem_1fr]">
-            <!-- 左：店铺列表（按类别分组） -->
+            <!-- 左：店铺列表（按类别分组）；右击可复制「商店」/「商店列表」两种内联模板 -->
             <div class="flex flex-col gap-2 max-h-[65vh] overflow-y-auto thin-scrollbar pr-1">
                 <div v-for="section in sections" :key="section.label" class="flex flex-col gap-1">
                     <div class="text-xs opacity-50 px-1 pt-1">{{ section.label }}</div>
@@ -29,6 +29,7 @@
                         :type="active?.id === shop.id ? 'primary' : 'default'"
                         class="justify-start! text-left!"
                         @click="active = shop"
+                        @contextmenu.prevent="showMenu($event, shop)"
                     >
                         <span class="truncate">{{ shop.name }}</span>
                         <span class="ml-1 opacity-50 text-xs">{{ shop.count }}</span>
@@ -37,75 +38,30 @@
                 <div v-if="!filtered.length && !loading" class="text-xs opacity-50 px-1">没有匹配的商店</div>
             </div>
 
-            <!-- 右：商品表（游戏内顺序：Shop.priority） -->
-            <div v-if="active" class="flex flex-col gap-2">
-                <!-- 常驻只看货币；活动只看开放 / 截止 -->
-                <div class="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
-                    <div class="font-bold">{{ active.name }}</div>
-                    <template v-if="(active.group ?? 1) === 1">
-                        <div v-if="currencies.length" class="opacity-70">货币：{{ currencies.join(' / ') }}</div>
-                    </template>
-                    <template v-else>
-                        <div class="opacity-70">
-                            开放：{{ active.start_at ? formatDate(active.start_at) : '—' }}
-                        </div>
-                        <div class="opacity-70">
-                            截止：{{ active.end_at ? formatDate(active.end_at) : '—' }}
-                        </div>
-                    </template>
-                </div>
-
-                <div class="overflow-auto max-h-[60vh] thin-scrollbar">
-                    <table class="wikitable w-full text-sm text-center m-0!">
-                        <thead class="sticky top-0 z-10">
-                            <tr>
-                                <th>商品</th>
-                                <th class="w-[10em]">价格</th>
-                                <th class="w-[9em]">限购</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr
-                                v-for="item in active.items"
-                                :key="`${item.shop_id}-${item.content_id}`"
-                                :class="rowClass(item)"
-                                @click="open(item)"
-                            >
-                                <td class="text-left">
-                                    {{ item.name ?? '—' }}
-                                    <span v-if="relicRank(item)" class="text-yellow-300 whitespace-nowrap">
-                                        {{ '★'.repeat(relicRank(item)) }}
-                                    </span>
-                                    <span v-if="(item.quantity ?? 1) > 1" class="ml-1 opacity-60 text-xs whitespace-nowrap">
-                                        ×{{ item.quantity }}
-                                    </span>
-                                </td>
-                                <td class="whitespace-nowrap">{{ item.price ?? 0 }}</td>
-                                <td class="whitespace-nowrap">
-                                    <span v-if="limitText(item)">{{ limitText(item) }}</span>
-                                    <span v-else class="opacity-40">—</span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <!-- 右：商品表（与商店 modal / 内联「商店列表」共用同一个组件） -->
+            <ShopGoodsTable v-if="active" :shop="active" show-header max-height="60vh" />
         </div>
 
-        <ItemModal v-model:show="itemShow" :item="selectedItem" />
-        <EquipmentModal v-model:show="equipShow" :identification="selectedIdent" />
+        <!-- 右击店铺：复制内联模板（两种） -->
+        <CopyTemplateMenu
+            :show="menu.show"
+            :x="menu.x"
+            :y="menu.y"
+            :templates="SHOP_TEMPLATES"
+            @copy="copyTemplate"
+        />
     </div>
 </template>
 
 <script setup lang="ts">
 import { NButton, NInput } from 'naive-ui';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useWikiDataStore } from '../../stores/wikiData';
-import EquipmentModal from './EquipmentModal.vue';
-import ItemModal from './ItemModal.vue';
+import CopyTemplateMenu from './CopyTemplateMenu.vue';
+import ShopGoodsTable from './ShopGoodsTable.vue';
 import { usePersistentRef } from './dataV2Settings';
-import { CURRENCY_LABELS, LIMIT_LABELS, type ItemDoc } from './itemTypes';
-import type { ShopDoc, ShopItemRow } from './shopTypes';
+import type { ShopDoc } from './shopTypes';
+import { copyTemplateText, templateBody } from './useCopyMenu';
 
 defineOptions({ name: '商店面板' });
 
@@ -188,69 +144,37 @@ const resetFilter = () => {
     keyword.value = '';
 };
 
-/** 限购文案；空串 = 不限购（表格里显示为暗色横线） */
-const limitText = (item: ShopItemRow) => {
-    if (!item.limit_kind) return item.limit_num ? `共 ${item.limit_num} 次` : '';
-    const period = item.limit_kind === 4 ? '限购' : (LIMIT_LABELS[item.limit_kind] ?? '');
-    const times = item.limit_num ? `${item.limit_num} 次` : '';
-    return [period, times].filter(Boolean).join(' ');
-};
+// ---------- 右击店铺：复制内联模板 ----------
 
-/** 当前店铺使用的货币；兑换点数用商店层级的点数名（银鳞硬币 / 公会点数 …），比「兑换点数」具体 */
-const currencies = computed(() => {
-    const shop = active.value;
-    if (!shop) return [];
-    const labels = new Set<string>();
-    for (const item of shop.items ?? []) {
-        const label = item.currency_name ?? CURRENCY_LABELS[item.currency ?? 0];
-        if (!label) continue;
-        labels.add(label === '兑换点数' && shop.point_name ? shop.point_name : label);
-    }
-    return [...labels];
+/** 同一家店能复制成两种模板：链接（点击开弹窗）/ 内联列表 */
+const SHOP_TEMPLATES = ['商店', '商店列表'];
+
+const menu = ref<{ show: boolean; x: number; y: number; shop: ShopDoc | null }>({
+    show: false,
+    x: 0,
+    y: 0,
+    shop: null,
 });
 
-const formatDate = (seconds: number) => new Date(seconds * 1000).toLocaleDateString('zh-CN');
-
-// ---------- 点击商品：物品 / 装备各自弹窗，其余没有弹窗就没有交互 ----------
-
-const isItemRow = (item: ShopItemRow) => (item.content_type ?? '').startsWith('Item::');
-
-const equipIdentOf = (item: ShopItemRow) => {
-    if (item.content_type !== 'Equip::Equipment') return null;
-    return item.content_ident ?? null;
+const closeMenu = () => {
+    menu.value = { ...menu.value, show: false };
+    document.removeEventListener('click', closeMenu);
 };
 
-/** 只有能打开弹窗的行才给手型光标 */
-const rowClass = (item: ShopItemRow) =>
-    isItemRow(item) || equipIdentOf(item) != null
-        ? 'cursor-pointer hover:bg-[#3a312a]! transition-colors select-none'
-        : '';
-
-const itemShow = ref(false);
-const selectedItem = ref<ItemDoc | null>(null);
-const equipShow = ref(false);
-const selectedIdent = ref<number | null>(null);
-
-/** 商品弹窗按 id 查道具表（和物品页共用同一份缓存数据） */
-const itemDocs = computed(() => new Map(wiki.items.map((doc) => [doc.id, doc])));
-
-/** 遗物商品的星级（`Item.relic.rank`），非遗物返回 0 */
-const relicRank = (item: ShopItemRow) => {
-    if (item.content_type !== 'Item::Relic' || item.content_id == null) return 0;
-    return itemDocs.value.get(item.content_id)?.relic?.rank ?? 0;
+const showMenu = (event: MouseEvent, shop: ShopDoc) => {
+    // 右击第二家店时先摘掉上一次的监听，避免重复绑定
+    document.removeEventListener('click', closeMenu);
+    menu.value = { show: true, x: event.clientX, y: event.clientY, shop };
+    document.addEventListener('click', closeMenu);
 };
 
-const open = (item: ShopItemRow) => {
-    const ident = equipIdentOf(item);
-    if (ident != null) {
-        selectedIdent.value = ident;
-        equipShow.value = true;
-        return;
-    }
-    if (!isItemRow(item) || item.content_id == null) return;
-    const doc = itemDocs.value.get(item.content_id);
-    if (!doc) return;
-    selectedItem.value = doc;
-    itemShow.value = true;
+/** 正文 `店铺展示名|店铺ID`：名字只负责脚本加载前显示，ID 用于定位 */
+const copyTemplate = (template: string) => {
+    const shop = menu.value.shop;
+    closeMenu();
+    if (!shop) return;
+    copyTemplateText(template, templateBody(shop.name, shop.id));
 };
+
+onBeforeUnmount(() => document.removeEventListener('click', closeMenu));
 </script>

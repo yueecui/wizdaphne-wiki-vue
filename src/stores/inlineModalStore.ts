@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import type { ItemDoc } from '../views/DataV2/itemTypes';
 
 /** 正文内联组件（`*Inline`）能打开的 V2 modal 类型 */
-export type InlineModalKind = 'item' | 'equipment' | 'character' | 'enemy' | 'skill' | 'mapFloor';
+export type InlineModalKind = 'item' | 'equipment' | 'character' | 'enemy' | 'skill' | 'mapFloor' | 'shop';
 
 /**
  * 正文内联组件与全局 modal 宿主（`components/InlineModalHost.vue`）之间的状态。

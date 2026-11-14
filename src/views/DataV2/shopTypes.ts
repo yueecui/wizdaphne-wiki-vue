@@ -20,6 +20,12 @@ export interface ShopItemRow {
     repeat?: boolean;
     /** 进度解锁条件 id（0 = 无条件） */
     condition?: number;
+    /**
+     * 这一行自己的上架时段（`Shop.start_at` / `Shop.end_at`，Unix 秒；0 = 不限）。
+     * 悬赏勋章店的技能书按月轮换：同一本书有 3 行不同时段，同一时刻只有一行在架。
+     */
+    start_at?: number;
+    end_at?: number;
 }
 
 export interface ShopDoc {

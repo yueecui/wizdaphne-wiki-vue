@@ -102,12 +102,25 @@ def action_name(dn) -> tuple[str | None, str | None]:
     return pick(dn.get("zhs") or dn.get("zht")), pick(dn.get("ja"))
 
 
-def ident_of(value: int, known: dict) -> int | None:
-    """Skill references are stored in two shapes: row id (ident*100+lv) or ident."""
+def ident_of(value: int, by_row: dict, known: set) -> int | None:
+    """技能引用 -> identification。
+
+    行 id（``Skill.id``）的编号规则**并不统一**，不能靠除法：
+    * 多数是 ``identification*100 + level``（``500000001``）；
+    * 单行技能的行 id 直接等于 identification（``997801``）；
+    * 装备给的被动技能那批是 ``identification + level - 1``
+      （石化耐性 identification 52120701，Lv3 的行 id 是 52120703）。
+
+    所以先查「行 id -> identification」表，再退到 identification 本身。
+    """
     if not value:
         return None
+    ident = by_row.get(value)
+    if ident is not None:
+        return ident
     if value in known:
         return value
+    # 老式行 id（ident*100+level）：引用写的行不存在时兜底
     if value // 100 in known:
         return value // 100
     return None
@@ -127,6 +140,10 @@ def main(argv: list[str]) -> int:
     for rows in by_ident.values():
         rows.sort(key=lambda r: r.get("level") or 0)
     known = set(by_ident)
+    #: 行 id（``Skill.id``）-> identification。引用方写的是行 id，规则不统一，只能查表
+    skill_by_row: dict[int, int] = {
+        r["id"]: skill_identification(r) for r in skills if r.get("id")
+    }
 
     # ---------- effect chain ----------
     groups = {r["id"]: r for r in load("SkillEffectGroup")}
@@ -181,7 +198,7 @@ def main(argv: list[str]) -> int:
     sources: dict[int, set] = collections.defaultdict(set)
 
     def ref(value, label):
-        i = ident_of(value, known)
+        i = ident_of(value, skill_by_row, known)
         if i is not None:
             sources[i].add(label)
 
@@ -196,7 +213,7 @@ def main(argv: list[str]) -> int:
     for r in load("CharacterSelfRestraintSkill"):
         ref(r.get("skill_identification"), "discipline")
     for r in load("CharacterSkill"):
-        ref((r.get("skill_id") or 0) // 100, "job")
+        ref(r.get("skill_id"), "job")
     for e in load("Equipment"):
         for x in e.get("standard_skill_ids") or []:
             ref(x, "equipment")
@@ -217,8 +234,8 @@ def main(argv: list[str]) -> int:
     job_of: dict[int, set] = collections.defaultdict(set)
     learn_of: dict[int, list] = collections.defaultdict(list)
     for r in load("CharacterSkill"):
-        i = (r.get("skill_id") or 0) // 100
-        if i in known:
+        i = ident_of(r.get("skill_id"), skill_by_row, known)
+        if i is not None:
             job_of[i].add(r["job_id"])
             learn_of[i].append({"job": r["job_id"], "get_lv": r.get("get_lv")})
     for r in skills:

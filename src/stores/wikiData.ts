@@ -620,6 +620,15 @@ export interface RawEnemyInterrupt {
 /** 一个出现变体（一个 ``Enemy`` 行） */
 export interface RawEnemyVariant {
     id: number;
+    /**
+     * 变体自己的名字（与分类名不同时才有；例如 1033「亡念剑鬼」的第二形态
+     * 「人斩罗刹月桃」）。缺省 = 与分类同名。
+     */
+    name?: string;
+    name_jp?: string;
+    name_en?: string;
+    /** 变体专属缩略图（去掉 ``_s.png`` 后缀）；缺省 = 用分类的 */
+    thumbnail?: string;
     /** 强度档位：0 普通 / 1 强化1 / 2 强化2 / 3 首领 / 4 强敌（待核对） */
     kind: number;
     param: number;
@@ -975,9 +984,20 @@ function extraMap(raw: unknown): Record<number, RawCharacterExtra> {
 /** ``rates`` 数组 -> ``{id: 几率数据}`` */
 function rateMap(raw: unknown): Record<number, RawCharacterRate> {
     const out: Record<number, RawCharacterRate> = {};
-    if (!Array.isArray(raw)) return out;
-    for (const row of raw as RawCharacterRate[]) {
-        if (row && typeof row.id === 'number') out[row.id] = row;
+    if (Array.isArray(raw)) {
+        for (const row of raw as RawCharacterRate[]) {
+            if (row && typeof row.id === 'number') out[row.id] = row;
+        }
+        return out;
+    }
+    // 线上 Lua 可能把 ``{ [id]: row }`` 这种连续整数 key 编码成对象 / 数组，
+    // mock 是带 id 字段的数组，两种都认，否则个体几率整块为空、高亮全不生效。
+    if (raw && typeof raw === 'object') {
+        for (const [key, value] of Object.entries(raw as Record<string, RawCharacterRate>)) {
+            if (!value || typeof value !== 'object') continue;
+            const id = typeof value.id === 'number' ? value.id : Number(key);
+            if (Number.isFinite(id)) out[id] = { ...value, id };
+        }
     }
     return out;
 }
@@ -991,7 +1011,7 @@ export interface EquipmentExtraRow {
     sou?: string[];
 }
 
-/** 人工表（``Api/GetV2Extra``）解出来的六块 */
+/** 人工表（``Api/GetV2Extra``）解出来的七块 */
 interface ExtraSections {
     characterExtras: Record<number, RawCharacterExtra>;
     equipmentBaseStat: Record<string, EquipmentBaseStatEntry>;
@@ -999,6 +1019,8 @@ interface ExtraSections {
     relicExtras: RelicExtra[];
     relicCategories: string[];
     effectKinds: EffectKindMap | null;
+    /** 商店商品出现条件文案：``{ "<条件 id>": "文案" }`` */
+    shopConditions: Record<string, string>;
 }
 
 const emptyExtraSections = (): ExtraSections => ({
@@ -1008,7 +1030,74 @@ const emptyExtraSections = (): ExtraSections => ({
     relicExtras: [],
     relicCategories: [],
     effectKinds: null,
+    shopConditions: {},
 });
+
+/** 从一行里取文案：字符串，或 `{ name / text / label / title / desc }` */
+function conditionTextOf(value: unknown): string {
+    if (typeof value === 'string') return value.trim();
+    if (value && typeof value === 'object') {
+        const row = value as Record<string, unknown>;
+        for (const key of ['name', 'text', 'label', 'title', 'desc']) {
+            const text = row[key];
+            if (typeof text === 'string' && text.trim()) return text.trim();
+        }
+    }
+    return '';
+}
+
+/** 从一行里取条件 id：数字 / 数字字符串，或 `{ id / condition / condition_id / key }` */
+function conditionIdOf(value: unknown): string {
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+    if (typeof value === 'string' && value.trim()) return value.trim();
+    if (value && typeof value === 'object') {
+        const row = value as Record<string, unknown>;
+        for (const key of ['id', 'condition', 'condition_id', 'key']) {
+            const id = row[key];
+            if (typeof id === 'number' && Number.isFinite(id)) return String(id);
+            if (typeof id === 'string' && id.trim()) return id.trim();
+        }
+    }
+    return '';
+}
+
+/**
+ * ``Api/GetV2Extra.shopCondition`` -> ``{ "100000000": "第一章" }``。
+ *
+ * 三种形状都收，省得 wiki 侧为了对齐再转换一遍：
+ * 1. 对象：``{ "100000000": "第一章" }``（value 也可以是 ``{ name: "…" }``）
+ * 2. 对象数组：``[{ id: 100000000, name: "第一章" }]``（tabx 行原样）
+ * 3. 二维数组：``[[100000000, "第一章"]]``
+ *
+ * 空文案的行当「还没录」，丢掉后前端会退回显示条件 id。
+ */
+function shopConditionMap(raw: unknown): Record<string, string> {
+    const out: Record<string, string> = {};
+
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+        for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+            const text = conditionTextOf(value);
+            const id = String(key).trim();
+            if (id && text) out[id] = text;
+        }
+        return out;
+    }
+
+    if (Array.isArray(raw)) {
+        for (const row of raw) {
+            const id = Array.isArray(row) ? conditionIdOf(row[0]) : conditionIdOf(row);
+            const text = Array.isArray(row) ? conditionTextOf(row[1]) : conditionTextOf(row);
+            if (id && text) out[id] = text;
+        }
+        return out;
+    }
+
+    if (raw != null) {
+        // 形状不认识时留个线索，方便排查 wiki 侧的数据结构
+        console.warn('[shopCondition] 无法识别的数据结构', raw);
+    }
+    return out;
+}
 
 /**
  * 装备特典分类 / 获取途径合并进装备行：人工表里有这条就整条覆盖，
@@ -1031,7 +1120,7 @@ function mergeEquipmentExtras(equipments: RawEquipment[], extras: EquipmentExtra
 }
 
 /**
- * ``Api/GetV2Extra`` -> 六块。``fallback`` 是旧接口的同名字段
+ * ``Api/GetV2Extra`` -> 七块。``fallback`` 是旧接口的同名字段
  * （``GetV2Character.extra`` / ``GetV2Equipment.baseStat`` / ``GetV2Item.relics_extra`` …），
  * 接口还在灰度、Extra 模块缺失时照旧能用。
  */
@@ -1062,10 +1151,11 @@ function decodeExtraSections(
             (name) => typeof name === 'string' && name !== '',
         ),
         effectKinds: extra?.effectKinds ?? fallback.kinds ?? null,
+        shopConditions: shopConditionMap(extra?.shopCondition),
     };
 }
 
-/** 人工表六块 + 版本号写进 meta 的行（键名沿用旧结构，老缓存也能读） */
+/** 人工表七块 + 版本号写进 meta 的行（键名沿用旧结构，老缓存也能读） */
 const extraMetaRows = (sections: ExtraSections, version: number): MetaRow[] => [
     { key: 'extraVersion', value: version },
     { key: 'characterExtras', value: sections.characterExtras },
@@ -1074,6 +1164,7 @@ const extraMetaRows = (sections: ExtraSections, version: number): MetaRow[] => [
     { key: 'relicExtras', value: sections.relicExtras },
     { key: 'relicCategories', value: sections.relicCategories },
     { key: 'effectKindNames', value: sections.effectKinds ?? {} },
+    { key: 'shopConditions', value: sections.shopConditions },
 ];
 
 export const useWikiDataStore = defineStore('wiki-data', () => {
@@ -1104,6 +1195,8 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
     const characterRates = ref<Record<number, RawCharacterRate>>({});
     /** ``Api/GetV2Extra.equipmentBaseStat``，按键是类型名（含 ``R{阶级}`` 变体） */
     const equipmentBaseStat = ref<Record<string, EquipmentBaseStatEntry>>({});
+    /** ``Api/GetV2Extra.shopCondition``，键是 ``Shop.lineup_condition_id``（商店出现条件文案） */
+    const shopConditions = ref<Record<string, string>>({});
 
     /** 原始（未合并人工表）的装备 / 遗物：人工表单独刷新时按它们重算 */
     let rawEquipments: RawEquipment[] = [];
@@ -1192,6 +1285,7 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         extraSections = sections;
         characterExtras.value = sections.characterExtras;
         equipmentBaseStat.value = sections.equipmentBaseStat;
+        shopConditions.value = sections.shopConditions;
         // 效果种类名 / 参数名盖在字典的 effect_kind 之上
         if (sections.effectKinds) mergeEffectKinds(toKeyedRecord<EffectKind>(sections.effectKinds));
         recomputeDerived();
@@ -1390,6 +1484,7 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
                 'relicExtras',
                 'relicCategories',
                 'effectKindNames',
+                'shopConditions',
             ]),
         ]);
 
@@ -1404,6 +1499,7 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
             relicExtrasRow,
             relicCategoriesRow,
             effectKindRow,
+            shopConditionsRow,
         ] = metaRows;
 
         apply(database, {
@@ -1429,6 +1525,7 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
                 relicExtras: (relicExtrasRow?.value as RelicExtra[]) ?? [],
                 relicCategories: (relicCategoriesRow?.value as string[]) ?? [],
                 effectKinds: (effectKindRow?.value as EffectKindMap) ?? null,
+                shopConditions: (shopConditionsRow?.value as Record<string, string>) ?? {},
             },
         });
     }
@@ -1535,6 +1632,7 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
             relicExtras: extra.relicExtra ? sections.relicExtras : extraSections.relicExtras,
             relicCategories: extra.relicCategory ? sections.relicCategories : extraSections.relicCategories,
             effectKinds: sections.effectKinds ?? extraSections.effectKinds,
+            shopConditions: extra.shopCondition ? sections.shopConditions : extraSections.shopConditions,
         };
 
         let nextVersion = extraVersion;
@@ -1594,6 +1692,8 @@ export const useWikiDataStore = defineStore('wiki-data', () => {
         characterExtras,
         characterRates,
         equipmentBaseStat,
+        /** 商店商品出现条件文案（`Api/GetV2Extra.shopCondition`，键 = 条件 id） */
+        shopConditions,
         version,
         status,
         error,

@@ -173,7 +173,12 @@
             </div>
 
             <!-- 玩家技能：效果值随能力值变化（X = 能力值，Y = 伤害 / 治疗量），阈值处打折 -->
-            <SkillPowerChart v-if="data.player" :levels="levels" :param-labels="REFERENCE_PARAM" />
+            <SkillPowerChart
+                v-if="data.player"
+                :levels="levels"
+                :param-labels="REFERENCE_PARAM"
+                :cost-unit="costUnit"
+            />
 
             <table class="wikitable w-full table-fixed! text-center text-sm border-collapse m-0!">
                 <colgroup>
@@ -461,19 +466,21 @@ const usageEntries = computed<SourceEntry[]>(() => {
     return entries;
 });
 
-/** 展示最多 5 件装备，其余用 +N 表示 */
+/**
+ * 展示最多 5 件装备，其余用 +N 表示。
+ *
+ * 只按实际反查结果判断，不再看 ``sources`` 里的 equipment / equip_set：那份标记由
+ * 清洗阶段写入，一旦漏标（例如装备给的被动技能 52120701 石化耐性曾经整批漏标），
+ * 装备区就会整块消失。``equipmentOwners`` 直接遍历装备表，本身就已经是权威结果。
+ */
 const equipmentAll = computed(() => {
     const d = data.value;
     if (!d) return [];
-    if (!d.sources.includes('equipment') && !d.sources.includes('equip_set')) return [];
     return equipmentOwners.value.get(d.identification) ?? [];
 });
 
 const equipmentRows = computed(() => equipmentAll.value.slice(0, 5));
 const equipmentMore = computed(() => Math.max(0, equipmentAll.value.length - 5));
-
-/** ``Skill.cost_kind``: 1 = SP (weapon skills), 2 = MP (magic / prayers). */
-const COST_UNIT: Record<number, string> = { 1: 'SP', 2: 'MP' };
 
 /** ``SkillDamageEffect.damage_type``. */
 const DAMAGE_TYPE: Record<number, string> = { 1: '物理', 2: '魔法', 3: '特殊' };
@@ -486,6 +493,17 @@ const PASSIVE_TIMING = new Set([1, 5]);
 
 /** ``Skill.skill_kind`` of the four spell kinds (攻击 / 回复 / 强化 / 妨碍魔法). */
 const SPELL_KINDS = new Set([4, 5, 6, 7]);
+
+/**
+ * 消耗单位：咒文（攻击 / 回复 / 强化 / 妨碍魔法）消耗 MP，其余技能（攻击 / 辅助 /
+ * 陷阱 …）消耗 SP。
+ *
+ * 不能看 ``Skill.cost_kind``：客户端表里它几乎恒为 1（伤害技能、咒文、被动都是 1），
+ * 少数为 2 的行也没有规律（有 SP 的防阵系技能，也有 MP 的回复咒文），按它判断会把
+ * 所有咒文都显示成消耗 SP。游戏内文案本身就把「呪文」和「スキル」分开说
+ * （「MPを消費した時」「SPを13以上消費する攻撃系スキル」），所以按技能种类判断。
+ */
+const costUnit = computed<'SP' | 'MP'>(() => (SPELL_KINDS.has(data.value?.kind ?? 0) ? 'MP' : 'SP'));
 
 /** ``SkillDamageEffect.damage_count`` = 99 means "one hit per weapon swing". */
 const WEAPON_COUNT = 99;
@@ -1030,10 +1048,16 @@ const rows = computed<Row[]>(() => {
     };
 
     // 单位放进项目列（消耗 SP / 消耗 MP），值列只留数字
-    const costKind = levels.value.find((lv) => lv.cost != null)?.cost_kind;
-    const costUnit = costKind == null ? '' : (COST_UNIT[costKind] ?? '');
-    add(collect(`消耗${costUnit ? ` ${costUnit}` : ''}`, (lv) => (lv.cost == null ? '' : String(lv.cost))));
-    add(collect('使用次数', (lv) => (lv.use_limit ? String(lv.use_limit) : '')));
+    add(collect(`消耗 ${costUnit.value}`, (lv) => (lv.cost == null ? '' : String(lv.cost))));
+    // 使用次数：``use_limit`` 为 0 表示不限；「一场战斗只能用一次」这类只有描述里写了
+    // （例：214102010 炉心激活），补一行「1」把限制显式写出来
+    const limitRow = collect('使用次数', (lv) => (lv.use_limit ? String(lv.use_limit) : ''));
+    add(
+        limitRow ??
+            (data.value && store.oncePerBattle(data.value.identification)
+                ? { label: '使用次数', values: levels.value.map(() => '1') }
+                : null),
+    );
     add(collect('仇恨', (lv) => (lv.hate ? String(lv.hate) : '')));
     add(
         collect('使用条件', (lv) =>

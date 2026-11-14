@@ -25,6 +25,13 @@ formula inputs, not as a level snapshot: the wiki computes
 which was verified against the reference site (goblin lv2 -> HP 36-44,
 attack 27, defence 33, covert -7).
 
+A variant only carries its own ``name`` / ``name_jp`` / ``name_en`` /
+``thumbnail`` when the master data gives it one that differs from the category
+(``Enemy.name`` / ``Enemy.thumbnail_name``); the rest fall back to the category
+values. Example: 1033 亡念剣鬼 has a second form 「人斬りの羅刹ゲットウ」 with its
+own portrait. Comparison is done over every language of both sides, because
+some rows store a plain Japanese / English string instead of the language map.
+
     python enemy.py
 """
 
@@ -225,6 +232,20 @@ def pick_names(*rows) -> dict:
         if result.get("name"):
             return result
     return {"name": None, "name_jp": None, "name_en": None}
+
+
+def name_values(row) -> set[str]:
+    """一行数据的所有名字写法（多语言字典展开成小写字符串）。
+
+    用来判断「变体名是不是就是分类名」：解包里有的行写多语言字典
+    （``{ja, zhs, en}``）、有的行只写一个英 / 日字符串，直接比 zh 会全部判成不同。
+    """
+    raw = row.get("name") if isinstance(row, dict) else None
+    if isinstance(raw, dict):
+        return {str(value).strip().lower() for value in raw.values() if value}
+    if isinstance(raw, str) and raw.strip():
+        return {raw.strip().lower()}
+    return set()
 
 
 def condition_segments(rows: list) -> list[list[dict]]:
@@ -526,6 +547,16 @@ def main(argv: list[str]) -> int:
         category = categories.get(category_id) or {}
         book = collection.get(category_id)
 
+        #: 分类级名字与缩略图（图鉴 -> 分类 -> 第一个实例）；
+        #: 变体自己的名字 / 头像与它们不同时才单独写出来
+        name = pick_names(book, category, instance_rows[0])
+        thumbnail = next(
+            (row.get("thumbnail_name") for row in instance_rows if row.get("thumbnail_name")),
+            None,
+        )
+        #: 分类名本身的全部写法（含多语言别名）：变体名与之相同就不算专属名
+        category_names = name_values(book) | name_values(category)
+
         variants = []
         attributes, attack_attributes, weaknesses = [], [], []
         characteristics, gimmicks, kinds = [], [], []
@@ -588,6 +619,12 @@ def main(argv: list[str]) -> int:
                 "resist": resist_block(param),
                 "freeze": freeze_block(param, row.get("intelligence") or 0),
             }
+            # 变体自己的名字 / 头像：多数与分类相同（不写，列表与详情直接用分类的），
+            # 不同的才写出来 —— 例如 1033 的第二形态「人斩罗刹月桃」有自己的名字与立绘
+            if not (name_values(row) & category_names):
+                variant.update({key: value for key, value in names(row).items() if value})
+            if row.get("thumbnail_name") and row["thumbnail_name"] != thumbnail:
+                variant["thumbnail"] = row["thumbnail_name"]
             variants.append(drop_empty(variant))
 
             attributes += variant["attribute"]
@@ -602,12 +639,6 @@ def main(argv: list[str]) -> int:
                 level_low = low if not level_low else min(level_low, low)
                 level_high = max(level_high, high)
 
-        name = pick_names(book, category, instance_rows[0])
-        # 缩略图：同一分类基本共用一张（10 个分类有差异，4 个没有），取第一个有值的
-        thumbnail = next(
-            (row.get("thumbnail_name") for row in instance_rows if row.get("thumbnail_name")),
-            None,
-        )
         entry = {
             "id": category_id,
             "no": (book or {}).get("list_number"),
@@ -628,7 +659,9 @@ def main(argv: list[str]) -> int:
             "kinds": sorted({k for k in kinds if k is not None}),
             "level": {"min": level_low, "max": level_high} if level_low or level_high else None,
             "fly": any("fly" in v for v in variants),
-            # 抗性 / 冻结在分类内基本一致，列表页直接用这一份；个别变体差异见 variants
+            # 抗性 / 冻结的分类级摘要：只取「多数变体」的那一份，仅作参考。
+            # 详情页必须用 variants[i] 自己的值 —— 存的是 0 就不会出现在这里
+            # （``resist_block`` 省略 0 = 0%），两边混用会把独有变体的抗性显示成普通变体的。
             "resist": common_block([v.get("resist") or {} for v in variants]),
             "freeze": common_block([v.get("freeze") or {} for v in variants]),
             "body_size": dict(collections.Counter(

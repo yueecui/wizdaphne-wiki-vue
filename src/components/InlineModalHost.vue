@@ -4,6 +4,7 @@
     <EnemyModal v-else-if="kind === 'enemy'" v-model:show="show" :enemy-id="id" :enemy-variant-id="enemyVariantId" />
     <SkillModal v-else-if="kind === 'skill'" v-model:show="show" :identification="id" />
     <MapFloorModal v-else-if="kind === 'mapFloor'" v-model:show="show" :floor-id="id" />
+    <ShopModal v-else-if="kind === 'shop'" v-model:show="show" :shop-id="id" />
     <ThemeConfigProvider v-else-if="kind === 'character'">
         <NModal v-model:show="show">
             <div
@@ -34,6 +35,7 @@ const EquipmentModal = defineAsyncComponent(() => import('../views/DataV2/Equipm
 const EnemyModal = defineAsyncComponent(() => import('../views/DataV2/EnemyModal.vue'));
 const SkillModal = defineAsyncComponent(() => import('../views/DataV2/SkillModal.vue'));
 const MapFloorModal = defineAsyncComponent(() => import('../views/DataV2/MapFloorModal.vue'));
+const ShopModal = defineAsyncComponent(() => import('../views/DataV2/ShopModal.vue'));
 const CharacterDetail = defineAsyncComponent(() => import('../views/DataV2/CharacterDetail.vue'));
 const JunkModal = defineAsyncComponent(() => import('../views/DataV2/junk/JunkModal.vue'));
 

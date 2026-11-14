@@ -314,6 +314,11 @@ export interface EquipmentShopRow {
     price?: number;
     /** 货币名；兑换点数时是实际点数名 */
     currency_name?: string;
+    /** 出现条件 id（`Shop.lineup_condition_id`，0 = 无条件；文案见 `Extra.shopCondition`） */
+    condition?: number;
+    /** 这一行自己的上架时段（`Shop.start_at` / `Shop.end_at`，Unix 秒；0 / 缺省 = 不限） */
+    start_at?: number;
+    end_at?: number;
 }
 
 export interface EquipmentDetail extends EquipmentListItem {}
@@ -613,8 +618,10 @@ export interface EnemyInterrupt {
 }
 
 /** 一个出现变体（一个 Enemy 行） */
-export interface EnemyVariant {
+export interface EnemyVariant extends LocalizedName {
     id: number;
+    /** 变体专属缩略图（不含 `_s.png`）；没有时用分类的 */
+    thumbnail?: string | null;
     kind: number;
     kind_name: string | null;
     param: number;

@@ -329,6 +329,8 @@ const props = defineProps<{
     levels: SkillLevel[];
     /** 能力值 id → 名称（复用 SkillDetail 的 REFERENCE_PARAM） */
     paramLabels?: Record<number, string>;
+    /** 消耗单位：由 SkillDetail 按技能种类判断（咒文 MP / 其余 SP） */
+    costUnit?: 'SP' | 'MP';
 }>();
 
 const COLORS = ['#7aa2f7', '#73daca', '#e0af68', '#bb9af7', '#9ece6a', '#ff9e64', '#f7768e'];
@@ -697,8 +699,8 @@ const chart = computed<ChartData | null>(() => {
     if (hasFixedHeal) notes.push('HP 回复参数 1 的固定值已计入曲线');
     const hint = notes.join('；');
 
-    const costKind = list.find((lv) => lv.cost_kind != null)?.cost_kind;
-    const costUnit: 'SP' | 'MP' = costKind === 2 ? 'MP' : 'SP';
+    // 单位由技能种类决定（SkillDetail 传入）：``Skill.cost_kind`` 区分不出 SP / MP
+    const costUnit: 'SP' | 'MP' = props.costUnit ?? 'SP';
 
     // X 轴：覆盖所有阈值，并留出超过上限后的一小段
     const caps = raw.map((s) => s.cap).filter((c) => c < NO_CAP);

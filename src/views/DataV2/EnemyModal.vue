@@ -15,8 +15,9 @@
                                 <div class="text-sm text-light">
                                     {{ row ? (row.no ? `No. ${row.no}` : '无图鉴') : '—' }}
                                 </div>
+                                <!-- 专属变体优先显示它自己的名字（如「人斩罗刹月桃」） -->
                                 <div class="text-2xl md:text-3xl text-light font-bold break-words">
-                                    {{ row?.name ?? '敌人详情' }}
+                                    {{ variantAlias ?? row?.name ?? '敌人详情' }}
                                 </div>
                                 <div v-if="subtitle" class="text-sm text-gray-400 break-words">
                                     {{ subtitle }}
@@ -395,6 +396,17 @@
                                                     <span v-if="entry.target" class="opacity-60">
                                                         （目标：{{ entry.target }}）
                                                     </span>
+                                                    <!-- 行动池里描述注明「一场战斗只能用一次」的技能（炉心激活等）；
+                                                         插入行的一次限制来自 EnemyInterruptAction，已在优先级列标过 -->
+                                                    <span
+                                                        v-if="
+                                                            rule.priority != null &&
+                                                            store.oncePerBattle(entry.skill.identification)
+                                                        "
+                                                        class="ml-1 rounded bg-amber-400/15 px-1 text-[10px] leading-5 text-amber-300 align-middle"
+                                                    >
+                                                        仅一次
+                                                    </span>
                                                     <span
                                                         v-if="skillIndex < rule.skills.length - 1"
                                                         class="opacity-40"
@@ -566,7 +578,8 @@ const copyVariantTemplate = () => {
         window.wiz.$message.error('当前变体没有可用 ID');
         return;
     }
-    const body = templateBody(row.value?.name, id);
+    // 有专属名的变体用它自己的名字，模板里就不会顶着分类名
+    const body = templateBody(store.enemyVariantName(current) ?? row.value?.name, id);
     const text = `{{敌人|${body}}}`;
     navigator.clipboard
         .writeText(text)
@@ -588,12 +601,23 @@ const row = computed(() =>
     props.enemyId == null ? null : (store.enemyById.get(props.enemyId) ?? null),
 );
 
-const subtitle = computed(() =>
-    [row.value?.name_jp, row.value?.name_en].filter(Boolean).join(' · '),
-);
+/** 当前变体自己的名字（与分类名不同时才有，例如 1033 的「人斩罗刹月桃」） */
+const variantAlias = computed(() => store.enemyVariantName(variant.value));
 
-/** wiki 上的缩略图文件名：`tmb_enemy_090_005_00` + `_s.png` */
-const thumb = computed(() => (row.value?.thumbnail ? `${row.value.thumbnail}_s.png` : null));
+const subtitle = computed(() => {
+    // 有专属名的变体用自己的日 / 英名，其余沿用分类的
+    const own = [variant.value?.name_jp, variant.value?.name_en].filter((value): value is string =>
+        Boolean(value),
+    );
+    const base = [row.value?.name_jp, row.value?.name_en].filter((value): value is string => Boolean(value));
+    return (own.length ? own : base).join(' · ');
+});
+
+/** wiki 上的缩略图文件名：`tmb_enemy_090_005_00` + `_s.png`（变体有自己的立绘时优先用它） */
+const thumb = computed(() => {
+    const name = store.enemyVariantThumb(variant.value) ?? row.value?.thumbnail;
+    return name ? `${name}_s.png` : null;
+});
 
 // ---------- 技能详情 ----------
 const skillShow = ref(false);
@@ -637,12 +661,17 @@ const activeTab = ref<'info' | 'skills' | 'ai' | 'spawn' | 'pools'>('info');
 const percentText = (value: number) => String(Math.round(value * 10) / 10);
 
 /**
- * 还没解析出含义的条件类型：清洗时兜底成了 ``type 7(1,3,1)`` 这种文案，
- * 这里拆成「类型号 + 原始参数」两段，模板里渲染成一枚虚线徽章。
+ * 还没解析出含义的条件：清洗时兜底成了 ``type 7(1,3,1)``（类型未知）
+ * 或 ``#107``（条件 id 在挑出的那段定义里查不到），这里统一拆成
+ * 「标签 + 原始参数」两段，模板里渲染成一枚虚线徽章。
  */
 const unknownType = (text: string | null) => {
-    const match = text ? /^type (\d+)(?:\((.*)\))?$/.exec(text) : null;
-    return match ? { name: `TYPE ${match[1]}`, args: match[2] ?? '' } : null;
+    if (!text) return null;
+    const typed = /^type (\d+)(?:\((.*)\))?$/.exec(text);
+    if (typed) return { name: `TYPE ${typed[1]}`, args: typed[2] ?? '' };
+    const missing = /^#(\d+)$/.exec(text);
+    if (missing) return { name: '未定义条件', args: `#${missing[1]}` };
+    return null;
 };
 
 /** 条件展示用：额外带上未解析类型的徽章数据 */
@@ -742,10 +771,14 @@ function levelLabel(item: { level_min: number; level_max: number }): string {
 }
 
 const variantOptions = computed(() =>
-    (row.value?.variants ?? []).map((item, index) => ({
-        value: index,
-        label: `${item.id} ${item.kind_name ?? ''} ${levelLabel(item)}（${item.skills.length} 技能）`.trim(),
-    })),
+    (row.value?.variants ?? []).map((item, index) => {
+        // 有专属名的变体（如 1033 的「人斩罗刹月桃」）直接显示它的名字，其余显示强度档位
+        const label = store.enemyVariantName(item) ?? item.kind_name ?? '';
+        return {
+            value: index,
+            label: `${item.id} ${label} ${levelLabel(item)}（${item.skills.length} 技能）`.replace(/\s+/g, ' ').trim(),
+        };
+    }),
 );
 
 const variant = computed(() => row.value?.variants[variantIndex.value] ?? null);
@@ -981,15 +1014,18 @@ const statPairs = computed(() =>
     ),
 );
 
-const resistOf = (key: string) =>
-    variant.value?.resist?.[key] ?? row.value?.resist?.[key] ?? null;
+/**
+ * 状态有效度只认当前变体自己的值：短键编码把 0 省略掉，所以「缺项 = 0%」。
+ * 不能回退分类里那份（`common_block` 取的是同分类多数变体的值），
+ * 否则像 703104000「数金币的杀人鬼梅丽」这种独有的首领变体会显示成普通变体的 100%。
+ */
+const resistOf = (key: string) => variant.value?.resist?.[key] ?? 0;
 
 const resistPairs = computed(() =>
     pairsByColumn(
         RESIST_ROWS.map(([key, label]) => {
-            const value = resistOf(key);
-            // 没有记录按 0% 处理：100% 为基准（稍暗），<100 更易中（红），>100 更抗（绿）
-            const num = value == null ? 0 : value;
+            const num = resistOf(key);
+            // 100% 为基准（稍暗），<100 更易中（红），>100 更抗（绿）
             let cls = 'opacity-60';
             // 0% 单独用更暗的红，和 1~99% 区分开
             if (num === 0) cls = 'text-red-600';
@@ -1066,7 +1102,9 @@ const skillRows = computed(() => {
                   ? (ref.level ?? 0)
                   : 0,
             kind: skill?.kind_name ?? '—',
-            trigger,
+            // 描述里注明「一场战斗只能用一次」的行动技能也标出来（插入已有「插入·一次」）
+            trigger:
+                trigger === '行动' && store.oncePerBattle(ref.identification) ? '行动·一次' : trigger,
             summons: [...summons.values()],
         });
     };

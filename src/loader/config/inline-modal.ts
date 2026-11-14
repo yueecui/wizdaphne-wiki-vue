@@ -10,6 +10,9 @@ const INLINE_SELECTORS = [
     '.skill-inline',
     '.junk-inline',
     '.map-inline',
+    // 商店：`{{商店}}` 点开 modal；`{{商店列表}}` 也要（里面商品行能点开物品 / 装备）
+    '.shop-inline',
+    '.shop-list-table',
     '.character-inline',
     // 正文里的角色卡（角色列表用的就是它）
     '.character-item',

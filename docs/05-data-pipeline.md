@@ -285,9 +285,10 @@ wiki 上仍为日文的条目在脚本的 `KIND_NAMES` 里兜底成中文。
 | `relicExtra` | 遗物掉落怪物 / 推荐类别 `[{id, monster_id, c}]`（`id` = 物品图鉴编号） | `config/Data_遗物酒.xlsx` |
 | `relicCategory` | 遗物推荐类别可选项与顺序 | 同上 |
 | `characterExtra` | 角色卡池组 / 上线日期 / 声优 | `config/Data_CharacterExtra.tabx.xlsx` |
+| `shopCondition` | 商店商品出现条件文案 `{ "<条件 id>": "文案" }`（`Shop.lineup_condition_id`） | wiki `Data:ShopCondition.tabx` |
 
 前端在 `src/stores/wikiData.ts` 里把这几块单独存进 IndexedDB 的 `meta`（`extraVersion` +
-六个键），版本变化时只调 `refreshExtra()`；解包表（角色 / 技能 / 装备 / 道具 …）一条都不动。
+七个键），版本变化时只调 `refreshExtra()`；解包表（角色 / 技能 / 装备 / 道具 …）一条都不动。
 
 `sub_effects[].f` 取值 `"d"`（damage 行挂载）/ `"g"`（effect group 挂载）/ `"a"`（attack_start 攻击前挂载），decode 还原为 `damage` / `effect_group` / `attack_start`。
 

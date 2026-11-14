@@ -61,6 +61,10 @@
                                                             >
                                                                 {{ row.name }}
                                                             </a>
+                                                            <!-- 变体专属名（例如 1033 的「人斩罗刹月桃」） -->
+                                                            <div v-if="row.alias" class="text-xs text-amber-200/90">
+                                                                {{ row.alias }}
+                                                            </div>
                                                         </td>
                                                         <td class="whitespace-nowrap">{{ row.race }}</td>
                                                         <td class="whitespace-nowrap" :class="row.attrs === '—' ? 'opacity-40' : undefined">
@@ -170,6 +174,8 @@ const rows = computed(() => {
             categoryId: enemy?.id ?? null,
             no,
             name: enemyName(ref.enemy_id),
+            // 变体专属名（与分类不同名的形态），没有则空
+            alias: store.enemyVariantName(hit?.variant),
             race: enemy?.race.name ?? '—',
             attrs: (enemy?.attribute ?? []).map((item) => item.name).filter(Boolean).join(' / ') || '—',
             weaks: (enemy?.weak ?? []).map((item) => item.name).filter(Boolean).join(' / ') || '—',

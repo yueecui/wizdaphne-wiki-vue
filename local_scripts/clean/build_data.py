@@ -541,6 +541,8 @@ def main(argv: list[str]) -> int:
             "element": item.get("element"),
             "element_name": item.get("element_name"),
             "special": bool(item.get("special")),
+            # 稀有掉落（解包 Equipment.is_rare_drop）：先落数据，前端暂不展示
+            "rare_drop": bool(item.get("rare_drop")),
             "note": item.get("note"),
             # 图标资源名（已按 wiki 标题规则规范化，不含 .png）
             "list_icon": item.get("list_icon"),

@@ -3,6 +3,7 @@ import type { MapCategory, RawCharacter, RawEnemy, RawEquipment, RawMapFloor } f
 import { useInlineModalStore } from '../stores/inlineModalStore';
 import type { ItemDoc } from '../views/DataV2/itemTypes';
 import type { RelicDoc } from '../views/DataV2/relicTypes';
+import type { ShopDoc } from '../views/DataV2/shopTypes';
 
 /**
  * 正文内联组件（`*Inline`）的公共逻辑。
@@ -12,7 +13,7 @@ import type { RelicDoc } from '../views/DataV2/relicTypes';
  */
 
 /** 内联组件类型（与 `InlineModalKind` 不完全一样：遗物借用物品 modal） */
-export type InlineLinkKind = 'item' | 'equipment' | 'character' | 'enemy' | 'relic' | 'map';
+export type InlineLinkKind = 'item' | 'equipment' | 'character' | 'enemy' | 'relic' | 'map' | 'shop';
 
 /** 模板里带的信息：`id` 优先，`name` 只用于显示 / 兜底 */
 export interface InlineLinkRef {
@@ -27,6 +28,7 @@ const LABEL: Record<InlineLinkKind, string> = {
     enemy: '敌人',
     relic: '遗物',
     map: '地图',
+    shop: '商店',
 };
 
 /** 名字比对：忽略大小写与首尾空白 */
@@ -91,9 +93,13 @@ export const findEnemy = (enemies: RawEnemy[], name: string): RawEnemy | null =>
     if (isNumeric(raw)) {
         const number = Number(raw);
         // 数字优先当图鉴编号（V1 的怪物 id 就是图鉴编号）
-        return enemies.find((row) => row.no === number) ?? enemies.find((row) => row.id === number) ?? null;
+        return enemies.find((row) => row.no === number) ?? enemyById(enemies, number);
     }
-    return enemies.find((row) => hitName(row, raw)) ?? null;
+    // 分类名对不上时再看变体自己的名字（「碎岩巨鬼」这种专属于某个形态的名字）
+    const byVariant = enemies.find((row) =>
+        (row.variants ?? []).some((variant) => hitName(variant, raw)),
+    );
+    return enemies.find((row) => hitName(row, raw)) ?? byVariant ?? null;
 };
 
 export const findCharacter = (characters: RawCharacter[], name: string): RawCharacter | null => {
@@ -110,6 +116,30 @@ export const findCharacter = (characters: RawCharacter[], name: string): RawChar
     // 有风格的角色：旧链接是「风格名 + 角色名」（如「悠远的夏影叶卡捷琳娜」）
     const target = squeeze(raw);
     return characters.find((row) => squeeze(styledName(row)) === target) ?? null;
+};
+
+/**
+ * 商店（V2 的 `ShopDoc`）：名字形如「宝石商 · 悬赏勋章」，模板里写全名或只写后半段都能对上。
+ * 数字当店铺 id 处理。
+ */
+export const findShop = (shops: ShopDoc[], name: string): ShopDoc | null => {
+    const raw = (name ?? '').trim();
+    if (!raw) return null;
+    if (isNumeric(raw)) return shopById(shops, Number(raw));
+
+    const target = normalize(raw);
+    // 名字里的「 · 」在各处写法不一，比对时连同空白一起去掉
+    const flat = (value?: string | null) => normalize(value).replace(/[\s·・]+/g, '');
+
+    const exact = shops.find((shop) => normalize(shop.name) === target);
+    if (exact) return exact;
+
+    const byFlat = shops.find((shop) => flat(shop.name) === flat(raw));
+    if (byFlat) return byFlat;
+
+    // 只写「悬赏勋章」时按「 · 」后的段名匹配
+    const tail = flat(raw);
+    return shops.find((shop) => flat((shop.name ?? '').split(/[·・]/).pop()) === tail) ?? null;
 };
 
 /** 遗物：名字 / 酒名 / 遗物之力名都能对上 */
@@ -163,8 +193,22 @@ export const itemById = (items: ItemDoc[], id: number): ItemDoc | null =>
 export const equipmentById = (equipments: RawEquipment[], id: number) =>
     equipments.find((row) => row.id === id) ?? null;
 
+/** 变体 id（`Enemy.id`）-> 它所属的敌人分类；模板里从地图 / 敌群 / 详情页复制出来的都是变体 id */
+export const enemyByVariantId = (enemies: RawEnemy[], id: number): RawEnemy | null =>
+    enemies.find((row) => (row.variants ?? []).some((variant) => variant.id === id)) ?? null;
+
 export const enemyById = (enemies: RawEnemy[], id: number) =>
-    enemies.find((row) => row.id === id) ?? enemies.find((row) => row.no === id) ?? null;
+    enemies.find((row) => row.id === id) ??
+    enemies.find((row) => row.no === id) ??
+    // 传进来的常常是变体 id（如 13301010000），落到它所属的分类上
+    enemyByVariantId(enemies, id);
+
+/** 变体自己的名字（与分类名不同时才有，例如 13301 的「碎岩巨鬼」）；没有返回 null */
+export const enemyVariantNameOf = (enemy: RawEnemy | null, variantId: number | null): string | null => {
+    if (!enemy || variantId == null) return null;
+    const variant = (enemy.variants ?? []).find((row) => row.id === variantId);
+    return variant?.name || variant?.name_jp || null;
+};
 
 export const characterById = (characters: RawCharacter[], id: number) =>
     characters.find((row) => row.id === id) ?? null;
@@ -173,6 +217,9 @@ export const characterById = (characters: RawCharacter[], id: number) =>
 export const relicById = (relics: RelicDoc[], id: number) => relics.find((relic) => relic.id === id) ?? null;
 
 export const mapFloorById = (floors: RawMapFloor[], id: number) => floors.find((floor) => floor.id === id) ?? null;
+
+/** 商店 id（`ShopDoc.id`，也是 `point_shop_id` 之外的唯一稳定键） */
+export const shopById = (shops: ShopDoc[], id: number) => shops.find((shop) => shop.id === id) ?? null;
 
 const toast = () => window.wiz?.$message;
 
@@ -238,6 +285,12 @@ export const useInlineLink = () => {
         return byId ?? findMapFloor(wiki.mapFloors, wiki.mapCategories, ref.name ?? '');
     };
 
+    const findShopLink = (ref: InlineLinkRef): ShopDoc | null => {
+        const id = parseId(ref.id);
+        const byId = id == null ? null : shopById(wiki.shops, id);
+        return byId ?? findShop(wiki.shops, ref.name ?? '');
+    };
+
     /** 遗物在 V2 是道具的一种（`Item::Relic`），借 `ItemModal` 展示 */
     const relicItemLink = (ref: InlineLinkRef): ItemDoc | null => {
         const id = parseId(ref.id);
@@ -297,6 +350,12 @@ export const useInlineLink = () => {
                 modal.open({ kind: 'mapFloor', id: row.id });
                 return;
             }
+            case 'shop': {
+                const row = findShopLink(ref);
+                if (!row) return fail();
+                modal.open({ kind: 'shop', id: row.id });
+                return;
+            }
         }
     };
 
@@ -319,6 +378,8 @@ export const useInlineLink = () => {
         openLink,
         openSkill,
         ensureWikiData,
+        /** 整库数据是否正在加载（内联列表要在挂载时直接画，靠它出「加载中」文案） */
+        isLoadingData: () => wiki.status === 'loading',
         findSkill: (identification: number) => wiki.skills.find((skill) => skill.id === identification) ?? null,
         findItemLink,
         findEquipmentLink,
@@ -326,5 +387,6 @@ export const useInlineLink = () => {
         findCharacterLink,
         findRelicLink,
         findMapFloorLink,
+        findShopLink,
     };
 };

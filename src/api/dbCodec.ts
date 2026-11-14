@@ -452,6 +452,11 @@ const EQUIP_SHOP: FieldSpec[] = [
     { long: 'shop_name', short: 'sn', kind: 'str' },
     { long: 'price', short: 'p', kind: 'num' },
     { long: 'currency_name', short: 'cn', kind: 'str' },
+    // 出现条件 id（`Shop.lineup_condition_id`，文案在 Extra.shopCondition）
+    { long: 'condition', short: 'cd', kind: 'num' },
+    // 商品行自己的上架时段（限时商店 / 按月轮换的商品）
+    { long: 'start_at', short: 'sa', kind: 'num' },
+    { long: 'end_at', short: 'ea', kind: 'num' },
 ];
 
 export const EQUIP_FIELDS: FieldSpec[] = [
@@ -553,6 +558,11 @@ const ENEMY_AI_RULE: FieldSpec[] = [
 /** 一个出现变体：参数 id + 等级区间 + 技能 + 该变体的完整数值 */
 const ENEMY_VARIANT: FieldSpec[] = [
     { long: 'id', short: 'i', kind: 'raw' },
+    // 变体自己的名字 / 头像（与分类名不同时才有，例如 1033 的第二形态「人斩罗刹月桃」）
+    { long: 'name', short: 'zh', kind: 'str' },
+    { long: 'name_jp', short: 'jp', kind: 'str' },
+    { long: 'name_en', short: 'en', kind: 'str' },
+    { long: 'thumbnail', short: 'th', kind: 'str' },
     { long: 'kind', short: 'k', kind: 'num' },
     { long: 'param', short: 'p', kind: 'raw' },
     { long: 'exp', short: 'e', kind: 'num' },
@@ -731,6 +741,9 @@ const ITEM_SHOP: FieldSpec[] = [
     { long: 'condition', short: 'cd', kind: 'num' },
     { long: 'town', short: 't', kind: 'num' },
     { long: 'point_shop_id', short: 'ps', kind: 'num' },
+    // 商品行自己的上架时段（悬赏勋章店的技能书按月轮换，同一本书多行不同时段）
+    { long: 'start_at', short: 'sa', kind: 'num' },
+    { long: 'end_at', short: 'ea', kind: 'num' },
 ];
 
 const ITEM_FISHING: FieldSpec[] = [
@@ -849,6 +862,9 @@ const SHOP_ITEM: FieldSpec[] = [
     { long: 'limit_num', short: 'ln', kind: 'num' },
     { long: 'repeat', short: 'rp', kind: 'bool' },
     { long: 'condition', short: 'cd', kind: 'num' },
+    // 商品自己的上架时段（`Shop.start_at` / `Shop.end_at`）：悬赏勋章的技能书按月轮换
+    { long: 'start_at', short: 'sa', kind: 'num' },
+    { long: 'end_at', short: 'ea', kind: 'num' },
 ];
 
 export const SHOP_FIELDS: FieldSpec[] = [

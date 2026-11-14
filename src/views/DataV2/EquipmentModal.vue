@@ -89,15 +89,29 @@
                                                 </td>
                                             </tr>
                                             <!-- 购买来源：清洗后的店铺（不含限时商店） -->
-                                            <tr v-if="item.shop.length">
+                                            <tr v-if="shopRows.length">
                                                 <th>购买来源</th>
                                                 <td class="text-left">
-                                                    <div
-                                                        v-for="(row, index) in item.shop"
-                                                        :key="index"
-                                                    >
+                                                    <div v-for="(row, index) in shopRows" :key="index">
                                                         {{ row.shop_name }}（{{ row.price ?? 0 }}
                                                         {{ row.currency_name ?? '' }}）
+                                                        <!-- 出现条件（人工文案表 Data:ShopCondition.tabx），没好文案时显示条件 id -->
+                                                        <template v-if="row.condition_text">
+                                                            <br />
+                                                            <span class="text-xs opacity-50">
+                                                                条件：{{ row.condition_text }}
+                                                            </span>
+                                                        </template>
+                                                        <!-- 上架时段 + 状态：只显示有时限的（结束时间不限的商品不显示） -->
+                                                        <template v-if="row.window_text">
+                                                            <br />
+                                                            <span class="text-xs">
+                                                                <span :class="SHOP_WINDOW_STATE_CLASS[row.window_state]">
+                                                                    [{{ row.window_state }}]
+                                                                </span>
+                                                                <span class="opacity-50"> {{ row.window_text }}</span>
+                                                            </span>
+                                                        </template>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -620,6 +634,7 @@ import { useWikiDataStore } from '../../stores/wikiData';
 import WikiImg from '../../components/huiji/WikiImg.vue';
 import SkillModal from './SkillModal.vue';
 import { convertDescription } from '../DataSearcher/utils/convertDescription';
+import { SHOP_WINDOW_STATE_CLASS, shopConditionText, shopWindowState, shopWindowText } from './itemTypes';
 import { useDataV2Store } from './dataV2Store';
 import { getGradeColorClass, getQualityDisplay } from './junk/constants';
 import { hasJunkCache } from './junk/junkCache';
@@ -643,6 +658,19 @@ const item = computed<EquipmentListItem | null>(
 /** 标题下方的外文名：日文名后接英文名 */
 const foreignName = computed(() =>
     [item.value?.name_jp, item.value?.name_en].filter(Boolean).join(' · '),
+);
+
+/**
+ * 购买来源：原字段 + 解析后的出现条件文案（人工表 `Api/GetV2Extra.shopCondition`）
+ * + 上架时段（空串 = 结束时间不限，不显示）
+ */
+const shopRows = computed(() =>
+    (item.value?.shop ?? []).map((row) => ({
+        ...row,
+        condition_text: shopConditionText(row, wiki.shopConditions),
+        window_text: shopWindowText(row),
+        window_state: shopWindowState(row),
+    })),
 );
 
 const showRaw = ref(false);

@@ -22,6 +22,10 @@ Output: ``local_scripts/work/clean/shop/shops.json``
 ``point_shop_id=0`` 的自动生成杂物包（约 3.3k 条内容物，无分类也无时间）。
 杂物包里内容全是技能书 / 宝典 / 秘笈的商品单独捞成一家「宝石商 · 秘笈」，归活动商店。
 
+商品的**上架时段**在商品行上（``Shop.start_at`` / ``Shop.end_at``），不在 ``PointShop``：
+悬赏勋章店的技能书就是按月轮换，同一本书有 3 个时段行（每 4 个月上一次），
+同一时刻只有一行的时段覆盖当前时间；这些时段原样写进每次出现（``start_at`` / ``end_at``）。
+
     python shop.py
 """
 
@@ -179,6 +183,10 @@ def main(argv: list[str]) -> int:
                 "limit_num": row.get("limit_num") or 0,
                 "repeat": bool(row.get("is_repeat")),
                 "condition": row.get("lineup_condition_id") or 0,
+                # 商品行自己的上架时段（``Shop.start_at`` / ``Shop.end_at``）：
+                # 悬赏勋章的技能书就是按月轮换，同一本书有多个时段行，同一时刻只有一行在架
+                "start_at": row.get("start_at") or 0,
+                "end_at": row.get("end_at") or 0,
             }
             contents = contents_by_shop.get(row.get("id")) or []
             if not contents:      # 兜底：极少数商品行可能没有内容物记录
