@@ -47,3 +47,6 @@ yarn dev
 
 游戏数据全部来自解包仓库的 `out/masterdata/*.json`（由游戏资源解包得到，见该仓库 README）。
 本仓库只负责清洗 → mock → 上传。`out/` 体积很大，不进版本库，所以**从零更新数据需要自己有游戏本体并跑过解包**。
+
+例外：地图 / 敌群用的 `map_v3/floors.json`、`map_v3/unclassified.json` 已作为构建数据入库在解包仓库，
+`build_map.py` 直接读取它们（游戏更新后用解包仓库的 `python tools/map_export.py` 重建），这部分不需要游戏本体。

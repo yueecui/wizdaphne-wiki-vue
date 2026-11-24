@@ -19,7 +19,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from common import UNPACK  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DEFAULT_SRC = os.path.join(UNPACK, "out", "tmp", "map_v3")
+#: 构建数据放在解包仓库的 `map_v3/`（已入库，由 tools/map_export.py 生成）
+DEFAULT_SRC = os.path.join(UNPACK, "map_v3")
 DEFAULT_OUT = os.path.join(ROOT, "data")
 
 
