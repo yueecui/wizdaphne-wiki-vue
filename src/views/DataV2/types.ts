@@ -446,6 +446,8 @@ export interface StepReplace {
 }
 
 export interface SkillSubEffect {
+    /** 原始 ``SkillSubEffect`` 行 id（校准 / 联表用） */
+    id?: number | null;
     kind: number | null;
     kind_name: string | null;
     strength: number | null;
@@ -500,11 +502,42 @@ export interface SkillSubEffect {
 }
 
 /**
+ * 发动时机的一条条件（``SkillActivateTimingCondition``）。
+ * kind 没有随包枚举名，``kind_name`` 来自清洗脚本的推断表（``uncertain``）。
+ */
+export interface ActivateTimingCondition {
+    id: number;
+    kind: number | null;
+    kind_name: string | null;
+    params: number[] | null;
+    is_reverse: boolean;
+}
+
+/**
+ * 效果组的发动时机（``SkillEffectGroup.activate_timing_id`` -> ``SkillActivateTiming``）。
+ * 这是「效果什么时候生效」的唯一来源（例：精准一击 = 普通攻击时 / 攻击技能时各一组）。
+ */
+export interface ActivateTiming {
+    id: number;
+    /** 该时机属于哪个 ``SkillEffectGroup`` */
+    effect_group: number;
+    /** ``SkillActivateTiming.activate_timing``（暂无可读枚举） */
+    timing?: number | null;
+    require_num?: number | null;
+    target_method?: number | null;
+    select_target?: number | null;
+    conditions?: ActivateTimingCondition[];
+}
+
+/**
  * 多动作技能的一个动作（一个顶层 ``SkillEffectGroup``）。
  * 动作名来自解包 ``SkillEffectGroup.display_name``；伤害 / 子效果只属于这个动作。
  */
 export interface SkillAction extends LocalizedName {
     id: number;
+    /** 合并了多个只差发动时机的效果组时，原始组 id 列表 */
+    effect_groups?: number[];
+    activate_timing?: ActivateTiming[];
     damage?: SkillDamage[];
     sub_effects?: SkillSubEffect[];
 }
@@ -531,6 +564,8 @@ export interface SkillLevel {
     name_lang?: string;
     damage?: SkillDamage[];
     sub_effects?: SkillSubEffect[];
+    /** 发动时机（多动作技能每个动作各有一份，这里的是完整列表） */
+    activate_timing?: ActivateTiming[];
     /** 多动作技能：每个动作一页；只有一个动作时没有该字段 */
     actions?: SkillAction[];
 }

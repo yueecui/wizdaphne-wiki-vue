@@ -122,7 +122,29 @@ const STEP_REPLACE: FieldSpec[] = [
     { long: 'effects', short: 'e', kind: 'objArr', fields: SUB_BRIEF_LEAF },
 ];
 
+/** 发动时机条件（SkillActivateTimingCondition）：kind 没有官方枚举名，kind_name 来自清洗表 */
+const ACTIVATE_TIMING_COND: FieldSpec[] = [
+    { long: 'id', short: 'i', kind: 'num' },
+    { long: 'kind', short: 'k', kind: 'num' },
+    { long: 'kind_name', short: 'kn', kind: 'str' },
+    { long: 'params', short: 'p', kind: 'numArr' },
+    { long: 'is_reverse', short: 'r', kind: 'bool' },
+];
+
+/** 发动时机：SkillEffectGroup.activate_timing_id -> SkillActivateTiming（含条件链） */
+const ACTIVATE_TIMING: FieldSpec[] = [
+    { long: 'id', short: 'i', kind: 'num' },
+    { long: 'effect_group', short: 'g', kind: 'num' },
+    { long: 'timing', short: 'tm', kind: 'num' },
+    { long: 'require_num', short: 'rn', kind: 'num' },
+    { long: 'target_method', short: 'tg', kind: 'num' },
+    { long: 'select_target', short: 'st', kind: 'num' },
+    { long: 'conditions', short: 'cd', kind: 'objArr', fields: ACTIVATE_TIMING_COND },
+];
+
 const SUB_EFFECT: FieldSpec[] = [
+    // 原始 SkillSubEffect 行 id：校准 / 联表用
+    { long: 'id', short: 'i', kind: 'raw' },
     { long: 'kind', short: 'k', kind: 'num' },
     { long: 'params', short: 'p', kind: 'numArr' },
     { long: 'strength', short: 's', kind: 'num' },
@@ -158,6 +180,9 @@ const ACTION: FieldSpec[] = [
     { long: 'id', short: 'i', kind: 'num' },
     { long: 'name', short: 'zh', kind: 'str' },
     { long: 'name_jp', short: 'jp', kind: 'str' },
+    // 合并了多个只差发动时机的效果组时，原始组 id 列表
+    { long: 'effect_groups', short: 'eg', kind: 'numArr' },
+    { long: 'activate_timing', short: 'at', kind: 'objArr', fields: ACTIVATE_TIMING },
     { long: 'damage', short: 'dm', kind: 'objArr', fields: DAMAGE },
     { long: 'sub_effects', short: 'sb', kind: 'objArr', fields: SUB_EFFECT },
 ];
@@ -178,6 +203,8 @@ const LEVEL: FieldSpec[] = [
     { long: 'name_lang', short: 'nl', kind: 'str' },
     { long: 'damage', short: 'dm', kind: 'objArr', fields: DAMAGE },
     { long: 'sub_effects', short: 'sb', kind: 'objArr', fields: SUB_EFFECT },
+    // 发动时机（多动作技能每个动作各有一份，等级上再给一份完整列表）
+    { long: 'activate_timing', short: 'at', kind: 'objArr', fields: ACTIVATE_TIMING },
     // 多动作技能：每个动作各自的伤害 / 子效果（只有一个动作时没有该字段）
     { long: 'actions', short: 'ac', kind: 'objArr', fields: ACTION },
 ];

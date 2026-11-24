@@ -8,6 +8,10 @@ import VueDevTools from 'vite-plugin-vue-devtools';
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
     const env = loadEnv(mode, process.cwd());
+    const wikiPrefix = env.VITE_WIKI_PREFIX;
+    if (!wikiPrefix) {
+        throw new Error('缺少 VITE_WIKI_PREFIX：请复制 .env.example 为 .env 并填写');
+    }
 
     return {
         base: '',
@@ -18,30 +22,30 @@ export default defineConfig(({ command, mode }) => {
             },
         },
         server: {
-            port: Number(env.VITE_PORT),
+            port: Number(env.VITE_PORT) || 5173,
             proxy: {
-                [`/${env.VITE_WIKI_PREFIX}/uploads`]: {
+                [`/${wikiPrefix}/uploads`]: {
                     target: 'https://huiji-public.huijistatic.com/',
                     changeOrigin: true,
                     secure: false,
                     bypass: (req) => {
-                        req.headers.referer = `https://${env.VITE_WIKI_PREFIX}.huijiwiki.com/`;
+                        req.headers.referer = `https://${wikiPrefix}.huijiwiki.com/`;
                     },
                 },
                 '/api': {
-                    target: `https://${env.VITE_WIKI_PREFIX}.huijiwiki.com/`,
+                    target: `https://${wikiPrefix}.huijiwiki.com/`,
                     changeOrigin: true,
                     secure: false,
                     bypass: (req) => {
-                        req.headers.referer = `https://${env.VITE_WIKI_PREFIX}.huijiwiki.com/`;
+                        req.headers.referer = `https://${wikiPrefix}.huijiwiki.com/`;
                     },
                 },
                 '/index.php': {
-                    target: `https://${env.VITE_WIKI_PREFIX}.huijiwiki.com/`,
+                    target: `https://${wikiPrefix}.huijiwiki.com/`,
                     changeOrigin: true,
                     secure: false,
                     bypass: (req) => {
-                        req.headers.referer = `https://${env.VITE_WIKI_PREFIX}.huijiwiki.com/`;
+                        req.headers.referer = `https://${wikiPrefix}.huijiwiki.com/`;
                     },
                 },
             },

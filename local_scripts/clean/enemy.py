@@ -267,21 +267,34 @@ def condition_segments(rows: list) -> list[list[dict]]:
 
 
 def pick_conditions(rows: list, referenced: set) -> dict[int, dict]:
-    """挑出「敌人侧」真正使用的条件定义。
+    """条件 id -> 定义：「敌人侧」那一段优先，缺的 id 再到别的段里补。
 
-    判断依据不是段的大小，而是哪一段被敌人数据（``EnemyAi`` / ``EnemyInterruptAction`` /
-    ``EnemySkillGroup.skill_target_condition_id``）引用得最多——被引用最多的那段才是同一
-    套 id 空间。
+    被引用最多的段（``EnemyAi`` / ``EnemyInterruptAction`` /
+    ``EnemySkillGroup.skill_target_condition_id`` 命中最多的那段）才是同一套 id 空间，
+    所以按命中数从高到低合并，先到先得：同一个 id 只取最优段的那份定义。
+
+    只挑一段是不行的 —— 有些条件只写在别的段里。例：雪山独眼巨人 13301 的
+    中断 / AI 序列引用了 102（HP 70% 以下）与 104（HP 50% 以下），它们只出现在第一段，
+    以前会被显示成「未定义条件 #102 / #104」。
+
+    ``condition_type == 2``（第 N 回合）里 ``params[0] == 0`` 的行是合并表串位的产物
+    （那一套 id 从 0 起算），这种不采用，留给后面的段；否则 ``200`` 会变成「第 0 回合」。
     """
-    best, best_score = [], -1
-    for segment in condition_segments(rows):
+    segments = condition_segments(rows)
+
+    def score(segment: list) -> tuple[int, int]:
         ids = {row.get("id") for row in segment}
-        score = len(ids & referenced)
-        if score > best_score or (score == best_score and len(segment) > len(best)):
-            best, best_score = segment, score
+        return len(ids & referenced), len(segment)
+
     picked: dict[int, dict] = {}
-    for row in best:
-        picked.setdefault(row["id"], row)
+    for segment in sorted(segments, key=score, reverse=True):
+        for row in segment:
+            condition_id = row.get("id")
+            if not condition_id or condition_id in picked:
+                continue
+            if row.get("condition_type") == 2 and not (row.get("params") or [0])[0]:
+                continue
+            picked[condition_id] = row
     return picked
 
 

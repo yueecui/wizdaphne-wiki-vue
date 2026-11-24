@@ -2,7 +2,43 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import fs from 'fs';
 import { HuijiWiki, type HuijiTabxRaw } from 'huijiwiki-api';
+import path from 'node:path';
 import { WIKI_AUTHKEY, WIKI_PASSWORD, WIKI_PREFIX, WIKI_USERNAME } from './config.js';
+
+/**
+ * 本地备份目录（不放 `public/`：完整版与人类可读版没有任何前端读取方，
+ * 放 public 会被 Vite 复制进 dist，且会无限累积）。
+ */
+const BACKUP_DIR = path.resolve('local_scripts/work/junkrates');
+/** 备份保留次数（完整版 / 人类可读版各自保留这么多份） */
+const BACKUP_KEEP = 3;
+
+/** 备份文件名的时间戳：``yymmdd_hhmmss`` */
+const backupStamp = (now = new Date()): string => {
+    const date = [
+        now.getFullYear().toString().slice(-2),
+        String(now.getMonth() + 1).padStart(2, '0'),
+        String(now.getDate()).padStart(2, '0'),
+    ].join('');
+    const time = [now.getHours(), now.getMinutes(), now.getSeconds()]
+        .map((n) => String(n).padStart(2, '0'))
+        .join('');
+    return `${date}_${time}`;
+};
+
+/** 只保留最近 ``keep`` 份备份（按文件名排序，``junkrates_full_*`` 与 ``JunkRates_*`` 各自计算） */
+const pruneBackups = (dir: string, keep: number): void => {
+    for (const prefix of ['junkrates_full_', 'JunkRates_']) {
+        const files = fs
+            .readdirSync(dir)
+            .filter((name) => name.startsWith(prefix) && name.endsWith('.json'))
+            .sort();
+        for (const stale of files.slice(0, Math.max(0, files.length - keep))) {
+            fs.rmSync(path.join(dir, stale), { force: true });
+            console.log(`已删除旧备份 ${stale}`);
+        }
+    }
+};
 
 interface QualityRate {
     quality: number;
@@ -382,8 +418,10 @@ const scrapeGachaRates = async () => {
             }
         });
 
-        // 保存完整版本
-        const fullOutputPath = './public/junkrates_full.json';
+        // 保存完整版本（本地备份，只保留最近几次；不进 public/）
+        fs.mkdirSync(BACKUP_DIR, { recursive: true });
+        const stamp = backupStamp();
+        const fullOutputPath = path.join(BACKUP_DIR, `junkrates_full_${stamp}.json`);
         fs.writeFileSync(fullOutputPath, JSON.stringify(gachaData, null, 2), 'utf-8');
         console.log(`完整版本已成功保存到 ${fullOutputPath}`);
 
@@ -467,18 +505,11 @@ const scrapeGachaRates = async () => {
             const compactOutputPath = './public/junkrates.json';
             fs.writeFileSync(compactOutputPath, JSON.stringify(compactData, null, 0), 'utf-8');
 
-            // 生成人类可读版本（带时间戳和缩进）
-            const now = new Date();
-            const year = now.getFullYear().toString().slice(-2);
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            const humanReadableFileName = `JunkRates_${year}${month}${day}_${hours}${minutes}${seconds}.json`;
-            const humanReadableOutputPath = `./public/${humanReadableFileName}`;
+            // 生成人类可读版本（带时间戳和缩进），同样落在本地备份目录并只留最近几次
+            const humanReadableOutputPath = path.join(BACKUP_DIR, `JunkRates_${stamp}.json`);
             fs.writeFileSync(humanReadableOutputPath, JSON.stringify(compactData, null, 2), 'utf-8');
             console.log(`人类可读版本已成功保存到 ${humanReadableOutputPath}`);
+            pruneBackups(BACKUP_DIR, BACKUP_KEEP);
 
             // 计算压缩率
             const originalSize = Buffer.byteLength(JSON.stringify(gachaData, null, 2), 'utf-8');

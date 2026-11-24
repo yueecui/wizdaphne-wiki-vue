@@ -1,9 +1,9 @@
 /**
  * 把哈肯的加护（`public/blessing.json`）整理成 wikitext，写进 wiki 的「哈肯」词条。
  *
- *   yarn update:haken -- --dry-run     # 只生成本地预览（local_scripts/work/haken.wiki）
- *   yarn update:haken                  # 登录后写入词条
- *   yarn update:haken -- --page 哈肯    # 指定词条名（默认「哈肯」）
+ *   yarn "[WIKI] haken" -- --dry-run    # 只生成本地预览（local_scripts/work/haken.wiki）
+ *   yarn "[WIKI] haken"                # 登录后写入词条
+ *   yarn "[WIKI] haken" -- --page 哈肯  # 指定词条名（默认「哈肯」）
  *
  * 词条原本就有 `===白加护===` / `===绿加护===` / `===蓝加护===` / `===紫加护===`
  * 四节，这里用解包数据整段重写（加护名 + 效果，紫加护多一列奈落），前面的介绍、

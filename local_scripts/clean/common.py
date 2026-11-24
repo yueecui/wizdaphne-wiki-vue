@@ -22,10 +22,42 @@ from xml.etree import ElementTree as ET
 #: this repo (``wizdaphne-wiki-vue``)
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-#: unpack project root; only its ``out/masterdata`` is read. Override with
-#: ``WIZDAPHNE_UNPACK`` (or point ``WIZDAPHNE_MASTERDATA`` straight at the tables).
-UNPACK = os.environ.get("WIZDAPHNE_UNPACK", r"D:\WizardyDaphne\WizardyDaphneUnpack")
-MD = os.environ.get("WIZDAPHNE_MASTERDATA", os.path.join(UNPACK, "out", "masterdata"))
+
+def _load_dotenv(path: str) -> None:
+    """读取仓库根的 ``.env``（``KEY=VALUE``，``#`` 开头为注释）。
+
+    只补充环境里没有的键，值留空视为未配置。这样 Python 脚本与 TS 脚本
+    （dotenv）读的是同一份 ``.env``，不需要额外设系统环境变量。
+    """
+    if not os.path.isfile(path):
+        return
+    with open(path, encoding="utf-8-sig") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, val = line.split("=", 1)
+            key, val = key.strip(), val.strip().strip('"').strip("'")
+            if key and val and key not in os.environ:
+                os.environ[key] = val
+
+
+_load_dotenv(os.path.join(ROOT, ".env"))
+
+#: unpack project root; only its ``out/masterdata`` is read.
+#: 默认按「两个仓库同级」推断（``<parent>/WizardyDaphneUnpack``），
+#: 也可用 ``WIZDAPHNE_UNPACK`` 覆盖，或直接把 ``WIZDAPHNE_MASTERDATA`` 指向表目录。
+UNPACK = os.environ.get("WIZDAPHNE_UNPACK") or os.path.join(
+    os.path.dirname(ROOT), "WizardyDaphneUnpack")
+MD = os.environ.get("WIZDAPHNE_MASTERDATA") or os.path.join(UNPACK, "out", "masterdata")
+
+#: 缺少解包数据时的提示（交接给他人时最常见的第一个报错）
+MD_HINT = (
+    f"找不到解包主数据目录：{MD}\n"
+    "请把解包仓库与本仓库放在同级目录，或在仓库根 .env 里设置 "
+    "WIZDAPHNE_UNPACK=<解包仓库根>（或 WIZDAPHNE_MASTERDATA=<表目录>），"
+    "参见 .env.example。"
+)
 
 #: 线上手工补充表（从 wiki 拉下来的快照，由 fetchWikiExtras.ts 写入）：
 #: ``Data:CharacterExtra.tabx`` / ``Data:EquipmentExtra.tabx`` / ``Data:遗物酒.tabx``。
@@ -336,7 +368,7 @@ def load(name: str):
     """Load one table from the unpacked master data (``MD``)."""
     path = os.path.join(MD, name + ".json")
     if not os.path.isfile(path):
-        raise FileNotFoundError(f"no {name}.json in {MD}")
+        raise FileNotFoundError(f"no {name}.json in {MD}\n{MD_HINT}")
     return json.load(open(path, encoding="utf8"))
 
 

@@ -26,14 +26,28 @@
  * 可覆盖字段：`label` / `options` / `number` / `group` / `cost` / `type`。
  */
 import axios from 'axios';
+import dotenv from 'dotenv';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
+dotenv.config();
+
 // ── 配置 ────────────────────────────────────────────────────────
 
-/** 解包主数据目录（可用环境变量覆盖） */
-const MASTER_DIR =
-    process.env.WIZ_MASTERDATA ?? 'd:/WizardyDaphne/WizardyDaphneUnpack/out/masterdata';
+/**
+ * 读路径类环境变量：**空字符串 / 纯空白视作未配置**。
+ * `.env` 里留空（`WIZDAPHNE_UNPACK=`）是允许的写法，dotenv 会给出 `''`，
+ * 用 `??` 无法回退，这里统一兜底。
+ */
+const envPath = (name: string, fallback: string): string => {
+    const value = process.env[name]?.trim();
+    return value ? value : fallback;
+};
+
+/** 解包仓库根（默认与本仓库同级；可用 WIZDAPHNE_UNPACK 覆盖） */
+const UNPACK = envPath('WIZDAPHNE_UNPACK', path.join(process.cwd(), '..', 'WizardyDaphneUnpack'));
+/** 解包主数据目录（可用 WIZDAPHNE_MASTERDATA 直接指向表目录） */
+const MASTER_DIR = envPath('WIZDAPHNE_MASTERDATA', path.join(UNPACK, 'out', 'masterdata'));
 /** 产物路径 */
 const OUT_FILE = path.resolve('public/talent.gamedata.json');
 /** 原配色方案（沿用 wiki 手工版的 colors），线上拉取失败时也用它兜底 */
@@ -122,8 +136,16 @@ interface TalentColor {
     availableText: string;
 }
 
-const load = <T>(name: string): T =>
-    JSON.parse(readFileSync(path.join(MASTER_DIR, `${name}.json`), 'utf8')) as T;
+const load = <T>(name: string): T => {
+    const file = path.join(MASTER_DIR, `${name}.json`);
+    if (!existsSync(file)) {
+        throw new Error(
+            `找不到解包主数据：${file}\n` +
+                '请把解包仓库与本仓库放在同级目录，或在 .env 里设置 WIZDAPHNE_UNPACK / WIZDAPHNE_MASTERDATA（见 .env.example）。',
+        );
+    }
+    return JSON.parse(readFileSync(file, 'utf8')) as T;
+};
 
 /** 允许被人工覆盖的字段（其余字段仍由游戏数据决定） */
 const OVERRIDABLE_KEYS = ['label', 'group', 'options', 'weights', 'number', 'cost', 'type'] as const;
@@ -158,8 +180,12 @@ const loadPalette = (): TalentColor[] => {
 // ── 线上数据 ────────────────────────────────────────────────────
 
 /** 线上天赋树页面（人工维护的名称 / 分组 / 配色 / 总点数以它为准） */
-const ONLINE_TALENT_URL = 'https://wizdaphne.huijiwiki.com/wiki/Data:Talent.json?action=raw';
-const ONLINE_HEADERS = { 'user-agent': 'Yuee-Tool/0.1', Accept: 'application/json, text/plain, */*' };
+const WIKI_PREFIX = process.env.VITE_WIKI_PREFIX || 'wizdaphne';
+const ONLINE_TALENT_URL = `https://${WIKI_PREFIX}.huijiwiki.com/wiki/Data:Talent.json?action=raw`;
+const ONLINE_HEADERS = {
+    'user-agent': process.env.WIKI_TOOL_UA || 'Yuee-Tool/0.1',
+    Accept: 'application/json, text/plain, */*',
+};
 
 interface OnlineNode {
     id?: string;
@@ -178,7 +204,7 @@ interface OnlineTalent {
  *
  * 只取「游戏数据里没有、人工维护过」的部分：节点 `label` / `group`、`colors`、`totalPoints`；
  * 坐标 / 选项 / 连线等一律用解包数据覆盖。拉取失败时退回本地 `public/talent.json`
- * （`scrape:data` 抓的同一份），再失败就纯用游戏数据生成。
+ * （「[旧版] scrape:data」抓的同一份），再失败就纯用游戏数据生成。
  */
 const fetchOnlineTalent = async (): Promise<OnlineTalent | null> => {
     try {

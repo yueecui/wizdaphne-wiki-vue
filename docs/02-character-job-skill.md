@@ -658,7 +658,7 @@ out\clean\
 ## 附录 B · 复现命令
 
 ```bat
-cd /d D:\WizardyDaphne\WizardyDaphneUnpack
+cd /d <解包仓库根>
 
 :: 表清单 / 规模
 python -X utf8 -c "import json;d=json.load(open('out/masterdata/index.json',encoding='utf8'));print(len(d),sum(v['records'] for v in d.values()))"

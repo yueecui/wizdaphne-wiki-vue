@@ -18,7 +18,7 @@ export const useItemStore = defineStore('item', () => {
             const response = await fetch(
                 IS_DEV
                     ? '/items.json'
-                    : 'https://wizdaphne.huijiwiki.com/api.php?action=lua&module=Api/GetItem&format=json&utf8=1',
+                    : '/api.php?action=lua&module=Api/GetItem&format=json&utf8=1',
             );
             if (response.ok) {
                 const data: IItemJson = await response.json();

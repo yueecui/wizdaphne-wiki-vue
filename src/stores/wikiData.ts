@@ -443,6 +443,8 @@ export interface RawStepReplace {
 }
 
 export interface RawSkillSubEffect {
+    /** 原始 ``SkillSubEffect.id`` */
+    id?: number;
     kind: number;
     params: number[];
     strength: number;
@@ -490,8 +492,33 @@ export interface RawSkillAction {
     id: number;
     name?: string;
     name_jp?: string;
+    /** 合并了多个只差发动时机的效果组时，原始组 id 列表 */
+    effect_groups?: number[];
+    activate_timing?: RawActivateTiming[];
     damage?: RawSkillDamage[];
     sub_effects?: RawSkillSubEffect[];
+}
+
+/** 发动时机条件（``SkillActivateTimingCondition``，kind 只有推断名） */
+export interface RawActivateTimingCond {
+    id: number;
+    kind: number;
+    /** 推断的条件名（清洗脚本的 ``ACT_CONDITION_KINDS``），可能缺失 */
+    kind_name?: string;
+    params?: number[];
+    is_reverse?: boolean;
+}
+
+/** 发动时机（``SkillEffectGroup.activate_timing_id`` -> ``SkillActivateTiming``） */
+export interface RawActivateTiming {
+    id: number;
+    /** 该时机属于哪个 ``SkillEffectGroup`` */
+    effect_group: number;
+    timing?: number;
+    require_num?: number;
+    target_method?: number;
+    select_target?: number;
+    conditions?: RawActivateTimingCond[];
 }
 
 export interface RawSkillLevel {
@@ -514,6 +541,8 @@ export interface RawSkillLevel {
     name_lang?: string;
     damage: RawSkillDamage[];
     sub_effects: RawSkillSubEffect[];
+    /** 发动时机：效果「什么时候生效」（普攻时 / 攻击技能时 …） */
+    activate_timing?: RawActivateTiming[];
     /** 多动作技能：每个顶层效果组是一个动作 */
     actions?: RawSkillAction[];
 }
@@ -799,8 +828,12 @@ const DB_NAME = 'wizdaphne-wiki-v2';
  * bump when the stored document shape changes -> whole DB is rebuilt。
  * 新增表（v3 的 items / relics / shops）不用改这个值：Dexie 升级会建空表，
  * ``load()`` 发现表是空的会自动重新下载，还能保住耗时的杂物整理缓存。
+ *
+ * v14：技能数据新增 ``activate_timing``（发动时机）与 ``sub_effects[].id``。
+ * ``Data:Version.json`` 不由上传脚本维护，光上传数据不会触发重下，
+ * 所以这里 bump 一版，让老缓存整体重建（含旧的杂物整理缓存）。
  */
-export const DB_SCHEMA_VERSION = 13;
+export const DB_SCHEMA_VERSION = 14;
 
 /**
  * 杂物整理结果（官网抓包 → JunkItem 全量几率组合）。

@@ -465,8 +465,9 @@ const main = async () => {
         const integratedData = integrateBonusRates(regularEquipmentData, specialEquipmentData);
         console.log(`整合完成！共处理了 ${regularEquipmentData.length + specialEquipmentData.length} 件装备`);
 
-        // 保存整合后的数据到文件（可选）
-        const outputPath = path.resolve(__dirname, '../../public/integrated_bonus_rates.json');
+        // 本地留一份整合结果（只供人工查看，没有任何代码读它，所以放 work/ 而不是 public/）
+        const outputPath = path.resolve(__dirname, '../../local_scripts/work/integrated_bonus_rates.json');
+        fs.mkdirSync(path.dirname(outputPath), { recursive: true });
         fs.writeFileSync(outputPath, integratedData);
         console.log(`整合后的数据已保存到：${outputPath}`);
 

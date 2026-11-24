@@ -37,7 +37,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import CLEAN, load, names, write_json  # noqa: E402
+from common import CLEAN, load, names, text, write_json  # noqa: E402
 
 #: ``Shop.shop_kind``
 SHOP_KIND_LABELS = {
@@ -72,6 +72,22 @@ CURRENCY_LABELS = {
     4: "宝石 / 直购",
     5: "兑换点数",
 }
+
+
+def row_priority(row: dict) -> int:
+    """``Shop.priority`` -> 排序用的整数。
+
+    绝大多数行是纯整数，但金币商店里有 14 行装备档位写成了多语言对象
+    ``{"ja": 2200, "zhs": 2000, "zht": 2200, "en": 2200}``（日服改过顺序）。
+    这里按中文优先（回退繁中 / 日 / 英）取一个值，取不到就当 0。
+    """
+    value = row.get("priority")
+    if isinstance(value, dict):
+        value = text(value)[0]
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
 
 
 def shop_name(kind, town: int, point_shop: dict | None, towns: dict) -> str:
@@ -214,8 +230,8 @@ def main(argv: list[str]) -> int:
                         item["content_ident"] = ident
                 items.append(item)
         # 游戏内按 ``Shop.priority`` 排（同优先级按商品行 id 稳定排列），价格不参与排序
-        priority_of = {row.get("id"): row.get("priority") or 0 for row in rows}
-        items.sort(key=lambda item: (priority_of.get(item["shop_id"], 0), item["shop_id"]))
+        priority_by_id = {row.get("id"): row_priority(row) for row in rows}
+        items.sort(key=lambda item: (priority_by_id.get(item["shop_id"], 0), item["shop_id"]))
 
         entries.append({
             "id": index,

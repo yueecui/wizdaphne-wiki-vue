@@ -16,7 +16,7 @@
  *   并附带 ``character_id`` / ``style`` / ``character_name``。
  *
  * 需要 .env：VITE_WIKI_PREFIX / WIKI_AUTHKEY / WIKI_USERNAME / WIKI_PASSWORD
- * 解包路径可用 ``WIZDAPHNE_UNPACK`` 覆盖（默认 D:\WizardyDaphne\WizardyDaphneUnpack）。
+ * 解包路径可用 ``WIZDAPHNE_UNPACK`` 覆盖（默认与本仓库同级的 ``WizardyDaphneUnpack``）。
  */
 import dotenv from 'dotenv';
 import { HuijiWiki } from 'huijiwiki-api';
@@ -26,8 +26,14 @@ import { pathToFileURL } from 'node:url';
 
 dotenv.config();
 
-const UNPACK = process.env.WIZDAPHNE_UNPACK ?? 'D:\\WizardyDaphne\\WizardyDaphneUnpack';
-const MASTER = path.join(UNPACK, 'out', 'masterdata');
+/** 读路径类环境变量：空字符串视作未配置（`.env` 里留空是允许的写法） */
+const envPath = (name: string, fallback: string): string => {
+    const value = process.env[name]?.trim();
+    return value ? value : fallback;
+};
+
+const UNPACK = envPath('WIZDAPHNE_UNPACK', path.join(process.cwd(), '..', 'WizardyDaphneUnpack'));
+const MASTER = envPath('WIZDAPHNE_MASTERDATA', path.join(UNPACK, 'out', 'masterdata'));
 /** 页面前缀：``Data:角色故事`` */
 export const STORY_PAGE_PREFIX = 'Data:角色故事';
 /** 普通（默认）风格名，页面标题里省略 */

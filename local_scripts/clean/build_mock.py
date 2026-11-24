@@ -272,7 +272,29 @@ STEP_REPLACE = [
     ("effects", "e", "objArr", SUB_BRIEF_LEAF),
 ]
 
+# 发动时机：SkillEffectGroup.activate_timing_id -> SkillActivateTiming -> 条件链。
+# 解包没有条件 kind 的枚举名，kind_name 由 activate_timing_kinds.json 里的表补。
+ACTIVATE_TIMING_COND = [
+    ("id", "i", "num"),
+    ("kind", "k", "num"),
+    ("kind_name", "kn", "str"),
+    ("params", "p", "numArr"),
+    ("is_reverse", "r", "bool"),
+]
+
+ACTIVATE_TIMING = [
+    ("id", "i", "num"),
+    ("effect_group", "g", "num"),
+    ("timing", "tm", "num"),
+    ("require_num", "rn", "num"),
+    ("target_method", "tg", "num"),
+    ("select_target", "st", "num"),
+    ("conditions", "cd", "objArr", ACTIVATE_TIMING_COND),
+]
+
 SUB_EFFECT = [
+    # 原始 SkillSubEffect 行 id：校准 / 联表用
+    ("id", "i", "raw"),
     ("kind", "k", "num"),
     ("params", "p", "numArr"),
     ("strength", "s", "num"),
@@ -308,6 +330,9 @@ ACTION = [
     ("id", "i", "num"),
     ("name", "zh", "str"),
     ("name_jp", "jp", "str"),
+    # 合并了多个只差发动时机的效果组时，原始组 id 列表
+    ("effect_groups", "eg", "numArr"),
+    ("activate_timing", "at", "objArr", ACTIVATE_TIMING),
     ("damage", "dm", "objArr", DAMAGE),
     ("sub_effects", "sb", "objArr", SUB_EFFECT),
 ]
@@ -327,6 +352,8 @@ LEVEL = [
     ("name_lang", "nl", "str"),
     ("damage", "dm", "objArr", DAMAGE),
     ("sub_effects", "sb", "objArr", SUB_EFFECT),
+    # 发动时机（多动作技能每个动作各有一份，等级上再给一份完整列表）
+    ("activate_timing", "at", "objArr", ACTIVATE_TIMING),
     ("actions", "ac", "objArr", ACTION),
 ]
 

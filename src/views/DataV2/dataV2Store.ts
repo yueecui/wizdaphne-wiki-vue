@@ -10,6 +10,7 @@ import {
     type RawEnemyAiCondition,
     type RawEnemyPool,
     type RawEnemyVariant,
+    type RawActivateTiming,
     type RawEquipment,
     type RawJob,
     type RawMapFloor,
@@ -22,6 +23,7 @@ import {
     type RawSubEffectBriefLeaf,
 } from '../../stores/wikiData';
 import type {
+    ActivateTiming,
     CharacterDetail,
     CharacterListItem,
     EffectKind,
@@ -368,6 +370,23 @@ export const useDataV2Store = defineStore('data-v2', () => {
         return [...kinds].sort((a, b) => a - b);
     };
 
+    /** 发动时机（SkillEffectGroup.activate_timing_id 链，含条件）：等级与动作共用 */
+    const toActivateTiming = (raw: RawActivateTiming): ActivateTiming => ({
+        id: raw.id,
+        effect_group: raw.effect_group,
+        timing: raw.timing || null,
+        require_num: raw.require_num || null,
+        target_method: raw.target_method || null,
+        select_target: raw.select_target || null,
+        conditions: (raw.conditions ?? []).map((cond) => ({
+            id: cond.id,
+            kind: cond.kind || null,
+            kind_name: cond.kind_name || null,
+            params: cond.params ?? [],
+            is_reverse: Boolean(cond.is_reverse),
+        })),
+    });
+
     /** 伤害行（技能等级与动作共用同一套字段） */
     const toDamage = (damage: RawSkillDamage): SkillDamage => ({
         attack_rate: damage.attack_rate || null,
@@ -394,6 +413,7 @@ export const useDataV2Store = defineStore('data-v2', () => {
     const toSubEffect = (sub: RawSkillSubEffect): SkillSubEffect => {
         const kind = wiki.enums.effect_kind[String(sub.kind)];
         return {
+            id: sub.id ?? null,
             kind: sub.kind || null,
             kind_name: kind?.name ?? null,
             strength: sub.strength || null,
@@ -487,12 +507,20 @@ export const useDataV2Store = defineStore('data-v2', () => {
             name_lang: level.name_lang,
             damage: (level.damage ?? []).map(toDamage),
             sub_effects: (level.sub_effects ?? []).map(toSubEffect),
+            // 发动时机（普攻时 / 攻击技能时 …）；没有时不给字段，旧数据照旧展示
+            activate_timing: level.activate_timing?.length
+                ? level.activate_timing.map(toActivateTiming)
+                : undefined,
             // 多动作技能：每个顶层效果组是一个动作，详情里分页显示
             actions: level.actions?.length
                 ? level.actions.map((action) => ({
                       id: action.id,
                       name: action.name,
                       name_jp: action.name_jp,
+                      effect_groups: action.effect_groups?.length ? action.effect_groups : undefined,
+                      activate_timing: action.activate_timing?.length
+                          ? action.activate_timing.map(toActivateTiming)
+                          : undefined,
                       damage: (action.damage ?? []).map(toDamage),
                       sub_effects: (action.sub_effects ?? []).map(toSubEffect),
                   }))

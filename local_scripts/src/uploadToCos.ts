@@ -1,33 +1,62 @@
 import COS from 'cos-nodejs-sdk-v5';
 import * as fs from 'fs';
-import { COS_PATH_PREFIX, COS_SECRET_ID, COS_SECRET_KEY } from './config.js';
+import { COS_BUCKET, COS_PATH_PREFIX, COS_REGION, COS_SECRET_ID, COS_SECRET_KEY } from './config.js';
 import { updateImporter } from './wiki.js';
 
-const BUCKET_NAME = 'single-page-app-1300115157';
-const BUCKET_REGION = 'ap-shanghai';
+const BUCKET_NAME = COS_BUCKET;
+const BUCKET_REGION = COS_REGION;
+
+/** 删除 / 上传的并发上限：一次几百个请求会把连接打满，也更容易被限流 */
+const CONCURRENCY = 20;
 
 const cos = new COS({
     SecretId: COS_SECRET_ID,
     SecretKey: COS_SECRET_KEY,
 });
 
+/** 按 ``CONCURRENCY`` 分批跑完；返回每个条目的结果（顺序与入参一致） */
+const runInBatches = async <T>(
+    items: T[],
+    worker: (item: T) => Promise<unknown>,
+): Promise<PromiseSettledResult<unknown>[]> => {
+    const settled: PromiseSettledResult<unknown>[] = [];
+    for (let i = 0; i < items.length; i += CONCURRENCY) {
+        settled.push(...(await Promise.allSettled(items.slice(i, i + CONCURRENCY).map(worker))));
+    }
+    return settled;
+};
+
+/**
+ * 删除 3 天前（且只保留最近 3 个版本）的历史文件。
+ *
+ * 必须等全部删除请求结束后再继续：以前是 ``forEach(async ...)`` 发出去就不管了，
+ * 脚本退出时未完成的删除会被直接掐断，旧文件残留在 COS 里。
+ */
 const clearOldAsset = async () => {
     const needDeleteList = await getNeedDeleteList();
+    if (!needDeleteList.length) {
+        console.log('没有需要清理的历史文件');
+        return;
+    }
 
-    needDeleteList.forEach(async (fileKey) => {
-        const deleteParams = {
+    const results = await runInBatches(needDeleteList, (fileKey) =>
+        cos.deleteObject({
             Bucket: BUCKET_NAME,
             Region: BUCKET_REGION,
             Key: fileKey,
-        };
-        cos.deleteObject(deleteParams)
-            .then(() => {
-                console.log(`删除 ${fileKey} 成功`);
-            })
-            .catch((err) => {
-                console.log(`删除 ${fileKey} 失败，原因：${err}`);
-            });
+        }),
+    );
+
+    let failed = 0;
+    results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+            console.log(`删除 ${needDeleteList[index]} 成功`);
+        } else {
+            failed += 1;
+            console.log(`删除 ${needDeleteList[index]} 失败，原因：${result.reason}`);
+        }
     });
+    console.log(`历史文件清理完成：成功 ${needDeleteList.length - failed} 个，失败 ${failed} 个`);
 };
 
 const getNeedDeleteList = async () => {
@@ -103,37 +132,6 @@ const getNeedDeleteList = async () => {
     return needDeleteList;
 };
 
-const main = async () => {
-    // 发起清理请求，并不需要等待清理完成
-    await clearOldAsset();
-
-    const rootFileList = fs.readdirSync('./dist/assets/');
-    const promiseList: Promise<COS.PutObjectResult>[] = [];
-
-    const currentTimeStr = getCurrentTimeStr();
-
-    rootFileList.forEach(async (fileName) => {
-        const cosParams = {
-            Bucket: BUCKET_NAME,
-            Region: BUCKET_REGION,
-            Key: `${COS_PATH_PREFIX}/${currentTimeStr}/${fileName}`,
-            Body: fs.createReadStream(`./dist/assets/${fileName}`),
-        };
-        promiseList.push(cos.putObject(cosParams));
-    });
-
-    Promise.allSettled(promiseList).then((results) => {
-        const rejected = results.filter((result) => result.status === 'rejected');
-        if (rejected.length > 0) {
-            console.log(`有${rejected.length}个文件上传失败，线上读取文件不会被重写。`);
-        } else {
-            console.log('所有文件上传成功，正在重写hash...');
-
-            updateImporter(currentTimeStr);
-        }
-    });
-};
-
 const getCurrentTimeStr = () => {
     // 获取当前时间戳
     const dateNow = new Date();
@@ -150,4 +148,36 @@ const getCurrentTimeStr = () => {
     return timeStr;
 };
 
-main();
+const main = async () => {
+    // 先等历史文件清理完，再开始上传
+    await clearOldAsset();
+
+    const rootFileList = fs.readdirSync('./dist/assets/');
+
+    const currentTimeStr = getCurrentTimeStr();
+
+    const results = await runInBatches(rootFileList, (fileName) =>
+        cos.putObject({
+            Bucket: BUCKET_NAME,
+            Region: BUCKET_REGION,
+            Key: `${COS_PATH_PREFIX}/${currentTimeStr}/${fileName}`,
+            Body: fs.createReadStream(`./dist/assets/${fileName}`),
+        }),
+    );
+
+    const rejected = results.filter((result) => result.status === 'rejected');
+    if (rejected.length > 0) {
+        console.log(`有${rejected.length}个文件上传失败，线上读取文件不会被重写。`);
+        process.exitCode = 1;
+        return;
+    }
+
+    console.log('所有文件上传成功，正在重写hash...');
+    await updateImporter(currentTimeStr);
+    console.log('hash 重写完成');
+};
+
+main().catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+});

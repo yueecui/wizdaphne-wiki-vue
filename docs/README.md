@@ -10,7 +10,7 @@
 本仓库（`wizdaphne-wiki-vue`）是 [巫术达芙妮中文维基](https://wizdaphne.huijiwiki.com/) 的前端与本地更新脚本。
 
 - 前端「数据查询」模块的数据**一直是人工整理**的，落在 `public/data.json`（开发环境）与线上 MediaWiki 接口 `Api/GetSearcherData`（生产环境）。
-- 2026-10 起，在独立仓库 `D:\WizardyDaphne\WizardyDaphneUnpack` 完成了**游戏资源解包**：可解密下载缓存、导出贴图/文本，并把**服务端主数据**（MessagePack 表）导出为可读 JSON，且已合并 `ja / zhs / zht / en` 四种语言。
+- 2026-10 起，在独立仓库 `<解包仓库根>` 完成了**游戏资源解包**：可解密下载缓存、导出贴图/文本，并把**服务端主数据**（MessagePack 表）导出为可读 JSON，且已合并 `ja / zhs / zht / en` 四种语言。
 - 现在的工作 = **把解包出来的「机器数据」清洗成维基可用的「产品数据」**，逐步替换手工数据。
 - 解包数据的表名是**反编译比对结构推测**出来的，推测不出的以 `unk_<sig>` 命名；本次调研范围 = **角色 / 职业 / 技能**。
 
@@ -84,7 +84,7 @@
 | 13 | v2 前端页面 | 首版可用 | `src/views/DataV2/` + `loader/config/dataSearcherV2.ts` | 独立目录/独立 store/挂载点 `#data-searcher-v2`，待人工验收 |
 | 14 | 技能详情弹窗 | 完成（首版） | `DataV2/SkillModal.vue` + `SkillDetail.vue` | 攻略站式版式：基本信息/说明/逐级数值（转置）/通用数值/学习来源；字段对照见 04 §3.1 |
 | 15 | 第一轮清洗（长键精简） | 完成 | `local_scripts/clean/build_data.py` → `data/` | 95 角色 / 17 职业 / 3,031 技能 / 816 装备；根目录总数据 + `character/ job/ skill/ equipment/` 单条；列表与详情合并、引用只留 id、名称进 `enums.json`（见 05） |
-| 16 | 第二轮清洗（Wiki 载荷 mock） | 完成 | `local_scripts/clean/build_mock.py` → `public/mock/` | 短键 + `{items,count,page,limit}`，6 个模块共 4.40 MB，内置短键唯一性与往返自检；`update:wiki` 已支持 character / job / skill / equipment / enum 上传（mock 本身不入库） |
+| 16 | 第二轮清洗（Wiki 载荷 mock） | 完成 | `local_scripts/clean/build_mock.py` → `public/mock/` | 短键 + `{items,count,page,limit}`，6 个模块共 4.40 MB，内置短键唯一性与往返自检；`[UPDATE 3] 上传到 wiki` 已支持 character / job / skill / equipment / enum 上传（mock 本身不入库） |
 | 17 | IndexedDB 数据源 | 完成 | `src/api/dbCodec.ts` + `src/api/wikiData.ts` + `src/stores/wikiData.ts` | 短键解码、版本比对、整库缓存；`DataV2` 已切换（见 04 §4.3） |
 | 18 | 移除旧载荷 | 完成 | — | `public/data-v2/` 已删除，页面不再请求该路径 |
 | 19 | 装备（武器 / 防具） | 完成 | `local_scripts/clean/equipment.py` + `DataV2/EquipmentPanel.vue` + `EquipmentModal.vue` | 816 条（武器 341 / 盾 51 / 头部 97 / 身体 109 / 手部 73 / 脚部 61 / 饰品 82 / 工具 2）；数值、攻击次数、特性、套装、图标、强化曲线、探索三项（探知 / 陷阱解除 / 陷阱回避）、材质补强（`EquipmentOverRankReinforce`，540 件）与图鉴编号（`CollectionEquip`，特殊装备 EX）取自解包，加护概率与类型基准值 `baseStat` 取自 `Api/GetV2Equipment` 顶层；详情新增「材质补强」页（目标阶级分组、逐次属性增量、阶级小计、总加成），属性表可用下拉叠加补强等级；能通过杂物获得的装备还会显示「杂物来源」页签（本地有杂物整理缓存时生效）；敌人 / NPC / 剧情专用装备（`name` 没有中文本地化）与测试行一并排除；V1 手工表（EquipmentExtra / EquipmentSkill / EquipmentSetSkill / EquipmentBonus / EquipmentBaseStat）不再参与清洗；特典分类 `soucate` 与获取途径 `sou` 改由 `Api/GetV2Equipment` 的 `extra`（wiki `Data:EquipmentExtra.tabx`）提供，中文说明 / 装备需求仍保留占位 |
@@ -180,13 +180,13 @@
 
 ```bat
 :: 解包仓库：只做到 out\masterdata
-cd /d D:\WizardyDaphne\WizardyDaphneUnpack
+cd /d <解包仓库根>
 dir out\masterdata\index.json
 python tools\clean\identify_tables.py
 python tools\multilang.py build --langs ja zhs zht en
 
 :: 本仓库：清洗 + 两轮导出（输入仍是解包仓库的 out\masterdata）
-cd /d D:\WizardyDaphne\wizdaphne-wiki-vue
+cd /d <本仓库根>
 python local_scripts\clean\character.py   :: -> local_scripts\work\clean\character（105 行 + 76 组）
 python local_scripts\clean\job.py         :: -> local_scripts\work\clean\job\jobs.json
 python local_scripts\clean\skill.py       :: -> local_scripts\work\clean\skill（3,031 技能 / 8,655 等级行）

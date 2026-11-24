@@ -64,6 +64,11 @@
                                 <div v-if="data.detail_description" class="whitespace-pre-line opacity-70 mt-2">
                                     {{ data.detail_description }}
                                 </div>
+                                <!-- 各等级自己的说明与该等级的上一档不同时，原样列出来（例：Lv3 起追加解除剧毒） -->
+                                <div v-for="(note, index) in levelNotes" :key="index" class="whitespace-pre-line mt-2">
+                                    <span v-if="note.level > 0" class="opacity-70">{{ note.level }}级以上：</span
+                                    >{{ note.text }}
+                                </div>
                             </td>
                         </tr>
                     </template>
@@ -596,13 +601,42 @@ const levels = computed<SkillLevel[]>(() => {
         // 该等级没有被拆成多动作时保留顶层效果，避免整级被清空
         if (!levelActions.length) return level;
         const action = levelActions.find((item) => item.id === active);
-        return { ...level, damage: action?.damage ?? [], sub_effects: action?.sub_effects ?? [] };
+        return {
+            ...level,
+            damage: action?.damage ?? [],
+            sub_effects: action?.sub_effects ?? [],
+            // 发动时机跟着动作走（同一动作合并的多个效果组各有自己的时机）
+            activate_timing: action?.activate_timing ?? level.activate_timing,
+        };
     });
 });
 
 const jobName = (id: number) => store.jobById.get(id)?.name ?? `职业 #${id}`;
 
 const integer = (v: number | null | undefined) => (v == null ? '' : String(v));
+
+/** 没有可见数值的效果（例：解除剧毒）：存在的等级标 ✓，其余留空（渲染成 —） */
+const presenceCells = (present: boolean[]) => present.map((has) => (has ? '✓' : ''));
+
+// ---------- 等级说明的差异（例：Lv3 起追加解除剧毒） ----------
+
+/**
+ * 「3级以上：…」：某个等级自己的说明和上一档不同时，直接把那一档的完整说明列出来，
+ * 不做归纳 —— 差别可能是追加词条（112001110 玛迪 Lv3 追加剧毒 / 封技 / 封魔 / 恐惧 /
+ * 混乱 / 魅惑，Lv5 追加烈毒 / 石化，Lv7 追加冻僵 / 冻结），也可能是回复量之类的改写，
+ * 一律照原样显示。连续几个等级说明相同时只在第一次出现的地方列一遍。
+ */
+const levelNotes = computed<{ level: number; text: string }[]>(() => {
+    const out: { level: number; text: string }[] = [];
+    let prev = data.value?.description ?? '';
+    for (const level of levels.value) {
+        const text = level.description;
+        if (!text || text === prev) continue;
+        prev = text;
+        out.push({ level: level.level, text });
+    }
+    return out;
+});
 
 interface Row {
     label: string;
@@ -1184,7 +1218,13 @@ const rows = computed<Row[]>(() => {
         }
         // 参数全是被隐藏的原始 id 时，只保留效果名，避免整组从表里消失
         if (!names.length && levels.value.some((lv) => pick(lv).some((s) => (s.params ?? []).some(Boolean)))) {
-            push(-1, { label, values: levels.value.map(() => ''), group: label, kind: kindId, always: true });
+            push(-1, {
+                label,
+                values: presenceCells(levels.value.map((lv) => pick(lv).length > 0)),
+                group: label,
+                kind: kindId,
+                always: true,
+            });
         }
         for (const name of names) {
             const perLevel = levels.value.map((lv) =>
@@ -1277,10 +1317,10 @@ const rows = computed<Row[]>(() => {
                     links,
                 });
             if (!child.fields.length) {
-                // 没有参数的子效果也要占一行，名字本身就是全部信息
+                // 没有参数的子效果也要占一行：存在的等级标 ✓，不存在的留空
                 pushChild(
                     undefined,
-                    levels.value.map(() => ''),
+                    presenceCells(levels.value.map((lv) => pickChild(lv).length > 0)),
                     true,
                 );
                 continue;
@@ -1304,10 +1344,11 @@ const rows = computed<Row[]>(() => {
 
         // 一个可显示字段都没有的效果（例：「毒回復」参数全 0，只有效果本身有意义），
         // 也要把效果名占一行，否则技能看起来完全没有效果；「空データ」只是占位，跳过。
+        // 存在的等级标 ✓（例：112001110 的「剧毒回復」只在 Lv3 以上出现）。
         if (!group.length && !EMPTY_KIND.test(label)) {
             push(-1, {
                 label,
-                values: levels.value.map(() => ''),
+                values: presenceCells(levels.value.map((lv) => pick(lv).length > 0)),
                 group: label,
                 kind: kindId,
                 always: true,
@@ -1367,6 +1408,55 @@ interface InfoRow {
     summons?: SummonLink[];
 }
 
+/**
+ * 发动时机条件 kind 470「使用技能种类」的参数值 = ``Skill.skill_kind``。
+ * 解包没有条件枚举名，靠 7 处引用交叉验证（精准一击 = 1/2、暗属性范围法术强化 = 4、
+ * 献身之盾 = 2~7、百烈拳 = 1），与 ``Skill.kind`` 的枚举完全吻合。
+ */
+const TIMING_USE_KIND: Record<number, string> = {
+    1: '普通攻击',
+    2: '攻击技能',
+    3: '辅助技能',
+    4: '攻击魔法',
+    5: '回复魔法',
+    6: '强化魔法',
+    7: '妨碍魔法',
+    20: '设置陷阱',
+    90: '特殊',
+};
+
+/**
+ * 发动时机（``SkillEffectGroup.activate_timing_id`` 链）-> 可读文案。
+ * 多动作技能只取当前动作的时机（见 ``levels``）。
+ */
+const timingText = computed(() => {
+    const labels: string[] = [];
+    for (const level of levels.value) {
+        for (const timing of level.activate_timing ?? []) {
+            const parts: string[] = [];
+            for (const cond of timing.conditions ?? []) {
+                const value = cond.params?.[0] ?? null;
+                if (cond.kind === 470) {
+                    // 可能是多个种类（献身之盾 = 2~7），逐个翻译后拼成「攻击技能 / 辅助技能 … 时」
+                    const kinds = (cond.params ?? []).map((id) => TIMING_USE_KIND[id] ?? `技能种类 ${id}`);
+                    if (kinds.length) parts.push(`${kinds.join(' / ')}时`);
+                } else if (cond.kind === 440) {
+                    if (value != null) parts.push(`概率 ${value}%`);
+                } else if (cond.kind_name) {
+                    parts.push(cond.params?.length ? `${cond.kind_name} ${cond.params.join(' ')}` : cond.kind_name);
+                } else if (cond.kind != null) {
+                    parts.push(`条件 ${cond.kind}`);
+                }
+            }
+            // 条件全都翻译不出来时宁可不显示：只有 ``timing`` id 的时机
+            // （508 个技能里 366 个属于这种）显示成「时机 #910」只会添噪音
+            const text = parts.join(' · ');
+            if (text && !labels.includes(text)) labels.push(text);
+        }
+    }
+    return labels.join(' / ');
+});
+
 const infoRows = computed<InfoRow[]>(() => {
     const d = data.value;
     if (!d) return [];
@@ -1391,6 +1481,10 @@ const infoRows = computed<InfoRow[]>(() => {
     out.push({ label: '类型', tags: [form, d.kind_name ?? `#${d.kind}`] });
 
     out.push({ label: '最大等级', value: String(d.max_level) });
+
+    // 发动时机：效果「什么时候生效」（普攻时 / 攻击技能时 …，含触发概率）
+    const timing = timingText.value;
+    if (timing) out.push({ label: '发动时机', value: timing });
 
     if (targets.length) out.push({ label: '技能目标', value: targets.join(' / ') });
 

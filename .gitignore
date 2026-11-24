@@ -27,10 +27,13 @@ coverage
 *.sln
 *.sw?
 
-*secret*
+# 密钥 / 本地配置：真实凭证只放 .env（不入库）
 .env
+.env.*
+!.env.example
+*.secret.*
 
-# 抓取生成的数据文件
+# 抓取生成的数据文件（都是「[UPDATE 2] 转换为 mock」/「[旧版] scrape:data」的产物，不入库）
 /public/*.json
 /public/*.xlsx
 data
@@ -40,3 +43,7 @@ public/mock
 
 # 清洗脚本的中间产物（local_scripts/clean 每次全量重写）
 local_scripts/work
+
+# Python 缓存
+__pycache__/
+*.pyc

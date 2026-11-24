@@ -430,6 +430,8 @@ def main(argv: list[str]) -> int:
                 if s.get("target"):
                     targets.add(s["target"])
                 subs.append(compact({
+                    # 原始 SkillSubEffect 行 id：校准 / 联表用
+                    "id": s.get("id"),
                     "kind": s.get("kind"),
                     "params": trim_params(s.get("params")),
                     "strength": s.get("strength"),
@@ -475,6 +477,9 @@ def main(argv: list[str]) -> int:
                 "name_lang": lv.get("name_lang"),
                 "damage": damage,
                 "sub_effects": subs,
+                # 发动时机（SkillEffectGroup.activate_timing_id -> 条件链）：
+                # 多动作技能每个动作各自一份，这里再给等级一份完整列表
+                "activate_timing": lv.get("activate_timing"),
                 # 多动作技能：每个顶层效果组 = 一个动作（名字 + 该动作的伤害/子效果）。
                 # 只有一个动作时 skill.py 不输出，前端按 actions 分页显示。
                 "actions": [
@@ -482,6 +487,9 @@ def main(argv: list[str]) -> int:
                         "id": action.get("id"),
                         "name": action.get("name"),
                         "name_jp": action.get("name_jp"),
+                        # 合并了多个只差发动时机的效果组时，原始组 id 列表
+                        "effect_groups": action.get("effect_groups"),
+                        "activate_timing": action.get("activate_timing"),
                         "damage": action.get("damage"),
                         "sub_effects": action.get("sub_effects"),
                     }

@@ -62,7 +62,8 @@ out/masterdata（解包主数据，288 表）
 直接由 `blessing.py` 生成一个单文件 `public/blessing.json`（`{generatedAt, count,
 stats, species, attributes, groups, items}`，约 85 KB，入库）。前端 `blessingData.ts`
 一次 `fetch` 拿完，不进 IndexedDB、不吃 `Api/Version`；线上对应 `Data:Blessing.json`
-一页（上传脚本按 `whole` 整包写），**不做 Lua 接口**，页面直接取 `?action=raw`：
+一页（上传脚本按 `whole` 整包写，但会去掉 `generatedAt`，避免每次重新生成都只剩一段
+时间戳差异、也让增量缓存能命中），**不做 Lua 接口**，页面直接取 `?action=raw`：
 
 ```
 /index.php?title=Data:Blessing.json&action=raw&ctype=text/json&t=<时间戳>
@@ -79,7 +80,7 @@ stats, species, attributes, groups, items}`，约 85 KB，入库）。前端 `bl
 ## 3. 生成命令
 
 ```bat
-cd /d D:\WizardyDaphne\wizdaphne-wiki-vue
+cd /d <本仓库根>
 
 :: 1) 重跑语义清洗（游戏更新后；读解包仓库的 out\masterdata）
 python local_scripts\clean\character.py
@@ -155,6 +156,24 @@ python local_scripts\clean\build_mock.py
 | `target_race_ids` | `sub_effects[].target_race_ids` | 只对特定种族生效（种族名可读） |
 | `extension_params` | `sub_effects[].extension_params` | `SkillSubEffectExtensionParam` 的扩展参数，以 sub effect id 为键，值多为别的 sub effect id |
 | `child_sub_effects` / `extension_effects` | 同名字段 | 上面两个 id 列表的展开版：`{id, kind, kind_name, params, strength, turn, target, target_text, children?}`，只再展开一层 |
+| `id` | `sub_effects[].id` | 原始 `SkillSubEffect.id`，校准时按它回溯原行 |
+
+**发动时机（效果「什么时候生效」）**
+
+`SkillEffectGroup.activate_timing_id → SkillActivateTiming → SkillActivateTimingCondition`，
+输出成 `levels[].activate_timing[]`（多动作技能另有一份挂在 `actions[]` 上）：
+
+```json
+[{ "id": 8001, "effect_group": 56164701, "timing": 24, "require_num": 1,
+   "conditions": [{ "id": 52001, "kind": 470, "kind_name": "使用技能种类", "params": [1] },
+                  { "id": 440050, "kind": 440, "kind_name": "触发概率", "params": [15] }] }]
+```
+
+- 条件 kind 没有随包枚举名，`kind_name` 来自 `skill.py` 的 `ACT_CONDITION_KINDS`（目前只确认
+  440 触发概率 / 470 使用技能种类，标 `uncertain`），完整表见 `activate_timing_kinds.json`。
+- 例：精准一击（56164701）两个效果组内容完全一样，只有时机不同 —— 8001「普通攻击时 15%」/
+  8002「攻击技能时 15%」。这类「仅差时机」的组会合并成一个动作，原始组 id 落在
+  `actions[].effect_groups`，各时机列在 `actions[].activate_timing`。
 
 已确认的 `param` 语义（写进 `skill.py` 的 `PARAM_LABELS`，随 `effect_kinds.json` 输出；当前 **45 个 kind** 有标签，**122 个 kind** 有中文名）：
 
@@ -305,7 +324,7 @@ Api/Version ──► 与 IndexedDB 里的 dataVersion 比较
 | 图标 / 立绘 | 未接入 | `Character.image_name` / `thumbnail_name` 已在数据里，需另跑资源管线 |
 | 多语言切换 | 只展示中文 + 日英名 | 数据层已保留 `name_jp/name_en`，扩展即可 |
 | 数据更新 | 手动重跑两轮脚本 → 上传（未做）→ 版本号变化后前端自动重拉 | 可做成 CI：解包 → 清洗 → 导出 → 上传 |
-| 上传模块 | `update:wiki` 已支持 character / job / skill / equipment / enum，记录级页面为 `Data:<类>/<id>.json` + `dtype`；`Data:Version.json` 仍手工维护 | 按需补怪物 / 物品等新类 |
+| 上传模块 | `[UPDATE 3] 上传到 wiki` 已支持 character / job / skill / equipment / enum，记录级页面为 `Data:<类>/<id>.json` + `dtype`；`Data:Version.json` 仍手工维护 | 按需补怪物 / 物品等新类 |
 | 数据缓存 | 整库全量重拉 | 数据量大到 2 MB 以上再考虑按域分页 / 增量 |
 | 效果参数语义 | 122 个 kind 有中文名，其中 45 个有 `param` 位标签；`attack_type` / `2000.param_2` / `strength` 语义未确认 | 继续按频次补剩余 292 个低频 kind（Q8） |
 

@@ -8,8 +8,8 @@
 
 | 仓库 | 路径 | 职责 |
 |---|---|---|
-| 解包仓库 | `D:\WizardyDaphne\WizardyDaphneUnpack` | 解密游戏缓存、导出主数据、多语言合并、**数据清洗脚本**、参考数据抓取 |
-| 本仓库 | `D:\WizardyDaphne\wizdaphne-wiki-vue` | 维基前端、`public/data.json` 等产品数据、线上发布 |
+| 解包仓库 | `<解包仓库根>` | 解密游戏缓存、导出主数据、多语言合并、**数据清洗脚本**、参考数据抓取 |
+| 本仓库 | `<本仓库根>` | 维基前端、`public/data.json` 等产品数据、线上发布 |
 
 解包仓库的 `out\` **可随时删除重建**；持久配置放在 `tools\clean\data\`（表名映射、手工命名），这两类不要混。
 
@@ -98,7 +98,7 @@ WizardyDaphneUnpack\
 ## 4. 常用命令
 
 ```bat
-cd /d D:\WizardyDaphne\WizardyDaphneUnpack
+cd /d <解包仓库根>
 
 :: 主数据普查（不写文件）
 python tools\masterdata.py --list

@@ -30,7 +30,7 @@ export const useMonsterStore = defineStore('monster', () => {
             const response = await fetch(
                 IS_DEV
                     ? '/monster.json'
-                    : 'https://wizdaphne.huijiwiki.com/api.php?action=lua&module=Api/GetMonster&format=json&utf8=1',
+                    : '/api.php?action=lua&module=Api/GetMonster&format=json&utf8=1',
             );
 
             if (response.ok) {

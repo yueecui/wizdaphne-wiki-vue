@@ -29,7 +29,7 @@
  *
  * 增量上传：内容不变则跳过编辑请求（缓存见下），`--force` 强制全传。
  *   缓存表 wikitext_cache（sqlite）：条目名 -> 上次上传的内容，
- *   默认 `D:\WizardyDaphne\workspace\wikitext.sqlite`，可用 `WIKI_CACHE_SQLITE_PATH` 覆盖。
+ *   默认 `local_scripts/work/wikitext.sqlite`，可用 `WIKI_CACHE_SQLITE_PATH` 覆盖。
  *
  * 顺序：character → job → skill → equipment → item → shop → relic →
  *       enemy → map → map_meta → enemy_pool → blessing → talent → enum
@@ -52,15 +52,15 @@
  * 合并解包 ``AchievementMasterData``（保留旧 id、补 ``uid``、追加新增条目），
  * 再整体回写；内容无变化则跳过。``--only achievement`` 可只跑这一步。
  *
- * 运行（在本仓库根目录）：
- *   yarn update:wiki                              # 增量（默认全部记录级 + enum）
- *   yarn update:wiki -- --force                   # 忽略缓存全部重传
- *   yarn update:wiki -- --only skill              # 只传一类
- *   yarn update:wiki -- --only achievement        # 只更新成就 tabx
- *   yarn update:wiki -- --only shop-condition     # 只补商店出现条件 tabx
- *   yarn update:wiki -- --only skill --limit 100  # 试传前 100 条
- *   yarn update:wiki -- --dry-run                 # 只本地预览，不登录不写 wiki
- *   yarn update:wiki -- --concurrency 20          # 并发数（默认 10）
+ * 运行（在本仓库根目录；脚本名见 package.json 的「[UPDATE 3] 上传到 wiki」）：
+ *   yarn "[UPDATE 3] 上传到 wiki"                          # 增量（默认全部记录级 + enum）
+ *   yarn "[UPDATE 3] 上传到 wiki" -- --force               # 忽略缓存全部重传
+ *   yarn "[UPDATE 3] 上传到 wiki" -- --only skill          # 只传一类
+ *   yarn "[UPDATE 3] 上传到 wiki" -- --only achievement    # 只更新成就 tabx
+ *   yarn "[UPDATE 3] 上传到 wiki" -- --only shop-condition # 只补商店出现条件 tabx
+ *   yarn "[UPDATE 3] 上传到 wiki" -- --only skill --limit 100  # 试传前 100 条
+ *   yarn "[UPDATE 3] 上传到 wiki" -- --dry-run             # 只本地预览，不登录不写 wiki
+ *   yarn "[UPDATE 3] 上传到 wiki" -- --concurrency 20      # 并发数（默认 10）
  *
  * 需要的 .env：VITE_WIKI_PREFIX / WIKI_AUTHKEY / WIKI_USERNAME / WIKI_PASSWORD
  */
@@ -96,9 +96,10 @@ const ACHIEVEMENT_BUILD_SCRIPT = path.join(ROOT, 'local_scripts', 'clean', 'buil
 /** 效果种类名表（Data:EffectKind.json）：追补解包里出现、页面上没有的新效果种类 */
 const EFFECT_KIND_TITLE = 'Data:EffectKind.json';
 const EFFECT_KIND_LOCAL = path.join(ROOT, 'local_scripts', 'work', 'clean', 'skill', 'effect_kinds.json');
-/** 上传缓存（sqlite，放在工作区外，与前端 / 仓库无关） */
+/** 上传缓存（sqlite，默认落在已被 .gitignore 的 local_scripts/work 下） */
 const CACHE_SQLITE_PATH =
-    process.env.WIKI_CACHE_SQLITE_PATH || path.join('D:\\WizardyDaphne', 'workspace', 'wikitext.sqlite');
+    process.env.WIKI_CACHE_SQLITE_PATH ||
+    path.join(ROOT, 'local_scripts', 'work', 'wikitext.sqlite');
 
 const WIKI_PREFIX = process.env.VITE_WIKI_PREFIX;
 const WIKI_AUTHKEY = process.env.WIKI_AUTHKEY;
@@ -121,6 +122,12 @@ interface KindSpec {
     singleton?: boolean;
     /** 整份文件原样写进单条目页面（不取 `items[0]`），如 Blessing 的单文件 json */
     whole?: boolean;
+    /**
+     * 写进页面前去掉的顶层键（本地文件仍保留）。
+     * 生成时间这类每次都变的字段留着会让页面每次重传都产生纯时间戳差异，
+     * 也会让增量缓存永远不命中，如 Blessing 的 `generatedAt`。
+     */
+    dropKeys?: string[];
     /** 单条目页面的内容取自响应里的哪个顶层键（如 Enum 的 `enum`） */
     field?: string;
     /**
@@ -250,6 +257,8 @@ const KINDS: Record<KindName, KindSpec> = {
         file: '../blessing.json',
         whole: true,
         singleton: true,
+        // 只去掉生成时间：内容没变时页面不会有纯时间戳差异，增量缓存也能命中
+        dropKeys: ['generatedAt'],
         byDefault: true,
         note: '哈肯的加护（单文件：效果已展开，名字字典内嵌）',
     },
@@ -398,8 +407,15 @@ export async function buildEntries(
 
         const keys = Object.keys(doc).length;
         console.log(`  ${kind}: 单条目 ${title}（${keys} 个顶层键）`);
+        const drop = new Set(spec.dropKeys ?? []);
+        const body =
+            drop.size > 0
+                ? Object.fromEntries(Object.entries(doc).filter(([key]) => !drop.has(key)))
+                : doc;
         const text =
-            spec.wrapField && Array.isArray(doc) ? JSON.stringify({ [spec.field!]: doc }) : JSON.stringify(doc);
+            spec.wrapField && Array.isArray(body)
+                ? JSON.stringify({ [spec.field!]: body })
+                : JSON.stringify(body);
         return [{ title, text }];
     }
 

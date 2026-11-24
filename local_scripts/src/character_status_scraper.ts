@@ -163,14 +163,14 @@ async function main(): Promise<void> {
         // 输出结果
         // console.log(JSON.stringify(result, null, 2));
 
-        // 确保public目录存在
-        const publicDir = path.resolve(process.cwd(), 'public');
-        if (!fs.existsSync(publicDir)) {
-            fs.mkdirSync(publicDir, { recursive: true });
+        // 产物放到本地工作目录（public/ 只放前端要按 URL 读的东西，这里是给人看的抓取结果）
+        const outDir = path.resolve(process.cwd(), 'local_scripts', 'work');
+        if (!fs.existsSync(outDir)) {
+            fs.mkdirSync(outDir, { recursive: true });
         }
 
-        // 保存JSON结果到public目录
-        const jsonFilePath = path.join(publicDir, 'character_data.json');
+        // 保存JSON结果
+        const jsonFilePath = path.join(outDir, 'character_data.json');
         fs.writeFileSync(jsonFilePath, JSON.stringify(result, null, 2));
         console.log(`\n数据已保存到 ${jsonFilePath}`);
 
@@ -221,8 +221,8 @@ async function main(): Promise<void> {
             worksheet.addRow(row);
         });
 
-        // 保存Excel文件到public目录
-        const excelFilePath = path.join(publicDir, 'character_data.xlsx');
+        // 保存Excel文件到同一目录
+        const excelFilePath = path.join(outDir, 'character_data.xlsx');
         await workbook.xlsx.writeFile(excelFilePath);
         console.log(`Excel文件已保存到 ${excelFilePath}`);
 

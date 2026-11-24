@@ -1,37 +1,47 @@
 import axios from 'axios';
+import dotenv from 'dotenv';
 import fs from 'fs';
+import path from 'node:path';
+
+dotenv.config();
+
+// wiki 站点（可用 .env 里的 VITE_WIKI_PREFIX 覆盖）
+const WIKI_PREFIX = process.env.VITE_WIKI_PREFIX || 'wizdaphne';
+const WIKI_BASE = `https://${WIKI_PREFIX}.huijiwiki.com`;
 
 // API地址
+const luaApi = (module: string) => `${WIKI_BASE}/api.php?action=lua&module=${module}&format=json&utf8=1`;
 const API_URLS = {
-    searcherData: 'https://wizdaphne.huijiwiki.com/api.php?action=lua&module=Api/GetSearcherData&format=json&utf8=1',
-    equipment: 'https://wizdaphne.huijiwiki.com/api.php?action=lua&module=Api/GetEquipment&format=json&utf8=1',
-    junkData: 'https://wizdaphne.huijiwiki.com/api.php?action=lua&module=Api/GetJunkData&format=json&utf8=1',
-    dropConfig: 'https://wizdaphne.huijiwiki.com/api.php?action=lua&module=Api/GetDropConfig&format=json&utf8=1',
-    achievement: 'https://wizdaphne.huijiwiki.com/api.php?action=lua&module=Api/GetAchievement&format=json&utf8=1',
-    relicbrew: 'https://wizdaphne.huijiwiki.com/api.php?action=lua&module=Api/GetRelicbrew&format=json&utf8=1',
-    items: 'https://wizdaphne.huijiwiki.com/api.php?action=lua&module=Api/GetItem&format=json&utf8=1',
-    monster: 'https://wizdaphne.huijiwiki.com/api.php?action=lua&module=Api/GetMonster&format=json&utf8=1',
-    talent: 'https://wizdaphne.huijiwiki.com/wiki/Data:Talent.json?action=raw&t=' + Date.now(),
+    searcherData: luaApi('Api/GetSearcherData'),
+    equipment: luaApi('Api/GetEquipment'),
+    junkData: luaApi('Api/GetJunkData'),
+    dropConfig: luaApi('Api/GetDropConfig'),
+    achievement: luaApi('Api/GetAchievement'),
+    relicbrew: luaApi('Api/GetRelicbrew'),
+    items: luaApi('Api/GetItem'),
+    monster: luaApi('Api/GetMonster'),
+    talent: `${WIKI_BASE}/wiki/Data:Talent.json?action=raw&t=` + Date.now(),
 };
 
 // 请求头配置
 const REQUEST_HEADERS = {
-    'user-agent': 'Yuee-Tool/0.1',
+    'user-agent': process.env.WIKI_TOOL_UA || 'Yuee-Tool/0.1',
     Accept: 'application/json, text/plain, */*',
     'Content-Type': 'application/json',
 };
 
-// 输出路径
+// 输出路径（相对本仓库的 public/，可用 WIKI_SCRAPE_OUT 覆盖）
+const OUT_DIR = process.env.WIKI_SCRAPE_OUT || path.join(process.cwd(), 'public');
 const OUTPUT_PATHS = {
-    searcherData: 'd:\\WizardyDaphne\\wizdaphne-wiki-vue\\public\\data.json',
-    equipment: 'd:\\WizardyDaphne\\wizdaphne-wiki-vue\\public\\equipment.json',
-    junkData: 'd:\\WizardyDaphne\\wizdaphne-wiki-vue\\public\\junkdata.json',
-    dropConfig: 'd:\\WizardyDaphne\\wizdaphne-wiki-vue\\public\\dropconfig.json',
-    achievement: 'd:\\WizardyDaphne\\wizdaphne-wiki-vue\\public\\achievement.json',
-    relicbrew: 'd:\\WizardyDaphne\\wizdaphne-wiki-vue\\public\\relicbrew.json',
-    items: 'd:\\WizardyDaphne\\wizdaphne-wiki-vue\\public\\items.json',
-    monster: 'd:\\WizardyDaphne\\wizdaphne-wiki-vue\\public\\monster.json',
-    talent: 'd:\\WizardyDaphne\\wizdaphne-wiki-vue\\public\\talent.json',
+    searcherData: path.join(OUT_DIR, 'data.json'),
+    equipment: path.join(OUT_DIR, 'equipment.json'),
+    junkData: path.join(OUT_DIR, 'junkdata.json'),
+    dropConfig: path.join(OUT_DIR, 'dropconfig.json'),
+    achievement: path.join(OUT_DIR, 'achievement.json'),
+    relicbrew: path.join(OUT_DIR, 'relicbrew.json'),
+    items: path.join(OUT_DIR, 'items.json'),
+    monster: path.join(OUT_DIR, 'monster.json'),
+    talent: path.join(OUT_DIR, 'talent.json'),
 };
 
 // 抓取数据函数

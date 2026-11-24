@@ -29,7 +29,7 @@ identification、且 level 相同，于是：
 数据侧判别：`Skill` 表里同一个 `identification` + 同一个 `level` 出现多行，且 `name.ja` 不同。扫描命令：
 
 ```powershell
-cd D:\WizardyDaphne\WizardyDaphneUnpack\out\masterdata
+cd <解包仓库根>\out\masterdata
 $env:PYTHONIOENCODING='utf-8'
 python -c "import json,collections;sk=json.load(open('Skill.json',encoding='utf8'));nm=lambda r:(r.get('name') or {}).get('ja') if isinstance(r.get('name'),dict) else r.get('name');c=collections.defaultdict(list);[c[(r['identification'],r.get('level') or 0)].append(r) for r in sk];[print(k,[(x['id'],nm(x)) for x in v]) for k,v in c.items() if len(v)>1 and len({nm(x) for x in v})>1]"
 ```
@@ -194,7 +194,7 @@ python local_scripts\clean\build_mock.py
 | `public/mock/SkillResponse.json` | 出现新 identification，`count` = **3058** |
 | `public/mock/EquipmentResponse.json` | 受影响装备的 `sk` 指向各自的 id |
 
-6. `public/mock` 入库后走 `update:wiki` 上传；前端不需要改代码，IndexedDB 侧靠 `DB_SCHEMA_VERSION` / `Api/Version` 自动刷新。
+6. `public/mock` 入库后走 `[UPDATE 3] 上传到 wiki` 上传；前端不需要改代码，IndexedDB 侧靠 `DB_SCHEMA_VERSION` / `Api/Version` 自动刷新。
 
 ## 5. 检测结果与剩余情况
 

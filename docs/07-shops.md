@@ -99,7 +99,7 @@ id 明显是分层的：`1000xxxxx` 主线阶段、`10003xxxx` / `10004xxxx` 对
 
 文案是**纯人工维护**的补充数据，走 `Api/GetV2Extra.shopCondition`（`{ "<条件 id>": "文案" }`）：
 
-1. `yarn update:wiki` 跑完 `shop` 后会调用 `syncShopCondition()`，把 `ShopResponse.json` 里
+1. `yarn "[UPDATE 3] 上传到 wiki"` 跑完 `shop` 后会调用 `syncShopCondition()`，把 `ShopResponse.json` 里
    **新出现**的条件 id 追加成新行（`name` 留空等人工补；已有行不覆盖；页面不存在则新建）；
    也可以 `--only shop-condition` 单独跑这一步；
 2. 人工在 wiki 页面里给 `name` 补中文文案，空着的行前端会退回显示 id；
@@ -201,7 +201,7 @@ public/mock/ShopResponse.json   短键 + {items,count,page,limit}
 python local_scripts\clean\shop.py
 python local_scripts\clean\build_data.py
 python local_scripts\clean\build_mock.py
-pnpm update:wiki --only shop
+yarn "[UPDATE 3] 上传到 wiki" -- --only shop
 ```
 
 **线上还需手工新建 Lua 模块 `Api/GetV2Shop`**（照 `Api/GetV2Skill` 改 dtype 为 `shop`），否则线上商店页会报错。

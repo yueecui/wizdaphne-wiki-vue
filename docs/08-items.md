@@ -212,7 +212,7 @@ python local_scripts\clean\shop.py      # item.py 直接消费它的 shops.json
 python local_scripts\clean\item.py
 python local_scripts\clean\build_data.py
 python local_scripts\clean\build_mock.py
-pnpm update:wiki --only item      # Data:Item/<id>.json + dtype: item
+yarn "[UPDATE 3] 上传到 wiki" -- --only item      # Data:Item/<id>.json + dtype: item
 ```
 
 **线上还需要手工新建 Lua 模块 `Api/GetV2Item`**（照抄 `Api/GetV2Skill`，dtype 改成 `item`），否则线上请求会 404。

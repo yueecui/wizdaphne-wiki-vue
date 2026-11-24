@@ -9,12 +9,14 @@ Input : ``out/masterdata``
         ``SkillEffectGroup``              effect group (verified by FK closure)
         ``SkillSubEffect``                one applied effect / debuff
         ``SkillSubEffectKind``            effect kind dictionary
-        ``SkillDamageEffect`` / ``SkillTarget`` / ``SkillActivateTiming``
+        ``SkillDamageEffect`` / ``SkillTarget``
+        ``SkillActivateTiming`` / ``SkillActivateTimingCondition``  发动时机
 
 Output: ``local_scripts/work/clean/skill/``
         ``skills.json``        one entry per identification (no level payload)
         ``skill_levels.json``  identification -> [per-level cost + effect numbers]
         ``effect_kinds.json``  effect kind id -> japanese label + usage count
+        ``activate_timing_kinds.json``  发动时机条件 kind -> label + usage count
 
 Filtering is NOT applied: every identification is emitted with flags
 (``player`` / ``test`` / ``level0``), so the caller decides what to show.
@@ -62,6 +64,61 @@ NORMAL_ATTACK_NAME = "普通攻击"
 
 #: ``SkillEffectGroup.display_name`` 里不少是占位符（"-" / "—" / 空），这类不能当作技能名。
 _DISPLAY_NAME_PLACEHOLDER = {"", "-", "—", "‐", "~"}
+
+#: 发动时机条件 kind（``SkillActivateTimingCondition.kind``）没有随包的枚举名，
+#: 这里只收录已经验证过的几条；其余一律输出 ``条件<kind>``，
+#: 由 wiki 的 ``Data:ActivateTimingKind.json`` 在前端覆盖。
+#:
+#: 470「使用技能种类」：参数值就是 ``Skill.skill_kind``（1 普通攻击 / 2 攻击技能 /
+#: 3 辅助技能 / 4 攻击魔法 / 5 回复魔法 / 6 强化魔法 / 7 妨碍魔法 …）。依据：
+#: 精准一击 56164701 两组参数 1 / 2 与描述「通常攻撃と攻撃スキル使用時」逐字对应；
+#: 56166201「暗属性范围法术强化」= 4（攻击魔法）、140212060「百烈拳」= 1（普通攻击）、
+#: 56167301「献身之盾」= 2~7（除普攻外的全部技能种类），7 个引用全部自洽。
+#:
+#: 440「触发概率」：只有精准一击一处，15 = 15%，与描述「低確率」对应，仍属推断。
+ACT_CONDITION_KINDS = {
+    440: {"name": "触发概率", "params": ["概率%"], "uncertain": True},
+    470: {"name": "使用技能种类", "params": ["技能种类(= Skill.skill_kind)"], "uncertain": False},
+}
+
+
+def activate_timing(gid: int, groups: dict, timings: dict, conds: dict,
+                    counter: collections.Counter) -> dict | None:
+    """效果组 ``activate_timing_id`` -> 发动时机 payload（含条件链）。
+
+    ``SkillEffectGroup.activate_timing_id`` 是「这个效果什么时候生效」的唯一来源
+    （例：精准一击的两个组分别对应「普通攻击时」「攻击技能时」，效果内容完全一样）。
+    丢掉它，两个组就退化成两条一模一样的重复效果。
+    """
+    timing_id = (groups.get(gid) or {}).get("activate_timing_id")
+    if not timing_id:
+        return None
+    out = {"id": timing_id, "effect_group": gid}
+    row = timings.get(timing_id)
+    if not row:
+        return out                       # 悬空引用：保留 id 便于对照
+    out["timing"] = row.get("activate_timing")
+    for key in ("require_num", "target_method", "select_target"):
+        if row.get(key):
+            out[key] = row[key]
+    conditions = []
+    for cid in row.get("activate_timing_condition_ids") or []:
+        c = conds.get(cid)
+        if not c:
+            continue
+        kind = c.get("kind")
+        if kind is not None:
+            counter[kind] += 1
+        conditions.append({
+            "id": cid,
+            "kind": kind,
+            "kind_name": (ACT_CONDITION_KINDS.get(kind) or {}).get("name"),
+            "params": list(c.get("params") or []) or None,
+            "is_reverse": bool(c.get("is_reverse")),
+        })
+    if conditions:
+        out["conditions"] = conditions
+    return out
 
 
 def display_name_zh(dn) -> str | None:
@@ -153,6 +210,9 @@ def main(argv: list[str]) -> int:
     kinds = {r["id"]: r for r in load("SkillSubEffectKind")}
     damage = {r["id"]: r for r in load("SkillDamageEffect")}
     targets = {r["id"]: r for r in load("SkillTarget")}
+    # 发动时机：SkillEffectGroup.activate_timing_id -> SkillActivateTiming -> 条件
+    timings = {r["id"]: r for r in load("SkillActivateTiming")}
+    timing_conds = {r["id"]: r for r in load("SkillActivateTimingCondition")}
     # kind 2790「敵のバフ数によってStepReplace」的 param_1 指向这张表：
     # replace_id -> step（敌人能力提升效果数量档）-> 实际执行的技能效果组
     step_replaces: dict[int, dict[int, dict]] = collections.defaultdict(dict)
@@ -265,6 +325,8 @@ def main(argv: list[str]) -> int:
     entries, levels_out = [], {}
     display_name_filled = 0
     kind_count = collections.Counter()
+    #: 发动时机条件 kind 的使用次数（生成 activate_timing_kinds.json 用）
+    cond_kind_count = collections.Counter()
     #: kind -> 用到的最后一个 param 序号（用于生成「参数N」占位名）
     kind_param_span = collections.defaultdict(int)
 
@@ -406,6 +468,12 @@ def main(argv: list[str]) -> int:
                         stack.append(child)
             action_dmg: list[list] = [[] for _ in top_gids]
             action_sub: list[list] = [[] for _ in top_gids]
+            #: 顶层动作 -> 发动时机 payload（activate_timing_id 唯一的用途就在这里）
+            action_timing: list[list[dict]] = [[] for _ in top_gids]
+            for action_index, tid in enumerate(top_gids):
+                payload = activate_timing(tid, groups, timings, timing_conds, cond_kind_count)
+                if payload:
+                    action_timing[action_index].append(payload)
 
             def brief_params(s):
                 """param_1..7，裁掉尾部连续的 0，避免带一堆空位。"""
@@ -476,6 +544,8 @@ def main(argv: list[str]) -> int:
                 kind_count[k] += 1
                 tgt = targets.get(s.get("skill_target_id")) or {}
                 item_sub = {
+                    # 原始行 id：校准时按它回溯 SkillSubEffect（brief 版一直有，这里以前漏了）
+                    "id": sid,
                     "kind": k,
                     "kind_name": text((kinds.get(k) or {}).get("name"))[0],
                     "strength": s.get("strength"),
@@ -508,7 +578,8 @@ def main(argv: list[str]) -> int:
                 params = [s.get(f"param_{i}") for i in range(1, 8)]
                 used = [i + 1 for i, v in enumerate(params) if v]
                 if used:
-                    item_sub["params"] = params
+                    # 尾部连续的 0 只是空位，不要带出去（前端会把它们渲染成「参数N = 0」）
+                    item_sub["params"] = params[: used[-1]]
                     if k is not None:
                         kind_param_span[k] = max(kind_param_span[k], used[-1])
                     # 参数里指向别的效果的 id（指定技能 / 系数组 …）：
@@ -631,23 +702,52 @@ def main(argv: list[str]) -> int:
                         if action_index is not None and s_item not in action_sub[action_index]:
                             action_sub[action_index].append(s_item)
 
-            # 多动作技能：每个动作一页（前端按 actions 分页），名字来自效果组
-            if len(top_gids) > 1:
+            # 多动作技能：每个动作一页（前端按 actions 分页），名字来自效果组。
+            # 合并规则：顶层组若「动作名 + 伤害 + 子效果」完全一样、只有 activate_timing_id
+            # 不同（例：精准一击 56164701 / 56164702 分别挂「普通攻击时」「攻击技能时」），
+            # 就并成一个动作，把各组的发动时机列在同一个动作下，避免出现两条一模一样的页签。
+            merged: list[dict] = []
+            for action_index, tid in enumerate(top_gids):
+                dn = (groups.get(tid) or {}).get("display_name") or {}
+                zh, ja = action_name(dn)
+                entry_key = (zh, ja, json.dumps([action_dmg[action_index],
+                                                 action_sub[action_index]],
+                                                sort_keys=True, ensure_ascii=False))
+                for group in merged:
+                    if group["key"] == entry_key:
+                        group["ids"].append(tid)
+                        break
+                else:
+                    merged.append({"key": entry_key, "ids": [tid], "name": zh,
+                                   "name_jp": ja, "index": action_index})
+            if len(merged) > 1:
                 actions = []
-                for action_index, tid in enumerate(top_gids):
-                    dn = (groups.get(tid) or {}).get("display_name") or {}
-                    action = {"id": tid}
-                    zh, ja = action_name(dn)
-                    if zh:
-                        action["name"] = zh
-                    if ja:
-                        action["name_jp"] = ja
-                    if action_dmg[action_index]:
-                        action["damage"] = action_dmg[action_index]
-                    if action_sub[action_index]:
-                        action["sub_effects"] = action_sub[action_index]
+                for group in merged:
+                    index = group["index"]
+                    action = {"id": group["ids"][0]}
+                    if group["name"]:
+                        action["name"] = group["name"]
+                    if group["name_jp"]:
+                        action["name_jp"] = group["name_jp"]
+                    if len(group["ids"]) > 1:      # 合并了多个只差发动时机的效果组
+                        action["effect_groups"] = group["ids"]
+                    timings_of_action = [p for tid in group["ids"]
+                                         for p in action_timing[top_gids.index(tid)]]
+                    if timings_of_action:
+                        action["activate_timing"] = timings_of_action
+                    if action_dmg[index]:
+                        action["damage"] = action_dmg[index]
+                    if action_sub[index]:
+                        action["sub_effects"] = action_sub[index]
                     actions.append(action)
                 item["actions"] = actions
+
+            # 发动时机：效果「什么时候生效」（普攻时 / 攻击技能时 / …）。
+            # 多动作技能给每个动作各自一份，这里再按顶层组顺序给 level 一份完整列表
+            # （单动作技能只有这一份，也是 56164701 唯一能区分两个效果组的信息）。
+            flat_timing = [p for lst in action_timing for p in lst]
+            if flat_timing:
+                item["activate_timing"] = flat_timing
 
             if dmg:
                 item["damage"] = dmg
@@ -710,10 +810,27 @@ def main(argv: list[str]) -> int:
                 "remove_kinds": row.get("remove_sub_effect_kinds") or None,
             }
 
+    # 发动时机条件字典：解包没有枚举名，只输出实际用到的 kind，名字留给人工表覆盖。
+    # 与 effect_kinds.json 分开存：两套 kind 编号互不相干（440 / 470 在子效果表里不存在），
+    # 混在一起会被前端当成子效果种类名查到。
+    cond_kind_dict = {}
+    for k, n in cond_kind_count.most_common():
+        meta = ACT_CONDITION_KINDS.get(k) or {}
+        cond_kind_dict[str(k)] = {
+            "id": k,
+            "name_jp": meta.get("name_jp"),
+            "name": meta.get("name") or f"条件{k}",
+            "params": meta.get("params"),
+            "count": n,
+            # True = 名字按技能描述推断，尚未由官方枚举确认
+            "uncertain": bool(meta.get("uncertain")),
+        }
+
     out_dir = os.path.join(CLEAN, "skill")
     write_json(os.path.join(out_dir, "skills.json"), entries)
     write_json(os.path.join(out_dir, "skill_levels.json"), levels_out)
     write_json(os.path.join(out_dir, "effect_kinds.json"), kind_dict)
+    write_json(os.path.join(out_dir, "activate_timing_kinds.json"), cond_kind_dict)
 
     player = [e for e in entries if e["player"]]
     test = [e for e in entries if e["flags"]["test"]]

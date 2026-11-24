@@ -13,9 +13,13 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from common import UNPACK  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DEFAULT_SRC = r"D:\WizardyDaphne\WizardyDaphneUnpack\out\tmp\map_v3"
+DEFAULT_SRC = os.path.join(UNPACK, "out", "tmp", "map_v3")
 DEFAULT_OUT = os.path.join(ROOT, "data")
 
 

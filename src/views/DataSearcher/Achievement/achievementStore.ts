@@ -16,7 +16,7 @@ export const useAchievementStore = defineStore('achievement', () => {
 
         try {
             const response = await fetch(
-                IS_DEV ? '/achievement.json' : 'https://wizdaphne.huijiwiki.com/api.php?action=lua&module=Api/GetAchievement&format=json&utf8=1',
+                IS_DEV ? '/achievement.json' : '/api.php?action=lua&module=Api/GetAchievement&format=json&utf8=1',
             );
 
             if (response.ok) {

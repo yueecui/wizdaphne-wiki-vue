@@ -44,7 +44,7 @@ export const useTalentStore = defineStore('talent', () => {
             // 开发环境优先用「从解包主数据生成」的 talent.gamedata.json，取不到再退回手工版 talent.json
             const sources = IS_DEV
                 ? ['/talent.gamedata.json', '/talent.json']
-                : ['https://wizdaphne.huijiwiki.com/wiki/Data:Talent.json?action=raw'];
+                : ['/wiki/Data:Talent.json?action=raw'];
 
             let data: ITalentJson | null = null;
             for (const url of sources) {

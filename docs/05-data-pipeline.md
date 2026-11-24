@@ -82,6 +82,7 @@ data/
 | `kind_name: "攻击技能"` | 删掉，只留 `kind: 2` | `enums.skill_kind` |
 | `damage[].target_text: "1名敌人"` | 删掉，只留 `target: 901` | `enums.target` |
 | `sub_effects[].kind_name` | 删掉，只留 `kind` | `effect_kinds.json` |
+| `activate_timing[].conditions[].kind_name` | **保留**（没有官方枚举，只有推断名） | `activate_timing_kinds.json`（`uncertain` 标记） |
 | 角色 `skills.unique/inherit/...` 带名称 | 只留 `identification` | `skill/skills.json` |
 | 角色 `style: {caption:{...}, is_default, ...}` | `style: "基本"` + `default: true` | 觉醒信息在 `excluded.json` |
 | 角色 `names: {ja,zhs,zht,en}` | 删掉 | 已有 `name/name_jp/name_en` |
@@ -252,7 +253,7 @@ data/
 
 | 键 | 内容 |
 |---|---|
-| `generatedAt` / `count` | 生成时间 / 条数 |
+| `generatedAt` / `count` | 生成时间 / 条数（`generatedAt` 只留在本地文件里，上传 wiki 时由脚本去掉，免得每次只剩时间戳差异） |
 | `stats` | `{能力值 id: 名称}`：kind 7000 的 `params[0]`。解包里没有这张枚举表，id 由加护 / 技能描述反推（4 攻击力、5 防御力、6 魔力、7 法术防御力、8 神力、9 命中、10 回避、11 抵抗、12 会心、14 行动速度、16 陷阱解除、17 陷阱回避） |
 | `species` / `attributes` | `{EnemySpecies id: 名称}` / `{Attribute id: 名称}`，只收这份数据用得到的几个 |
 | `groups` | `{group_id: {"layers": [楼层名]}}`：加护组没有名字，靠 `DungeonWedge.blessing_group_id` → `dungeon_floor_move_id` → `DungeonFloorMove.name` 反查（`20001` = 「B2F -圣堂-」；古城遗迹的 `6000001` 对应 4 个「小哈肯」层） |
@@ -267,7 +268,7 @@ data/
 其余（各种耐性变动等）只有数值，直接用 `kind_name` 显示。
 
 同一份数据还会生成 wiki 词条「哈肯」的四张表（白 / 绿 / 蓝 / 紫加护）：
-`yarn update:haken -- --dry-run` 只写预览 `local_scripts/work/haken.wiki`，
+`yarn "[WIKI] haken" -- --dry-run` 只写预览 `local_scripts/work/haken.wiki`，
 不带参数则登录后替换词条里两个标记之间的内容（只动 `===白加护===` 起的四节）。
 效果名/参数名取 `ExtraResponse.json` 的 `effectKinds`（= `Data:EffectKind.json`），
 wiki 上仍为日文的条目在脚本的 `KIND_NAMES` 里兜底成中文。
@@ -312,7 +313,7 @@ wiki 上仍为日文的条目在脚本的 `KIND_NAMES` 里兜底成中文。
 ## 4. 生成命令
 
 ```bat
-cd /d D:\WizardyDaphne\wizdaphne-wiki-vue
+cd /d <本仓库根>
 
 :: 0) 前置：语义清洗（游戏更新后重跑，读解包仓库的 out\masterdata）
 python local_scripts\clean\character.py
@@ -342,7 +343,7 @@ python local_scripts\clean\build_mock.py --data D:\tmp\data --out D:\tmp\mock
 
 | 项 | 状态 | 说明 |
 |---|---|---|
-| 上传脚本（mock → `Data:` 页面） | **已完成** | `local_scripts/wiki/uploadDataToWiki.ts`（`yarn update:wiki`）：记录级 `Data:Character|Job|Skill|Equipment/<id>.json` + `dtype`，单条目 `Data:Enum.json`；`Data:Version.json`、`Data:EffectKind.json` 不由脚本维护（后者在 wiki 上手工改）；增量缓存为 sqlite（`D:\WizardyDaphne\workspace\wikitext.sqlite`）。装备类跑完会再同步 `Data:EquipmentExtra.tabx`：先拉线上页面，只把本地有、页面上没有的装备**追加**进去（已有行不动、页面解析失败直接跳过），`--dry-run` 只打印会追加哪些 id |
+| 上传脚本（mock → `Data:` 页面） | **已完成** | `local_scripts/wiki/uploadDataToWiki.ts`（`yarn "[UPDATE 3] 上传到 wiki"`）：记录级 `Data:Character|Job|Skill|Equipment/<id>.json` + `dtype`，单条目 `Data:Enum.json`；`Data:Version.json`、`Data:EffectKind.json` 不由脚本维护（后者在 wiki 上手工改）；增量缓存为 sqlite（`local_scripts/work/wikitext.sqlite`）。装备类跑完会再同步 `Data:EquipmentExtra.tabx`：先拉线上页面，只把本地有、页面上没有的装备**追加**进去（已有行不动、页面解析失败直接跳过），`--dry-run` 只打印会追加哪些 id |
 | `Api/GetXxx` lua 模块 | 未做 | 按 `dtype` 从 `mw.huiji.db` 取对应 `Data:` 条目，包成 `{items,count,page,limit}`；单条目页直接读 `Data:Enum.json` / `Data:Version.json` |
 | 前端 `decodeDoc` / `DOC_SPECS` | **已完成** | `src/api/dbCodec.ts`（CHAR / JOB / SKILL / EQUIP 四套 spec，与本文 §3.3 一致） |
 | IndexedDB 缓存层 | **已完成** | `src/stores/wikiData.ts`（Dexie，版本比对 + 整库重拉），`DataV2` 已切到该数据源 |
